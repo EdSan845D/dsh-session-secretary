@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.73 - 2026-10-12
+
+- Support DSH `0.2.1-alpha.2` while retaining all existing supported versions.
+
 [简体中文](CHANGELOG.zh-CN.md)
 
 Recent published versions are listed below. Git tags and GitHub Releases now mirror these entries; historical sections retain links to their original release commits.

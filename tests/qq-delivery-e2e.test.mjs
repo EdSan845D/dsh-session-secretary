@@ -107,11 +107,19 @@ for (const event of ['GROUP_AT_MESSAGE_CREATE', 'C2C_MESSAGE_CREATE']) {
       assert.equal(received.length, 1)
       assert.equal(received[0].role, 'user')
       assert.deepEqual(received[0].content, [{ type: 'text', text: '[引用: 我也是]\n\n在测试一下' }])
-      // 同一生产链路验证空引用、换行及超长模板；每条等待投递，避免合并掩盖丢失。
+      // 同一生产链路验证解析边界；逐条等待投递，避免合并掩盖丢失。
+      const multiple = '=== 消息 1 ===\n[消息内容] 第一条\n```ts\nconst value = list[0]\n```\n[消息类型] 引用消息\n[关联消息]\n=== 消息 2 ===\n[消息内容] 第二条\n[消息类型] 引用消息'
+      const longMultiple = '=== 消息 1 ===\n[消息内容] 第一条\n[消息类型] 引用消息\n[关联消息]\n'
+        + '    历史😀\n'.repeat(4000)
+        + '=== 消息 2 ===\n[消息内容] 第二条\n[消息类型] 引用消息'
+      const emptyElements = Array.from({ length: 101 }, () => ({ msg_elements: [{ content: '不应读取的历史' }] }))
       const scenarios = [
         { content: '', quote: '=== 消息 1 ===\n[消息内容] \n[消息类型] 引用消息\n[关联消息]\n    [消息内容] 旧历史', expected: '[引用: （无文字）]' },
         { content: '<@!bot> 当前\r\n正文', quote: '<@!peer> A\r\nB', expected: '[引用: <@!peer> A\nB]\n\n当前\n正文' },
         { content: '', quote: '=== 消息 1 ===\n[消息内容] ' + '甲'.repeat(20000) + '\n[消息类型] 引用消息\n[关联消息]\n    [消息内容] 旧历史' },
+        { content: '', elements: emptyElements, expected: `[引用: （无文字）]\n\n[另有 ${Math.min(emptyElements.length, 100) - 1} 条无文字引用已折叠]\n[部分引用已省略]` },
+        { content: '', quote: multiple.replaceAll('\n', '\r\n'), expected: `[引用: ${multiple}]` },
+        { content: '', quote: longMultiple, fallback: true },
       ]
       for (const [index, scenario] of scenarios.entries()) {
         socket.onmessage?.({ data: JSON.stringify({
@@ -119,7 +127,7 @@ for (const event of ['GROUP_AT_MESSAGE_CREATE', 'C2C_MESSAGE_CREATE']) {
             id: `qq-boundary-${index}`, content: scenario.content,
             ...(group ? { group_openid: 'group-qq-1' } : {}),
             author: group ? { member_openid: 'user-qq-1' } : { user_openid: 'user-qq-1' },
-            msg_elements: [{ content: scenario.quote, msg_elements: [{ content: '不应出现的历史' }] }],
+            msg_elements: scenario.elements ?? [{ content: scenario.quote, msg_elements: [{ content: '不应出现的历史' }] }],
           },
         }) })
         await waitFor(() => received.length === index + 2)
@@ -131,10 +139,22 @@ for (const event of ['GROUP_AT_MESSAGE_CREATE', 'C2C_MESSAGE_CREATE']) {
         else {
           const text = delivered.content[0].text
           assert.ok(text.length <= 8000)
-          assert.ok(text.startsWith('[引用: 甲'))
           assert.match(text, /已截断/)
-          assert.doesNotMatch(text, /=== 消息|\[消息内容\]|历史/)
-          assert.ok(text.split('\n\n').every(part => part.startsWith('[') && part.endsWith(']')))
+          assert.equal(text.isWellFormed(), true)
+          if (scenario.fallback) {
+            // 回退原文可以有多行和代码；保证外层包装，不要求原文每行都是标签。
+            const split = text.lastIndexOf('\n\n[引用内容过长，已截断]')
+            assert.ok(split > 0)
+            const rendered = text.slice(0, split)
+            assert.ok(rendered.startsWith('[引用: === 消息 1 ===\n'))
+            assert.ok(rendered.endsWith('…]'))
+            const kept = rendered.slice('[引用: '.length, -'…]'.length)
+            assert.equal(kept, scenario.quote.slice(0, kept.length))
+          } else {
+            assert.ok(text.startsWith('[引用: 甲'))
+            assert.doesNotMatch(text, /=== 消息|\[消息内容\]|历史/)
+            assert.ok(text.split('\n\n').every(part => part.startsWith('[') && part.endsWith(']')))
+          }
         }
       }
       assert.equal(engine.router.lookup('qq', kind, chatId)?.sessionId, sessionId)

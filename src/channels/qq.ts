@@ -79,9 +79,10 @@ function directQqQuoteText(content: string): string {
   // 先在线性扫描中识别完整来源，再限制输出；预切窗口会漏掉类型标记或第二条顶层消息。
   const text = normalizeQqNewlines(content).trim()
   // 多条顶层消息可能是聊天记录或合并转发，不能按单条引用静默丢弃后续正文。
-  if (/\n=== 消息 \d+ ===(?:\x0d?\n|$)/.test(text)) return text
-  // 要求消息头、正文和外层类型/关联标记同时存在，避免误删普通正文中的标签。
-  const match = /^=== 消息 1 ===\x0d?\n\[消息内容\][ \t]?([\s\S]*?)\x0d?\n\[消息类型\][ \t]*引用消息[ \t]*(?:\x0d?\n\[关联消息\](?:\x0d?\n|$)|$)/.exec(text)
+  // 原文回退同样受总预算限制；只保证外层引用闭合，不保证原文行或括号语法在截断后完整。
+  if (/\n=== 消息 \d+ ===(?:\n|$)/.test(text)) return text
+  // 已统一为 LF；要求完整的外层标记，避免误删普通正文中的标签。
+  const match = /^=== 消息 1 ===\n\[消息内容\][ \t]?([\s\S]*?)\n\[消息类型\][ \t]*引用消息[ \t]*(?:\n\[关联消息\](?:\n|$)|$)/.exec(text)
   return match ? (match[1] ?? '').trim() : text
 }
 
@@ -98,8 +99,9 @@ export function extractQqQuote(elements?: QQMsgElement[]): string {
   if (!elements?.length) return ''
   const quotes: Array<{ prefix: string; text: string }> = []
   const omitted = elements.length > MAX_QQ_QUOTE_ELEMENTS ? '[部分引用已省略]' : ''
-  const budget = MAX_QQ_QUOTE_CHARS - (omitted ? omitted.length + 2 : 0)
   let size = 0
+  let emptyNestedSeen = false
+  let foldedEmpty = 0
   for (const el of elements.slice(0, MAX_QQ_QUOTE_ELEMENTS)) {
     // 引用是原文，不复用 cleanQqText，以免删除合法的 @ 提及。
     let text = el.content ? directQqQuoteText(el.content) : ''
@@ -108,7 +110,16 @@ export function extractQqQuote(elements?: QQMsgElement[]): string {
       const names = el.attachments.slice(0, MAX_QQ_QUOTE_ELEMENTS).map(a => sliceQqQuoteText(normalizeQqNewlines(a.filename || (a.content_type?.startsWith('image/') ? '图片' : '文件')), MAX_QQ_QUOTE_CHARS)).join(', ')
       text = `[${names}]`
     }
-    // 空直接引用仍是有效引用；保留占位，不使用历史正文，也不让入站过滤静默丢掉。
+    // 仅折叠无作者信息的空历史容器；附件、明确空消息和真实正文不按内容去重。
+    const emptyNested = !text && !!el.msg_elements?.length && !Object.values(el.author ?? {}).some(Boolean)
+    if (emptyNested) {
+      if (emptyNestedSeen) {
+        foldedEmpty++
+        continue
+      }
+      emptyNestedSeen = true
+    }
+    // 首个空直接引用仍是有效引用，保留占位，不能用历史正文冒充它。
     if (!text) text = '（无文字）'
     const author = el.author?.username ? ` ${sliceQqQuoteText(normalizeQqNewlines(el.author.username), 80)}` : ''
     const prefix = `[引用${author}: `
@@ -116,10 +127,12 @@ export function extractQqQuote(elements?: QQMsgElement[]): string {
     text = sliceQqQuoteText(text, MAX_QQ_QUOTE_CHARS + 1)
     quotes.push({ prefix, text })
     size += prefix.length + text.length + 1 + (quotes.length > 1 ? 2 : 0)
-    if (size > budget) break
+    if (size > MAX_QQ_QUOTE_CHARS) break
   }
   // 提示参与总预算；只裁正文，绝不从中间裁掉引用标签或上一条的闭合括号。
-  const notices = [size > budget ? '[引用内容过长，已截断]' : '', omitted].filter(Boolean).join('\n')
+  const extraNotices = [foldedEmpty ? `[另有 ${foldedEmpty} 条无文字引用已折叠]` : '', omitted].filter(Boolean).join('\n')
+  const budget = MAX_QQ_QUOTE_CHARS - (extraNotices ? extraNotices.length + 2 : 0)
+  const notices = [size > budget ? '[引用内容过长，已截断]' : '', extraNotices].filter(Boolean).join('\n')
   const contentBudget = MAX_QQ_QUOTE_CHARS - (notices ? notices.length + 2 : 0)
   const rendered: string[] = []
   let used = 0

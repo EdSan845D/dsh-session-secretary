@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Directly quoted text from official QQ bot direct and group messages is now included in the model context alongside the current message. Only the immediate quote is retained, without expanding older quote history. Quote-only messages are accepted and carry an explicit quote label.
+- Quotes without text retain a placeholder, with attachment placeholders taking precedence. Repeated anonymous nested elements without direct text or attachments retain one placeholder and a folded-count notice. Actual text, author information, and attachments are not deduplicated by content.
+- QQ incoming message text and quoted text now normalize both CRLF and lone CR line endings to LF, preserving multiline text, code, and legitimate mentions in quoted content.
+- Oversized quotes include an explicit truncation notice while retaining complete outer quote labels and UTF-16 pairs. Unknown, incomplete, or multiple-top-level-message quote content is preserved verbatim within the same size limit; truncation does not guarantee complete brackets or code syntax inside that content.
+
 ## 0.1.73 - 2026-10-12
 
 - Support DSH `0.2.1-alpha.2` while retaining all existing supported versions.

@@ -192,6 +192,73 @@ test('QQ 空直接引用保留占位，有直接附件时优先附件，不读�
   assert.doesNotMatch(quote, /旧历史/)
 })
 
+test('QQ 同类匿名嵌套空元素只保留首个占位，其余折叠计数', () => {
+  const history = {}
+  Object.defineProperty(history, 'content', { get() { assert.fail('折叠不应读取历史正文') } })
+  for (const count of [1, 2, 100, 101]) {
+    const quote = extractQqQuote(Array.from({ length: count }, () => ({ msg_elements: [history] })))
+    const folded = Math.min(count, 100) - 1
+    const notices = [folded ? `[另有 ${folded} 条无文字引用已折叠]` : '', count > 100 ? '[部分引用已省略]' : ''].filter(Boolean).join('\n')
+    assert.equal(quote, ['[引用: （无文字）]', notices].filter(Boolean).join('\n\n'))
+  }
+})
+
+test('QQ 折叠匿名空容器不吞作者、附件、明确空消息或相同真实正文', () => {
+  const empty = () => ({ msg_elements: [{ content: '不应出现的历史' }] })
+  const preserved = [
+    [{ ...empty(), author: { username: '小华' } }, '[引用 小华: （无文字）]'],
+    [{ ...empty(), author: { id: '作者标识' } }, '[引用: （无文字）]'],
+    [{ ...empty(), attachments: [{ content_type: 'image/png' }] }, '[引用: [图片]]'],
+    [{ ...empty(), attachments: [{ content_type: 'image/png' }] }, '[引用: [图片]]'],
+    [{ content: '相同正文' }, '[引用: 相同正文]'],
+    [{ content: '相同正文' }, '[引用: 相同正文]'],
+    [{ content: '（无文字）' }, '[引用: （无文字）]'],
+    [{ content: '' }, '[引用: （无文字）]'],
+  ]
+  const elements = [empty(), ...preserved.flatMap(([element]) => [empty(), element])]
+  const expected = ['[引用: （无文字）]', ...preserved.map(([, text]) => text), `[另有 ${preserved.length} 条无文字引用已折叠]`].join('\n\n')
+  assert.equal(extractQqQuote(elements), expected)
+})
+
+test('QQ 折叠空容器后不因占位噪音截断原本能容纳的正文', () => {
+  const body = '甲'.repeat(7000)
+  const elements = [...Array.from({ length: 99 }, () => ({ msg_elements: [{ content: '历史' }] })), { content: body }]
+  const quote = extractQqQuote(elements)
+  assert.ok(quote.includes(`[引用: ${body}]`))
+  assert.ok(quote.length <= 8000)
+  assert.doesNotMatch(quote, /已截断/)
+  const oversized = extractQqQuote([...elements.slice(0, -1), { content: '甲'.repeat(7994) }, { content: '末条' }])
+  assert.ok(oversized.length <= 8000)
+  assert.match(oversized, /已折叠/)
+  assert.match(oversized, /已截断/)
+  assert.match(oversized, /部分引用已省略/)
+  assert.ok(oversized.split('\n').filter(Boolean).every(line => line.startsWith('[') && line.endsWith(']')))
+})
+
+test('QQ 多顶层回退保留全部短原文、多行代码和普通标签，统一换行', () => {
+  const content = '=== 消息 1 ===\n[消息内容] 第一行\n```ts\nconst value = list[0]\n```\n[消息类型] 引用消息\n[关联消息]\n=== 消息 2 ===\n[消息内容] 第二条 [普通标签]\n[消息类型] 引用消息'
+  for (const input of [content, content.replaceAll('\n', '\r\n'), content.replaceAll('\n', '\r')]) {
+    assert.equal(extractQqQuote([{ content: input }]), `[引用: ${content}]`)
+  }
+})
+
+test('QQ 长多顶层原文回退只保证外层闭合、代理对安全、总预算和明确提示', () => {
+  const content = '=== 消息 1 ===\n[消息内容] 第一条\n[消息类型] 引用消息\n[关联消息]\n'
+    + '    历史😀\n'.repeat(4000)
+    + '=== 消息 2 ===\n[消息内容] 第二条\n[消息类型] 引用消息'
+  const quote = extractQqQuote([{ content }])
+  assert.ok(quote.length <= 8000)
+  assert.equal(quote.isWellFormed(), true)
+  const split = quote.lastIndexOf('\n\n[引用内容过长，已截断]')
+  assert.ok(split > 0)
+  const rendered = quote.slice(0, split)
+  assert.ok(rendered.startsWith('[引用: === 消息 1 ===\n'))
+  assert.ok(rendered.endsWith('…]'))
+  const kept = rendered.slice('[引用: '.length, -'…]'.length)
+  assert.equal(kept, content.slice(0, kept.length))
+  assert.match(kept, /^    历史/m)
+})
+
 test('QQ Bot 解析带引用的消息与纯引用消息', async () => {
   const originalFetch = globalThis.fetch
   const originalWebSocket = globalThis.WebSocket

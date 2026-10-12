@@ -26,8 +26,6 @@ interface GatewayPayload {
 }
 
 interface QQMsgElement {
-  msg_idx?: string
-  message_type?: number
   content?: string
   author?: {
     id?: string
@@ -42,13 +40,8 @@ interface QQMsgElement {
 interface QQMessage {
   id: string
   content?: string
-  message_type?: number
   attachments?: Array<{ content_type?: string; url?: string; filename?: string; size?: number }>
   msg_elements?: QQMsgElement[]
-  message_scene?: {
-    source?: string
-    ext?: string[]
-  }
   author?: {
     id?: string
     user_openid?: string
@@ -72,14 +65,19 @@ const MAX_MESSAGE_IMAGE_BYTES = 20 * 1024 * 1024
 const MAX_QQ_QUOTE_CHARS = 8000
 const MAX_QQ_QUOTE_ELEMENTS = 100
 
+/** QQ 入站文本统一换行，不改正文的多行结构。 */
+function normalizeQqNewlines(text: string): string {
+  return text.replace(/\x0d\n?/g, '\n')
+}
+
 export function cleanQqText(text: string): string {
-  return text.replace(/<@!?\w+>/g, '').replace(/^\s*@\S+\s+/, '').trim()
+  return normalizeQqNewlines(text).replace(/<@!?\w+>/g, '').replace(/^\s*@\S+\s+/, '').trim()
 }
 
 /** 仅识别完整的 QQ 引用展开模板，保留直接正文及其中的换行。 */
 function directQqQuoteText(content: string): string {
-  // 只检查有限长度的外层模板，不扫描可能很长的历史引用链。
-  const text = content.slice(0, MAX_QQ_QUOTE_CHARS * 2).trim()
+  // 先在线性扫描中识别完整来源，再限制输出；预切窗口会漏掉类型标记或第二条顶层消息。
+  const text = normalizeQqNewlines(content).trim()
   // 多条顶层消息可能是聊天记录或合并转发，不能按单条引用静默丢弃后续正文。
   if (/\n=== 消息 \d+ ===(?:\x0d?\n|$)/.test(text)) return text
   // 要求消息头、正文和外层类型/关联标记同时存在，避免误删普通正文中的标签。
@@ -87,31 +85,57 @@ function directQqQuoteText(content: string): string {
   return match ? (match[1] ?? '').trim() : text
 }
 
+/** 按 UTF-16 字符预算裁正文或作者名，避免截断 emoji 的代理对。 */
+function sliceQqQuoteText(text: string, limit: number): string {
+  let end = Math.min(text.length, limit)
+  const last = text.charCodeAt(end - 1)
+  if (end < text.length && last >= 0xd800 && last <= 0xdbff) end--
+  return text.slice(0, end)
+}
+
 /** 从 QQ 消息的 msg_elements 中提取引用内容，格式为 [引用 作者: 内容]。 */
 export function extractQqQuote(elements?: QQMsgElement[]): string {
   if (!elements?.length) return ''
-  const quotes: string[] = []
+  const quotes: Array<{ prefix: string; text: string }> = []
+  const omitted = elements.length > MAX_QQ_QUOTE_ELEMENTS ? '[部分引用已省略]' : ''
+  const budget = MAX_QQ_QUOTE_CHARS - (omitted ? omitted.length + 2 : 0)
   let size = 0
   for (const el of elements.slice(0, MAX_QQ_QUOTE_ELEMENTS)) {
+    // 引用是原文，不复用 cleanQqText，以免删除合法的 @ 提及。
     let text = el.content ? directQqQuoteText(el.content) : ''
     // 子元素是被引用消息的历史引用，不继续展开，避免引用链持续增长。
     if (!text && el.attachments?.length) {
-      const names = el.attachments.slice(0, MAX_QQ_QUOTE_ELEMENTS).map(a => (a.filename || (a.content_type?.startsWith('image/') ? '图片' : '文件')).slice(0, MAX_QQ_QUOTE_CHARS)).join(', ')
+      const names = el.attachments.slice(0, MAX_QQ_QUOTE_ELEMENTS).map(a => sliceQqQuoteText(normalizeQqNewlines(a.filename || (a.content_type?.startsWith('image/') ? '图片' : '文件')), MAX_QQ_QUOTE_CHARS)).join(', ')
       text = `[${names}]`
     }
-    if (text) {
-      const author = el.author?.username ? ` ${el.author.username.slice(0, 80)}` : ''
-      const quote = `[引用${author}: ${text}]`
-      quotes.push(quote)
-      size += quote.length + (quotes.length > 1 ? 2 : 0)
-      if (size > MAX_QQ_QUOTE_CHARS) {
-        const suffix = '…（引用内容过长，已截断）]'
-        return quotes.join('\n\n').slice(0, MAX_QQ_QUOTE_CHARS - suffix.length) + suffix
-      }
+    // 空直接引用仍是有效引用；保留占位，不使用历史正文，也不让入站过滤静默丢掉。
+    if (!text) text = '（无文字）'
+    const author = el.author?.username ? ` ${sliceQqQuoteText(normalizeQqNewlines(el.author.username), 80)}` : ''
+    const prefix = `[引用${author}: `
+    // 只保留足以判断超限的正文前缀，避免给超长原文再创建完整包装副本。
+    text = sliceQqQuoteText(text, MAX_QQ_QUOTE_CHARS + 1)
+    quotes.push({ prefix, text })
+    size += prefix.length + text.length + 1 + (quotes.length > 1 ? 2 : 0)
+    if (size > budget) break
+  }
+  // 提示参与总预算；只裁正文，绝不从中间裁掉引用标签或上一条的闭合括号。
+  const notices = [size > budget ? '[引用内容过长，已截断]' : '', omitted].filter(Boolean).join('\n')
+  const contentBudget = MAX_QQ_QUOTE_CHARS - (notices ? notices.length + 2 : 0)
+  const rendered: string[] = []
+  let used = 0
+  for (const { prefix, text } of quotes) {
+    const separator = rendered.length ? 2 : 0
+    const quote = `${prefix}${text}]`
+    if (used + separator + quote.length <= contentBudget) {
+      rendered.push(quote)
+      used += separator + quote.length
+    } else {
+      const room = contentBudget - used - separator - prefix.length - 1
+      if (room > 1) rendered.push(`${prefix}${sliceQqQuoteText(text, room - 1)}…]`)
+      break
     }
   }
-  const omitted = elements.length > MAX_QQ_QUOTE_ELEMENTS ? '\n[部分引用已省略]' : ''
-  return quotes.join('\n\n').slice(0, MAX_QQ_QUOTE_CHARS - omitted.length) + omitted
+  return [rendered.join('\n\n'), notices].filter(Boolean).join('\n\n')
 }
 
 /** 挂上 HTTP 状态和官方 err_code。不要写到 `code`：超时错误自带的 `code` 是 23，不是业务拒绝。 */

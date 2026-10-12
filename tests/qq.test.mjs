@@ -9,6 +9,7 @@ const waitForImmediate = () => new Promise((resolve) => setImmediate(resolve))
 test('QQ 文本去掉官方 @ 标记', () => {
   assert.equal(cleanQqText('<@!123> 你好'), '你好')
   assert.equal(cleanQqText('@机器人 继续'), '继续')
+  assert.equal(cleanQqText('<@!123> A\r\nB\rC'), 'A\nB\nC')
 })
 
 test('QQ 提取 msg_elements 引用消息', () => {
@@ -100,8 +101,7 @@ test('QQ 引用模板保留多行正文和代码，兼容 Windows 换行', () =>
   const body = '@小王 请看\n```ts\nconst value = 1\n```\n最后一行'
   const template = `=== 消息 1 ===\n[消息内容] ${body}\n[消息类型] 引用消息\n[关联消息]\n--- 第1条 ---\n    [消息内容] 历史`
   for (const content of [template, template.replaceAll('\n', String.fromCharCode(13) + '\n')]) {
-    const expected = content.includes(String.fromCharCode(13)) ? body.replaceAll('\n', String.fromCharCode(13) + '\n') : body
-    assert.equal(extractQqQuote([{ content }]), `[引用: ${expected}]`)
+    assert.equal(extractQqQuote([{ content }]), `[引用: ${body}]`)
   }
 })
 
@@ -120,7 +120,7 @@ test('QQ 模板历史变长不改变直接引用输出', () => {
 })
 
 test('QQ 没有直接正文时只保留当前附件，不拿历史正文冒充直接引用', () => {
-  assert.equal(extractQqQuote([{ msg_elements: [{ content: '历史' }] }]), '')
+  assert.equal(extractQqQuote([{ msg_elements: [{ content: '历史' }] }]), '[引用: （无文字）]')
   assert.equal(extractQqQuote([{ attachments: [{ content_type: 'image/png' }], msg_elements: [{ content: '历史' }] }]), '[引用: [图片]]')
 })
 
@@ -132,6 +132,64 @@ test('QQ 同层消息和元素数量受限，不按正文相等去重', () => {
   const longBatch = extractQqQuote(Array.from({ length: 100 }, () => ({ content: '长'.repeat(200) })))
   assert.ok(longBatch.length <= 8000)
   assert.match(longBatch, /已截断/)
+})
+
+test('QQ 超长直接正文先识别模板再截断，不泄漏模板头', () => {
+  for (const length of [15975, 20000]) {
+    const content = `=== 消息 1 ===\n[消息内容] ${'甲'.repeat(length)}\n[消息类型] 引用消息\n[关联消息]\n--- 第1条 ---\n    [消息内容] 历史`
+    const quote = extractQqQuote([{ content }])
+    assert.ok(quote.length <= 8000)
+    assert.match(quote, /已截断/)
+    assert.doesNotMatch(quote, /=== 消息|\[消息内容\]|历史/)
+  }
+})
+
+test('QQ 完整来源中的第二条顶层消息不能因扫描窗口而被丢掉', () => {
+  const content = '=== 消息 1 ===\n[消息内容] 第一条\n[消息类型] 引用消息\n[关联消息]\n'
+    + '    历史\n'.repeat(4000)
+    + '=== 消息 2 ===\n[消息内容] 第二条\n[消息类型] 引用消息'
+  assert.match(extractQqQuote([{ content }]), /=== 消息 1 ===/)
+})
+
+test('QQ 截断只裁正文，长度与元素双上限不破坏标签或丢失提示', () => {
+  const closed = quote => {
+    assert.ok(quote.length <= 8000)
+    assert.ok(quote.split('\n').filter(Boolean).every(part => part.startsWith('[') && part.endsWith(']')))
+    assert.match(quote, /已截断/)
+  }
+  const empty = Array.from({ length: 99 }, () => ({ msg_elements: [{ content: '历史' }] }))
+  const overlap = extractQqQuote([...empty, { content: '甲'.repeat(7994) }, { content: '末条' }])
+  closed(overlap)
+  assert.match(overlap, /部分引用已省略/)
+  for (const length of [7965, 7970, 7994]) {
+    closed(extractQqQuote([{ content: '甲'.repeat(length) }, { author: { username: '乙'.repeat(80) }, content: '末条' }]))
+  }
+})
+
+test('QQ 截断正文和作者名不切坏 emoji', () => {
+  for (const padding of ['', '甲']) {
+    const quote = extractQqQuote([{ author: { username: '甲'.repeat(79) + '😀' }, content: padding + '😀'.repeat(5000) }])
+    assert.ok(quote.length <= 8000)
+    assert.equal(quote.isWellFormed(), true)
+    assert.match(quote, /已截断/)
+  }
+})
+
+test('QQ 引用的正文、作者和附件名称统一换行，不删除合法提及', () => {
+  assert.equal(extractQqQuote([{ content: '<@!bot> A\r\nB\rC' }]), '[引用: <@!bot> A\nB\nC]')
+  assert.equal(extractQqQuote([{ author: { username: '小\r\n华' }, attachments: [{ filename: 'A\r\nB.txt' }] }]), '[引用 小\n华: [A\nB.txt]]')
+})
+
+test('QQ 空直接引用保留占位，有直接附件时优先附件，不读取历史', () => {
+  const content = '=== 消息 1 ===\n[消息内容] \n[消息类型] 引用消息\n[关联消息]\n    [消息内容] 旧历史'
+  assert.equal(extractQqQuote([{ content }]), '[引用: （无文字）]')
+  assert.equal(extractQqQuote([{ content, attachments: [{ content_type: 'image/png' }] }]), '[引用: [图片]]')
+  assert.equal(extractQqQuote([{ author: { username: '小华' }, content: ' ' }]), '[引用 小华: （无文字）]')
+  const quote = extractQqQuote(Array.from({ length: 101 }, () => ({ msg_elements: [{ content: '旧历史' }] })))
+  assert.ok(quote.startsWith('[引用: （无文字）]'))
+  assert.ok(quote.length <= 8000)
+  assert.match(quote, /部分引用已省略/)
+  assert.doesNotMatch(quote, /旧历史/)
 })
 
 test('QQ Bot 解析带引用的消息与纯引用消息', async () => {

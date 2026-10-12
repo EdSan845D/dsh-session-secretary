@@ -8,8 +8,6 @@ export interface QqChannelConfig {
     };
 }
 interface QQMsgElement {
-    msg_idx?: string;
-    message_type?: number;
     content?: string;
     author?: {
         id?: string;

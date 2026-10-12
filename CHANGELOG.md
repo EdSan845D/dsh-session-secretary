@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.74 - 2026-10-12
 
 - Directly quoted text from official QQ bot direct and group messages is now included in the model context alongside the current message. Only the immediate quote is retained, without expanding older quote history. Quote-only messages are accepted and carry an explicit quote label.
 - Quotes without text retain a placeholder, with attachment placeholders taking precedence. Repeated anonymous nested elements without direct text or attachments retain one placeholder and a folded-count notice. Actual text, author information, and attachments are not deduplicated by content.

@@ -25,10 +25,30 @@ interface GatewayPayload {
   t?: string
 }
 
+interface QQMsgElement {
+  msg_idx?: string
+  message_type?: number
+  content?: string
+  author?: {
+    id?: string
+    user_openid?: string
+    member_openid?: string
+    username?: string
+  }
+  attachments?: Array<{ content_type?: string; url?: string; filename?: string; size?: number }>
+  msg_elements?: QQMsgElement[]
+}
+
 interface QQMessage {
   id: string
   content?: string
+  message_type?: number
   attachments?: Array<{ content_type?: string; url?: string; filename?: string; size?: number }>
+  msg_elements?: QQMsgElement[]
+  message_scene?: {
+    source?: string
+    ext?: string[]
+  }
   author?: {
     id?: string
     user_openid?: string
@@ -49,9 +69,49 @@ const API = 'https://api.sgroup.qq.com'
 const GATEWAY_PATH = '/gateway'
 const GROUP_AND_C2C_INTENT = 1 << 25
 const MAX_MESSAGE_IMAGE_BYTES = 20 * 1024 * 1024
+const MAX_QQ_QUOTE_CHARS = 8000
+const MAX_QQ_QUOTE_ELEMENTS = 100
 
 export function cleanQqText(text: string): string {
   return text.replace(/<@!?\w+>/g, '').replace(/^\s*@\S+\s+/, '').trim()
+}
+
+/** 仅识别完整的 QQ 引用展开模板，保留直接正文及其中的换行。 */
+function directQqQuoteText(content: string): string {
+  // 只检查有限长度的外层模板，不扫描可能很长的历史引用链。
+  const text = content.slice(0, MAX_QQ_QUOTE_CHARS * 2).trim()
+  // 多条顶层消息可能是聊天记录或合并转发，不能按单条引用静默丢弃后续正文。
+  if (/\n=== 消息 \d+ ===(?:\x0d?\n|$)/.test(text)) return text
+  // 要求消息头、正文和外层类型/关联标记同时存在，避免误删普通正文中的标签。
+  const match = /^=== 消息 1 ===\x0d?\n\[消息内容\][ \t]?([\s\S]*?)\x0d?\n\[消息类型\][ \t]*引用消息[ \t]*(?:\x0d?\n\[关联消息\](?:\x0d?\n|$)|$)/.exec(text)
+  return match ? (match[1] ?? '').trim() : text
+}
+
+/** 从 QQ 消息的 msg_elements 中提取引用内容，格式为 [引用 作者: 内容]。 */
+export function extractQqQuote(elements?: QQMsgElement[]): string {
+  if (!elements?.length) return ''
+  const quotes: string[] = []
+  let size = 0
+  for (const el of elements.slice(0, MAX_QQ_QUOTE_ELEMENTS)) {
+    let text = el.content ? directQqQuoteText(el.content) : ''
+    // 子元素是被引用消息的历史引用，不继续展开，避免引用链持续增长。
+    if (!text && el.attachments?.length) {
+      const names = el.attachments.slice(0, MAX_QQ_QUOTE_ELEMENTS).map(a => (a.filename || (a.content_type?.startsWith('image/') ? '图片' : '文件')).slice(0, MAX_QQ_QUOTE_CHARS)).join(', ')
+      text = `[${names}]`
+    }
+    if (text) {
+      const author = el.author?.username ? ` ${el.author.username.slice(0, 80)}` : ''
+      const quote = `[引用${author}: ${text}]`
+      quotes.push(quote)
+      size += quote.length + (quotes.length > 1 ? 2 : 0)
+      if (size > MAX_QQ_QUOTE_CHARS) {
+        const suffix = '…（引用内容过长，已截断）]'
+        return quotes.join('\n\n').slice(0, MAX_QQ_QUOTE_CHARS - suffix.length) + suffix
+      }
+    }
+  }
+  const omitted = elements.length > MAX_QQ_QUOTE_ELEMENTS ? '\n[部分引用已省略]' : ''
+  return quotes.join('\n\n').slice(0, MAX_QQ_QUOTE_CHARS - omitted.length) + omitted
 }
 
 /** 挂上 HTTP 状态和官方 err_code。不要写到 `code`：超时错误自带的 `code` 是 23，不是业务拒绝。 */
@@ -232,7 +292,11 @@ export function createQqChannel(config: QqChannelConfig, log: (line: string) => 
           if (t === 'C2C_MESSAGE_CREATE' || t === 'GROUP_AT_MESSAGE_CREATE') {
             const msg = payload.d as QQMessage
             if (!msg?.author) return
-            const text = cleanQqText(msg.content ?? '')
+            const baseText = cleanQqText(msg.content ?? '')
+            const quoteText = extractQqQuote(msg.msg_elements)
+            const text = quoteText
+              ? (baseText ? `${quoteText}\n\n${baseText}` : quoteText)
+              : baseText
             const isGroup = t === 'GROUP_AT_MESSAGE_CREATE'
             const userId = isGroup
               ? (msg.author.member_openid ?? msg.author.id)

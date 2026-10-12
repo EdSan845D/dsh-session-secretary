@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanQqText, createQqChannel } from '../lib/channels/qq.js'
+import { cleanQqText, createQqChannel, extractQqQuote } from '../lib/channels/qq.js'
 import { parseQqQrSuccess } from '../lib/channels/qr/qq.js'
 import { beginQqQr } from '../lib/channels/qr/qq.js'
 
@@ -9,6 +9,219 @@ const waitForImmediate = () => new Promise((resolve) => setImmediate(resolve))
 test('QQ 文本去掉官方 @ 标记', () => {
   assert.equal(cleanQqText('<@!123> 你好'), '你好')
   assert.equal(cleanQqText('@机器人 继续'), '继续')
+})
+
+test('QQ 提取 msg_elements 引用消息', () => {
+  assert.equal(extractQqQuote(undefined), '')
+  assert.equal(extractQqQuote([]), '')
+
+  // 单条文本引用
+  const quote1 = extractQqQuote([
+    {
+      author: { username: '小华' },
+      content: '昨天的方案已经确认了',
+    },
+  ])
+  assert.equal(quote1, '[引用 小华: 昨天的方案已经确认了]')
+
+  // 多行文本引用
+  const quoteMultiLine = extractQqQuote([
+    {
+      author: { username: '小张' },
+      content: '第一行\n第二行',
+    },
+  ])
+  assert.equal(quoteMultiLine, '[引用 小张: 第一行\n第二行]')
+
+  // 附件类型引用
+  const quoteAttach = extractQqQuote([
+    {
+      author: { username: '小李' },
+      attachments: [{ content_type: 'image/png' }],
+    },
+  ])
+  assert.equal(quoteAttach, '[引用 小李: [图片]]')
+
+  // 纯引用（无额外作者前缀）
+  const officialExample = extractQqQuote([
+    {
+      content: '今天的学习计划已完成',
+    },
+  ])
+  assert.equal(officialExample, '[引用: 今天的学习计划已完成]')
+})
+
+test('QQ 引用模板只保留直接引用正文，不展开历史引用', () => {
+  // 按真机截图重建的文本，不声称是捕获的原始事件。
+  const content = [
+    '=== 消息 1 ===',
+    '[消息内容] 我也是',
+    '',
+    '[消息类型] 引用消息',
+    '[关联消息]',
+    '--- 第1条 ---',
+    '    [消息内容] 你是坏蛋',
+    '    [消息类型] 引用消息',
+    '    [关联消息]',
+    '    --- 第1条 ---',
+    '        [消息内容] 我是大好人',
+    '        [消息类型] 引用消息',
+  ].join('\n')
+  assert.equal(extractQqQuote([{ content }]), '[引用: 我也是]')
+})
+
+test('QQ 结构化引用不遍历历史链，直接正文保留多行和提及', () => {
+  const history = { content: '不应出现的历史' }
+  // 循环只用于证明提取函数不读取历史节点，不代表平台会发送循环 JSON。
+  history.msg_elements = [history]
+  assert.equal(extractQqQuote([{
+    author: { username: '迷城' },
+    content: '@小王 请确认\n第二行',
+    msg_elements: [history],
+  }]), '[引用 迷城: @小王 请确认\n第二行]')
+})
+
+test('QQ 直接引用过长时明确截断，不让引用文本无限增长', () => {
+  const quote = extractQqQuote([{ content: '长'.repeat(20000) }])
+  assert.ok(quote.length <= 8000)
+  assert.match(quote, /已截断/)
+})
+
+test('QQ 不把多条顶层消息的未知模板当成单条引用截掉', () => {
+  const content = [
+    '=== 消息 1 ===', '[消息内容] 第一条', '[消息类型] 引用消息',
+    '[关联消息]', '--- 第1条 ---', '    [消息内容] 旧消息',
+    '=== 消息 2 ===', '[消息内容] 第二条', '[消息类型] 引用消息',
+  ].join('\n')
+  assert.equal(extractQqQuote([{ content }]), `[引用: ${content}]`)
+})
+
+test('QQ 引用模板保留多行正文和代码，兼容 Windows 换行', () => {
+  const body = '@小王 请看\n```ts\nconst value = 1\n```\n最后一行'
+  const template = `=== 消息 1 ===\n[消息内容] ${body}\n[消息类型] 引用消息\n[关联消息]\n--- 第1条 ---\n    [消息内容] 历史`
+  for (const content of [template, template.replaceAll('\n', String.fromCharCode(13) + '\n')]) {
+    const expected = content.includes(String.fromCharCode(13)) ? body.replaceAll('\n', String.fromCharCode(13) + '\n') : body
+    assert.equal(extractQqQuote([{ content }]), `[引用: ${expected}]`)
+  }
+})
+
+test('QQ 不完整模板和普通标签文本原样保留', () => {
+  for (const content of [
+    '[消息内容] 这就是正文\n[消息类型] 引用消息',
+    '=== 消息 1 ===\n[消息内容] 不完整模板',
+    '=== 消息 1 ===\n[消息内容] 类型未知\n[消息类型] 新类型',
+    '@小王 请确认\n<@!123> 是原文中的提及',
+  ]) assert.equal(extractQqQuote([{ content }]), `[引用: ${content}]`)
+})
+
+test('QQ 模板历史变长不改变直接引用输出', () => {
+  const content = '=== 消息 1 ===\n[消息内容] 我也是\n[消息类型] 引用消息\n[关联消息]\n'
+  assert.equal(extractQqQuote([{ content: content + '    [消息内容] 历史\n'.repeat(10000) }]), '[引用: 我也是]')
+})
+
+test('QQ 没有直接正文时只保留当前附件，不拿历史正文冒充直接引用', () => {
+  assert.equal(extractQqQuote([{ msg_elements: [{ content: '历史' }] }]), '')
+  assert.equal(extractQqQuote([{ attachments: [{ content_type: 'image/png' }], msg_elements: [{ content: '历史' }] }]), '[引用: [图片]]')
+})
+
+test('QQ 同层消息和元素数量受限，不按正文相等去重', () => {
+  assert.equal(extractQqQuote([{ content: '相同' }, { content: '相同' }]), '[引用: 相同]\n\n[引用: 相同]')
+  const quote = extractQqQuote(Array.from({ length: 1000 }, () => ({ content: '正文' })))
+  assert.ok(quote.length <= 8000)
+  assert.match(quote, /部分引用已省略/)
+  const longBatch = extractQqQuote(Array.from({ length: 100 }, () => ({ content: '长'.repeat(200) })))
+  assert.ok(longBatch.length <= 8000)
+  assert.match(longBatch, /已截断/)
+})
+
+test('QQ Bot 解析带引用的消息与纯引用消息', async () => {
+  const originalFetch = globalThis.fetch
+  const originalWebSocket = globalThis.WebSocket
+  const received = []
+
+  let socket
+  class MockWebSocket {
+    constructor(url) {
+      socket = this
+      this.url = url
+      setTimeout(() => {
+        this.onopen?.()
+        this.onmessage?.({ data: JSON.stringify({ op: 10, d: { heartbeat_interval: 45000 } }) })
+      }, 0)
+    }
+    send() {}
+    close() {}
+  }
+
+  globalThis.fetch = async (input) => {
+    const url = String(input)
+    if (url.endsWith('/app/getAppAccessToken')) return Response.json({ access_token: 'test-token' })
+    if (url.endsWith('/gateway')) return Response.json({ url: 'ws://qq.test' })
+    return Response.json({})
+  }
+  globalThis.WebSocket = MockWebSocket
+
+  const channel = createQqChannel({ appId: 'app', appSecret: 'secret' }, () => {})
+  channel.setMessageHandler((message) => received.push(message))
+  try {
+    await channel.start()
+
+    // 1. 引用 + 正文
+    socket.onmessage?.({
+      data: JSON.stringify({
+        op: 0,
+        t: 'GROUP_AT_MESSAGE_CREATE',
+        d: {
+          id: 'group-msg-with-quote',
+          content: '<@!bot> 这条呢',
+          message_type: 103,
+          group_openid: 'group-1',
+          author: { member_openid: 'member-1', username: '提问者' },
+          msg_elements: [
+            {
+              author: { username: '被引用者' },
+              content: '原先的待办事项',
+            },
+          ],
+        },
+      }),
+    })
+
+    // 2. 纯引用，无正文（或仅空格）
+    socket.onmessage?.({
+      data: JSON.stringify({
+        op: 0,
+        t: 'C2C_MESSAGE_CREATE',
+        d: {
+          id: 'c2c-pure-quote',
+          content: ' ',
+          message_type: 103,
+          author: { user_openid: 'user-2', username: '纯引用用户' },
+          msg_elements: [
+            {
+              author: { username: '某人' },
+              content: '这条消息请解释一下',
+            },
+          ],
+        },
+      }),
+    })
+
+    await waitForImmediate()
+    assert.equal(received.length, 2)
+
+    // 验证第 1 条：引用 + 正文拼接
+    assert.equal(received[0].chatId, 'g:group-1')
+    assert.equal(received[0].text, '[引用 被引用者: 原先的待办事项]\n\n这条呢')
+
+    // 验证第 2 条：纯引用正常放行，且格式为 [引用 作者: 内容]
+    assert.equal(received[1].chatId, 'user-2')
+    assert.equal(received[1].text, '[引用 某人: 这条消息请解释一下]')
+  } finally {
+    await channel.stop()
+    globalThis.fetch = originalFetch
+    globalThis.WebSocket = originalWebSocket
+  }
 })
 
 test('QQ 扫码成功结果解析凭据并保留扫码用户作为所有者', () => {

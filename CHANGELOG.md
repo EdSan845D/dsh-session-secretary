@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.75 - 2026-10-14
+
+- Adjust settings navigation section order to ensure stable placement and avoid conflicts with other plugins.
+
 ## 0.1.74 - 2026-10-12
 
 - Directly quoted text from official QQ bot direct and group messages is now included in the model context alongside the current message. Only the immediate quote is retained, without expanding older quote history. Quote-only messages are accepted and carry an explicit quote label.

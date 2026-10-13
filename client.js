@@ -3169,7 +3169,7 @@ window.__ModuleLoader__.load({
       ctx.slots.inject("settings.section", () => ctx.slots.register({
           name: "settings.section",
           id: "im-assistant",
-          order: 28,
+          order: 40,
           label: () => t("settings.label"),
           icon: "chat",
           locale: IM_LOCALE_NS,

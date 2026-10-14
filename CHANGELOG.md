@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.76 - 2026-10-15
+
+- Support DSH `0.2.1-alpha.3` while retaining all existing supported versions; pin development `@deepseek-ai/dsh*` dependencies to host `0.2.1-alpha.3` and Cordis to `4.0.5-alpha.2`.
+- No production plugin API breaks for this release (peer / documentation / development dependency alignment only).
+
 ## 0.1.75 - 2026-10-14
 
 - Adjust settings navigation section order to ensure stable placement and avoid conflicts with other plugins.

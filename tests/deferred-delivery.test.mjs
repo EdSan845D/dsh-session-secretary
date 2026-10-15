@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { assistantText } from '../lib/engine/assistant-text.js'
 import { DeferredDelivery, DeliveryUnavailable, recoverTurn } from '../lib/engine/deferred-delivery.js'
 import { readDeliveryHistory } from '../lib/engine/delivery-history.js'
 
@@ -198,6 +199,14 @@ test('明确未提交进入 rejected，重载和停用不重新激活，满额�
   const bounded = new DeferredDelivery()
   for (let i = 0; i < 1000; i++) { bounded.begin(String(i), 's', 'c', message); bounded.reject(String(i), true) }
   assert.doesNotThrow(() => bounded.begin('next', 's', 'c', message))
+})
+
+test('空内容不抛错，过滤开启时也不把空值当成工具叙述', () => {
+  assert.equal(assistantText(null), '')
+  assert.equal(assistantText(null, true), '')
+  const history = events()
+  history[2].data.message.content = null
+  assert.equal(recoverTurn(history, 'r', true).text, '')
 })
 
 test('冷恢复忽略非字符串文字块，不将异常字段转换为正文', () => {

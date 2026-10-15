@@ -77,7 +77,7 @@ export function formatUserQuestion(
   question: UserQuestionItem,
   index: number,
   total: number,
-  options: { requiresMention?: boolean } = {},
+  options: { requiresMention?: boolean; selected?: ReadonlySet<number> } = {},
 ): string {
   const progress = total > 1 ? `（${index + 1}/${total}）` : ''
   const lines = [replyText('DeepSeek Harness 需要你补充信息{0}：', progress)]
@@ -93,7 +93,8 @@ export function formatUserQuestion(
     lines.push('')
     choices.forEach((choice, choiceIndex) => {
       const description = nonEmptyText(choice.description)
-      lines.push(`${choiceIndex + 1}. ${choice.label}${description ? ` — ${description}` : ''}`)
+      const checked = question.multiSelect && options.selected?.has(choiceIndex) ? '✓ ' : ''
+      lines.push(`${choiceIndex + 1}. ${checked}${choice.label}${description ? ` — ${description}` : ''}`)
     })
     lines.push('', question.multiSelect === true
       ? replyText('请回复选项序号或文字；多选用逗号分隔，也可补充其他内容。')

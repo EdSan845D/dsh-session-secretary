@@ -32,6 +32,8 @@ export interface ChannelAdapter {
     readonly id: string;
     readonly label: string;
     readonly maxMessageLength: number;
+    /** 抑制含工具调用的助手文字；实时与补发共用规则，不计为已投递。 */
+    readonly skipInterimText?: boolean;
     start(): void | Promise<void>;
     stop(): void | Promise<void>;
     send(chatId: string, text: string): Promise<void>;

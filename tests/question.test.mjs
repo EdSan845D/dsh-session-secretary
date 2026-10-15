@@ -24,6 +24,16 @@ test('问题格式包含进度、说明、选项和群聊提示', () => {
   assert.match(text, /@机器人/)
 })
 
+test('多选勾选状态写入唯一选项列表，单选不展示勾选状态', () => {
+  const base = { id: 'q', question: '请选择', options: [{ label: '甲', description: '说明' }, { label: '乙' }] }
+  const selected = new Set([0, 99])
+  const multi = formatUserQuestion({ ...base, multiSelect: true }, 0, 1, { selected })
+  assert.match(multi, /1\. ✓ 甲 — 说明/)
+  assert.match(multi, /2\. 乙/)
+  assert.equal(multi.split('甲').length - 1, 1)
+  assert.doesNotMatch(formatUserQuestion(base, 0, 1, { selected }), /✓/)
+})
+
 test('单选、多选和自定义回答保持 DSH 结构', () => {
   const single = { id: 'env', question: '环境', options: [{ label: '测试' }, { label: '生产' }] }
   assert.deepEqual(answerUserQuestion(single, '2'), { id: 'env', selected: ['生产'] })

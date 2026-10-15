@@ -1,5 +1,6 @@
 import { DeferredDelivery, DeliveryRejected, DeliveryUnavailable, type DeferredEntry } from './deferred-delivery.js'
 import { sleepWithSignal } from './abort.js'
+import { assistantText } from './assistant-text.js'
 import { readDeliveryHistory } from './delivery-history.js'
 import { FileInputError, filePromptParts } from './file-input.js'
 import { ChoiceStore, type Choice } from './choices.js'
@@ -420,7 +421,7 @@ export class ImEngine {
         const values = this.questionSelections.get(binding.sessionId) ?? new Set<number>()
         if (values.has(index)) values.delete(index); else values.add(index)
         this.questionSelections.set(binding.sessionId, values)
-        await this.deliverQuestionInteraction(binding.sessionId, channel, msg.chatId, this.formatQuestion(current.question, current.index, current.total, { requiresMention: kind === 'group' }), this.questions.signal(binding.sessionId))
+        await this.deliverQuestionInteraction(binding.sessionId, channel, msg.chatId, this.formatQuestion(current.question, current.index, current.total, { requiresMention: kind === 'group', selected: values }), this.questions.signal(binding.sessionId))
         return
       }
       if (selected !== undefined) { text = selected; msg = { ...msg, text, actionToken: undefined } }
@@ -519,7 +520,7 @@ export class ImEngine {
   private async recoverDelivery(entry: DeferredEntry, fresh = false, explicit = false): Promise<'missing' | 'unavailable' | undefined> {
     return this.deferred.recover(entry.id, async current => {
       const signal = AbortSignal.any([this.recoveryScope.signal, AbortSignal.timeout(30_000)])
-      const result = await readDeliveryHistory(this.ctx, current.sessionId, current.id, signal)
+      const result = await readDeliveryHistory(this.ctx, current.sessionId, current.id, signal, this.channels.get(current.channelId)?.skipInterimText)
       if (!result) return undefined
       return withReplyLocale(this.ctx, () => ({ turn: result.turn, text: [result.text ? replyText('补发此前任务的结果（不会重新执行任务）：') : '', result.text,
         result.kind === 'completed' ? replyText('此前任务已完成。文件请在原会话查看。') : result.kind === 'error' ? replyText('此前任务失败，已生成的内容保留。') : replyText('此前任务已停止，已生成的内容保留。')].filter(Boolean).join('\n\n') }))
@@ -1051,11 +1052,11 @@ export class ImEngine {
     if (event.type === 'assistant/message') {
       let stopped = false
       try {
-        const text = (event.data?.message?.content ?? [])
-          .filter((block) => block.type === 'text' && block.text)
-          .map((block) => block.text ?? '')
-          .join('\n')
-          .trim()
+        const text = assistantText(event.data?.message?.content, channel.skipInterimText)
+        if (text === undefined) {
+          this.log(`[${channel.id}] 跳过含工具调用的中间叙述 ${sessionId}`)
+          return
+        }
         const taken = await this.streams.take(streamKey, sessionId)
         stopped = !!taken.invalidated || !stillDeliverable()
         if (stopped) return
@@ -1212,6 +1213,7 @@ export class ImEngine {
     const choices: Choice[] = current?.question.options?.map((option, index) => ({
       label: (current.question.multiSelect && selected.has(index) ? '✓ ' : '') + option.label,
       value: current.question.multiSelect ? `#question:${index}` : String(index + 1),
+      textIncluded: true,
     })) ?? []
     if (current?.question.multiSelect && selected.size) choices.push({ label: withReplyLocale(this.ctx, () => replyText('提交所选')), value: [...selected].map(index => index + 1).join(',') })
     tracked = this.deliverInteraction(channel, chatId, text, signal, current && actor && choices.length ? {

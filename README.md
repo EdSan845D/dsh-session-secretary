@@ -143,6 +143,8 @@ Regular chat messages follow the actual task state. Commands continue to use tex
 - Slack: ✅ done, ❌ failed, 🤔 waiting, and 👀 processing are added as emoji reactions on the original message (requires `reactions:write`). Answers stream by editing one message; Slack has no bot typing indicator.
 - WeChat: typing is refreshed while processing and stopped when finished or waiting for confirmation. WeCom and QQ retain their existing reply behavior.
 
+WeChat suppresses transition text in assistant messages that also contain `tool-call` blocks to reduce reply-window usage. Text-only replies, approvals, questions, and result files are unaffected by this filter. Suppressed text does not count as a successful delivery, and history-based redelivery uses the same rule. This does not remove platform limits: long reply fragments and necessary interactions may still exhaust the window. Ambiguous or partial deliveries are not blindly resent in full. See the [WeChat delivery handoff (Chinese)](docs/01-当前工作/I023-微信中间叙述投递过滤/00-迭代总览.md).
+
 Done means the turn completed normally and both text and files were delivered. Stopped or failed tasks and later queued messages are not marked done. Channel permissions and network conditions may prevent status updates without blocking chat. Text labels follow the web language setting.
 
 ## Connection diagnostics

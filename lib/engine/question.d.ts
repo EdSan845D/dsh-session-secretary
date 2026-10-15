@@ -35,6 +35,7 @@ export interface QuestionReplyResult {
 export declare function validUserQuestion(question: unknown): question is UserQuestionItem;
 export declare function formatUserQuestion(question: UserQuestionItem, index: number, total: number, options?: {
     requiresMention?: boolean;
+    selected?: ReadonlySet<number>;
 }): string;
 export declare function answerUserQuestion(question: UserQuestionItem, input: string): UserQuestionAnswerItem;
 export declare class QuestionBroker {

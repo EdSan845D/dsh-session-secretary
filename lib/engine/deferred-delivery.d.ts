@@ -19,7 +19,7 @@ type Event = {
     data?: any;
 };
 /** 只从精确请求所在回合恢复最终文字，绝不调用模型或重放工具。 */
-export declare function recoverTurn(events: Event[], requestId: string): {
+export declare function recoverTurn(events: Event[], requestId: string, skipInterimText?: boolean): {
     turn: number;
     text: string;
     kind: string;

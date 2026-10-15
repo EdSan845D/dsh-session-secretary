@@ -8,7 +8,7 @@ interface Reader {
 }
 
 /** 使用 Chat 的冷历史读取接口，不 resolveAgent，不恢复执行。读取窗口有界。 */
-export async function readDeliveryHistory(host: { get(name: string): unknown }, sessionId: string, requestId: string, signal: AbortSignal) {
+export async function readDeliveryHistory(host: { get(name: string): unknown }, sessionId: string, requestId: string, signal: AbortSignal, skipInterimText = false) {
   const reader = host.get('sessionController') as Reader | undefined
   if (!reader?.follow) return undefined
   const address = { kind: 'session', sessionId }
@@ -23,7 +23,7 @@ export async function readDeliveryHistory(host: { get(name: string): unknown }, 
   let hasMore = snapshot.hasMore
   for (let count = 0; count < 20 && !signal.aborted; count++) {
     const events = records.flatMap(record => record.type === 'event' && record.event ? [record.event] : [])
-    const result = recoverTurn(events, requestId)
+    const result = recoverTurn(events, requestId, skipInterimText)
     if (result) return result
     if (!hasMore || !reader.page) return undefined
     const beforeSeq = events[0]?.seq

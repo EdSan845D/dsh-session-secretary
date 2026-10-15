@@ -200,6 +200,12 @@ test('明确未提交进入 rejected，重载和停用不重新激活，满额�
   assert.doesNotThrow(() => bounded.begin('next', 's', 'c', message))
 })
 
+test('冷恢复忽略非字符串文字块，不将异常字段转换为正文', () => {
+  const history = events()
+  history[2].data.message.content.push({ type: 'text', text: 42 })
+  assert.equal(recoverTurn(history, 'r').text, 'answer')
+})
+
 test('冷恢复保留含工具调用消息的文字，但不包含工具参数', () => {
   const history = events()
   history[2].data.message.content.push({ type: 'tool-call', arguments: 'secret tool input' })

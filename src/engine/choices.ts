@@ -4,7 +4,13 @@ import { replyText } from './command-locale.js'
 import { ChoiceSendError } from './choice-delivery.js'
 
 /** displayValue 仅用于文字提示；执行始终读取服务端保存的 value。 */
-export interface Choice { label: string; value: string; displayValue?: string }
+export interface Choice {
+  label: string
+  value: string
+  displayValue?: string
+  /** 编号和说明已由调用方写入正文；仍保留按钮及服务端动作。 */
+  textIncluded?: boolean
+}
 type Entry = { key: string; session?: string; expires: number; choices: Choice[]; valid: () => boolean; allowNumber: boolean; receipt?: ChoiceReceipt; closedText?: string; expiredText: string; selectedTexts: string[] }
 /** 所有按钮只携带随机索引；服务端保留动作，并绑定账号、聊天、操作者和会话。 */
 export class ChoiceStore {
@@ -42,8 +48,10 @@ export class ChoiceStore {
     this.entries.set(token, entry)
     this.scopes.set(key, token)
     const textHint = allowNumber ? replyText('回复序号或发送对应命令；15 分钟内有效，普通文字退出菜单。') : replyText('发送对应命令即可操作，普通文字继续聊天。')
-    const body = text + '\n\n' + choices.map((choice, i) => `${allowNumber ? `${i + 1}. ` : ''}${choice.label}${choice.value.startsWith('/') ? ` — ${choice.displayValue ?? choice.value}` : ''}`).join('\n') + '\n\n' + textHint
-    const cardBody = allowNumber ? text + '\n\n' + choices.map((choice, i) => `${i + 1}. ${choice.label}`).join('\n') + '\n\n' + hint : text + '\n\n' + replyText('点击下方按钮选择操作；15 分钟内有效，普通文字继续聊天。')
+    // 只省略调用方已写入正文的选项；新增的多选提交项仍沿用原按钮编号。
+    const textChoices = choices.map((choice, index) => ({ choice, index })).filter(({ choice }) => !choice.textIncluded)
+    const body = [text, textChoices.map(({ choice, index }) => `${allowNumber ? `${index + 1}. ` : ''}${choice.label}${choice.value.startsWith('/') ? ` — ${choice.displayValue ?? choice.value}` : ''}`).join('\n'), textHint].filter(Boolean).join('\n\n')
+    const cardBody = allowNumber ? [text, textChoices.map(({ choice, index }) => `${index + 1}. ${choice.label}`).join('\n'), hint].filter(Boolean).join('\n\n') : text + '\n\n' + replyText('点击下方按钮选择操作；15 分钟内有效，普通文字继续聊天。')
     if (channel.sendChoices && (!channel.choiceLimits || (choices.length <= channel.choiceLimits.maxButtons && cardBody.length <= channel.choiceLimits.maxTextLength))) {
       try {
         const receipt = await channel.sendChoices(msg, cardBody, choices.map((choice, i) => ({ label: choice.label, token: `${token}:${i}` })), { numberedChoicesIncluded: allowNumber })

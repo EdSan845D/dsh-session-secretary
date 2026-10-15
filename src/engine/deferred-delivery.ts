@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { writeFileAtomicSync } from './atomic-file.js'
 import { KeyedSerialQueue } from './keyed-queue.js'
+import { assistantText } from './assistant-text.js'
 import type { ImMessage } from './types.js'
 
 /** 交付记录不保存临时 webhook、附件或原始用户问题。 */
@@ -12,7 +13,7 @@ export interface DeferredEntry {
 type Event = { type?: string; seq?: number; surfaceOp?: unknown; data?: any }
 
 /** 只从精确请求所在回合恢复最终文字，绝不调用模型或重放工具。 */
-export function recoverTurn(events: Event[], requestId: string): { turn: number; text: string; kind: string } | undefined {
+export function recoverTurn(events: Event[], requestId: string, skipInterimText = false): { turn: number; text: string; kind: string } | undefined {
   let turn: number | undefined
   let matched = false
   let target: number | undefined
@@ -30,7 +31,7 @@ export function recoverTurn(events: Event[], requestId: string): { turn: number;
     }
     if (!matched) continue
     if (event.type === 'assistant/message' && data?.turn === target && !data?.interrupted) {
-      const text = (data?.message?.content ?? []).filter((p: any) => p.type === 'text' && typeof p.text === 'string').map((p: any) => p.text).join('\n').trim()
+      const text = assistantText(data?.message?.content, skipInterimText)
       if (text) replies.push(text)
       if (replies.reduce((size, value) => size + value.length, 0) > 1_000_000) return undefined
     }

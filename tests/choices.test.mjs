@@ -150,3 +150,20 @@ test('导航卡片不重复按钮文字，文字降级不要求点击不存在�
   assert.match(text, /选择会话 — \/menu sessions/)
   assert.doesNotMatch(text, /点击/)
 })
+
+for (const native of [true, false]) test(`正文已有部分选项时不重复，新增项保持原编号：native=${native}`, async () => {
+  const store = new ChoiceStore()
+  let card
+  const channel = { id: 'bot', ...(native ? { sendChoices: async (_, text) => { card = text } } : {}) }
+  const choices = [
+    { label: '甲', value: 'first', textIncluded: true },
+    { label: '乙', value: 'second', textIncluded: true },
+    { label: '提交所选', value: 'submit' },
+  ]
+  const fallback = await store.show(channel, msg, '请选择\n1. 甲\n2. 乙', choices, 's')
+  const body = native ? card : fallback
+  assert.equal(body.split('1. 甲').length - 1, 1)
+  assert.equal(body.split('2. 乙').length - 1, 1)
+  assert.equal(body.split('3. 提交所选').length - 1, 1)
+  assert.equal(store.resolve('bot', { ...msg, text: '3' }, 's'), 'submit')
+})

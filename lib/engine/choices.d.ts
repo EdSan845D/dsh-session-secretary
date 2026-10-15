@@ -4,6 +4,8 @@ export interface Choice {
     label: string;
     value: string;
     displayValue?: string;
+    /** 编号和说明已由调用方写入正文；仍保留按钮及服务端动作。 */
+    textIncluded?: boolean;
 }
 /** 所有按钮只携带随机索引；服务端保留动作，并绑定账号、聊天、操作者和会话。 */
 export declare class ChoiceStore {

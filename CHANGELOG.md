@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.77 - 2026-10-15
 
 - Fix duplicated question option lists in native-button prompts for WeCom, Feishu/Lark, DingTalk, Telegram, Discord, and Slack. Keep option descriptions, multi-select checkmarks and submission buttons, ordinary menus, approvals, and text fallback intact.
-
+- Place the multi-select submit action in the numbered option list, before the reply instruction, so number-only buttons still match the list.
 - WeChat suppresses transition text in assistant messages that also contain tool calls, reducing reply-window consumption during long tasks. Text-only replies, approvals, questions, and result files keep their existing delivery behavior.
 - Suppressed text is not counted as a successful delivery. A final reply explicitly rejected by the platform remains eligible for redelivery after a new message in the original chat; text recovered from history follows the same filtering rule.
 - This does not remove WeChat server-side sending limits. Long reply fragments and necessary interactions may still exhaust the window; ambiguous failures and partial deliveries retain the conservative manual-retry policy.
+- Empty assistant content no longer interrupts delivery or history recovery.
 
 ## 0.1.76 - 2026-10-15
 

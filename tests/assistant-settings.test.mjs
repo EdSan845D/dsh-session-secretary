@@ -442,7 +442,8 @@ test('账号页渠道行与账号行用网格对齐，表单单列', () => {
   assert.match(client, /\.ima-account-settings\.compact\{grid-template-columns:1fr\}/)
   assert.match(client, /h\(Button, \{ onClick: \(e\) => \{ e\.stopPropagation\(\); setEditing\(ch\.id\); \}/)
   assert.match(client, /h\(Button, \{ onClick: \(\) => \{ selectAccount\(account\.id\); setSettingsAccount\(account\.id\); \}/)
-  assert.match(client, /shape: "default", size: "middle"/)
+  assert.match(client, /variant: mappedVariant/);
+  assert.match(client, /HostButton/);
   assert.match(client, /className: "ima-model-effort"/)
   assert.match(client, /\.ima-model-effort\{display:grid;grid-template-columns:1fr 1fr/)
   assert.doesNotMatch(client, /field\("workspace",[\s\S]*?\}\), true\)/)

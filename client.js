@@ -69,8 +69,67 @@ window.__ModuleLoader__.load({
       const popupClassName = ["ima-select-dropdown", props && props.popupClassName].filter(Boolean).join(" ");
       return React.createElement(AntdSelect, Object.assign({}, props, { popupClassName }));
     }
-    function Button(props) {
-      return React.createElement(AntdButton, Object.assign({ shape: "default", size: "middle" }, props));
+    function createSpinner() {
+      return React.createElement("svg", {
+        className: "ima-btn-spinner",
+        viewBox: "0 0 16 16",
+        width: 14,
+        height: 14,
+        fill: "none",
+        stroke: "currentColor",
+        strokeWidth: 2,
+        strokeLinecap: "round",
+        style: { marginRight: 6, display: "inline-block", verticalAlign: "-2px", animation: "ima-spin 0.8s linear infinite" },
+        "aria-hidden": "true",
+      }, React.createElement("path", { d: "M8 1.5a6.5 6.5 0 1 0 6.5 6.5" }));
+    }
+    function Button({ variant, type, danger, loading, block, size, shape, className, children, href, target, rel, icon, ...props }) {
+      let mappedVariant = variant ?? "outline";
+      if (type === "primary") mappedVariant = "primary";
+      else if (type === "text" || type === "link") mappedVariant = "ghost";
+
+      const isPrimary = mappedVariant === "primary";
+      const mappedSize = (size === "small" || size === "sm") ? "sm" : "md";
+
+      const classes = [
+        "ant-btn",
+        "ima-btn",
+        href ? "ima-link-btn" : "",
+        className,
+        isPrimary ? "is-primary primary ant-btn-primary" : "",
+        danger ? "is-danger ima-btn-danger" : "",
+        (danger && isPrimary) ? "ima-btn-danger-primary" : "",
+        block ? "is-block" : "",
+        loading ? "is-loading" : "",
+      ].filter(Boolean).join(" ");
+
+      const iconElement = loading
+        ? createSpinner()
+        : (icon ? React.createElement("span", {
+            key: "icon",
+            className: "ant-btn-icon",
+            style: { display: "inline-flex", alignItems: "center" },
+          }, icon) : null);
+      const content = [iconElement, children];
+
+      if (href) {
+        return React.createElement("a", Object.assign({}, props, {
+          href,
+          target,
+          rel: rel || (target === "_blank" ? "noreferrer" : undefined),
+          className: classes || undefined,
+          "aria-label": props["aria-label"],
+          style: props.style,
+        }), content);
+      }
+
+      return React.createElement(HostButton, Object.assign({}, props, {
+        variant: mappedVariant,
+        size: mappedSize,
+        className: classes || undefined,
+        disabled: props.disabled || loading,
+        icon: undefined,
+      }), content);
     }
     const zhCN = require("antd/locale/zh_CN");
     const enUS = require("antd/locale/en_US");
@@ -566,18 +625,11 @@ window.__ModuleLoader__.load({
 .ima-save-note{color:var(--ima-muted);font-size:11px}.ima-save-note.ok{color:var(--ima-ok)}
 .ima-account-modal .ima-inspector,.ima-bind-modal .ima-setup-section{padding:0}.ima-setup-section{margin:0 0 14px;padding-bottom:14px;border-bottom:1px solid var(--ima-line)}
 .ima-account-picker{width:100%}
-.ima-select-dropdown.ant-select-dropdown{isolation:isolate;border:0.5px solid var(--dsw-alias-border-l2,rgba(255,255,255,.12))!important;border-radius:var(--dsw-radius-md,12px)!important;background:transparent!important;box-shadow:var(--dsw-elevation-prominent,var(--dsw-elevation-panel,none))!important}
-.ima-select-dropdown.ant-select-dropdown::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--dsw-menu-surface-fill,var(--dsw-specific-menu,var(--dsw-alias-bg-layer-2,#262626)));backdrop-filter:var(--dsw-menu-backdrop-filter,blur(16px));-webkit-backdrop-filter:var(--dsw-menu-backdrop-filter,blur(16px));pointer-events:none}
-.ima-select-dropdown .rc-virtual-list-holder,.ima-select-dropdown .ant-select-item{background:transparent!important}
-.ima-select-dropdown .ant-select-item{border-radius:var(--dsw-radius-sm,8px);color:var(--dsw-alias-label-primary,var(--ima-text))}
-.ima-select-dropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled){background:var(--dsw-alias-state-business-tertiary,rgba(75,124,255,.16))!important;color:var(--dsw-alias-label-primary,var(--ima-text))!important;font-weight:600}
-.ima-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-selected){background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.08))!important}
-.ima-inspector-actions .ant-btn:not(.ant-btn-dangerous):not(.ant-btn-primary){border:0.5px solid var(--dsw-alias-border-l2,var(--ima-line))!important;background:var(--dsw-alias-bg-layer-1,transparent)!important}
-.ima-inspector-actions .ant-btn:not(.ant-btn-dangerous):not(.ant-btn-primary):hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))!important;border-color:var(--dsw-alias-border-l3,var(--ima-line))!important}
-.ima-inspector-actions .ant-btn-dangerous{color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;background:transparent!important}
-.ima-inspector-actions .ant-btn-dangerous:hover:not(:disabled){background:rgba(239,68,68,.12)!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important}
-.ima-page button:focus-visible,.ima-account-modal button:focus-visible,.ima-bind-modal button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,var(--ima-accent))!important;outline-offset:2px!important}
-.ima-page button:focus:not(:focus-visible),.ima-account-modal button:focus:not(:focus-visible),.ima-bind-modal button:focus:not(:focus-visible){outline:none!important}
+.ima-btn-spinner{display:inline-block;vertical-align:-2px;animation:ima-spin 0.8s linear infinite}
+@keyframes ima-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.ima-btn-danger{color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important}
+.ima-btn-danger:hover:not(:disabled){color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;background:rgba(239,68,68,.12)!important}
+.ima-btn-danger-primary,.ima-btn-danger.ima-btn-danger-primary{background:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;color:#fff!important}
 @container (max-width:480px){.ima-account-row{grid-template-columns:minmax(0,1fr) auto auto;gap:8px;padding:10px}.ima-account-receive>span{display:none}.ima-platform-head{padding:10px 12px}.ima-account-list{padding:0 12px 12px}}
 
 `;

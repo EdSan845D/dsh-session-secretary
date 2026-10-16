@@ -9,10 +9,10 @@ window.__ModuleLoader__.load({
     const React = require("react");
     const { useState, useEffect, useLayoutEffect, useCallback, useRef, useSyncExternalStore } = React;
     const ReactDOM = require("react-dom");
-    const primitives = require("@deepseek-ai/dsh-client-ui-primitives");
-    const HostMenu = typeof primitives.Menu === "function" ? primitives.Menu : function MissingHostMenu(props) { return props.anchor || null; };
-    const HostModal = typeof primitives.Modal === "function" ? primitives.Modal : function MissingHostModal() { return null; };
-    const HostButton = typeof primitives.Button === "function" ? primitives.Button : function MissingHostButton(props) { return h("button", { type: "button", className: props && props.className, disabled: props && props.disabled, onClick: props && props.onClick }, props && props.children); };
+    const primitives = typeof require === "function" ? (function () { try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; } })() : {};
+    const PrimitiveButton = primitives.Button;
+    const HostMenu = primitives.Menu;
+    const HostModal = primitives.Modal;
     // 0.1.7 把尺寸从图标名里拿掉了（IconEditOutlineRegular）。旧宿主仍导出 *16/*20。
     function pickHostIcon(...names) {
       for (const name of names) {
@@ -141,7 +141,7 @@ window.__ModuleLoader__.load({
           align: "start",
           portal: true,
           dense: true,
-          anchor: React.createElement(HostButton, {
+          anchor: React.createElement(Button, {
             variant: "outline",
             size: "sm",
             role: "combobox",
@@ -223,12 +223,20 @@ window.__ModuleLoader__.load({
         }), content);
       }
 
-      return React.createElement(HostButton, Object.assign({}, props, {
-        variant: mappedVariant,
-        size: mappedSize,
+      if (typeof PrimitiveButton === "function") {
+        return React.createElement(PrimitiveButton, Object.assign({}, props, {
+          variant: mappedVariant,
+          size: mappedSize,
+          className: classes || undefined,
+          disabled: props.disabled || loading,
+          icon: undefined,
+        }), content);
+      }
+
+      return React.createElement("button", Object.assign({}, props, {
+        type: "button",
         className: classes || undefined,
         disabled: props.disabled || loading,
-        icon: undefined,
       }), content);
     }
     const zhCN = require("antd/locale/zh_CN");
@@ -2145,8 +2153,8 @@ window.__ModuleLoader__.load({
             h("div", { className: "ima-title-row" },
               h("h2", { className: "ima-title" }, t("settings.title")),
               h("div", { className: "ima-title-links" },
-                h(HostButton, { variant: "outline", size: "sm", className: "ima-link-btn", "aria-label": t("settings.viewProject"), icon: h(GithubMark16), onClick: () => { window.open("https://github.com/MichengAI/dsh-im-connect", "_blank", "noreferrer"); } }, t("settings.viewProject")),
-                h(HostButton, { variant: "outline", size: "sm", className: "ima-link-btn", "aria-label": t("settings.feedback"), icon: h(IconListPenOutline16, { size: 16 }), onClick: () => { window.open("https://github.com/MichengAI/dsh-im-connect/issues", "_blank", "noreferrer"); } }, t("settings.feedback")),
+                h(Button, { variant: "outline", size: "sm", className: "ima-link-btn", "aria-label": t("settings.viewProject"), icon: h(GithubMark16), onClick: () => { window.open("https://github.com/MichengAI/dsh-im-connect", "_blank", "noreferrer"); } }, t("settings.viewProject")),
+                h(Button, { variant: "outline", size: "sm", className: "ima-link-btn", "aria-label": t("settings.feedback"), icon: h(IconListPenOutline16, { size: 16 }), onClick: () => { window.open("https://github.com/MichengAI/dsh-im-connect/issues", "_blank", "noreferrer"); } }, t("settings.feedback")),
               ),
             ),
             h("p", { className: "ima-sub" }, t("settings.description")),
@@ -3013,8 +3021,8 @@ window.__ModuleLoader__.load({
           closeLabel: t("rail.archiveGroupClose"),
           title: t("rail.archiveGroup"),
           footer: h("div", { className: "ima-n-dialog-actions" },
-            h(HostButton, { variant: "outline", disabled: archiveGroupBusy, onClick: () => { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); } }, t("rail.archiveGroupCancel")),
-            h(HostButton, { variant: "outline", className: "ima-n-danger-button", disabled: archiveGroupBusy, onClick: confirmArchiveGroup }, t("rail.archiveGroupConfirm")),
+            h(Button, { variant: "outline", disabled: archiveGroupBusy, onClick: () => { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); } }, t("rail.archiveGroupCancel")),
+            h(Button, { variant: "outline", className: "ima-n-danger-button", disabled: archiveGroupBusy, onClick: confirmArchiveGroup }, t("rail.archiveGroupConfirm")),
           ),
         },
           h("p", { className: "ima-n-dialog-copy" }, archiveGroupTarget ? t("rail.archiveGroupDescription", { name: archiveGroupTarget.name, count: archiveGroupTarget.sessionIds.length }) : ""),
@@ -3027,8 +3035,8 @@ window.__ModuleLoader__.load({
           closeLabel: t("action.cancel"),
           title: t("rail.stopArchive"),
           footer: h("div", { className: "ima-n-dialog-actions" },
-            h(HostButton, { variant: "outline", disabled: stopArchiveBusy, onClick: () => { setStopArchiveTarget(undefined); setStopArchiveError(undefined); } }, t("action.cancel")),
-            h(HostButton, { variant: "outline", className: "ima-n-danger-button", disabled: stopArchiveBusy, onClick: confirmStopArchive }, t("rail.stopArchiveConfirm")),
+            h(Button, { variant: "outline", disabled: stopArchiveBusy, onClick: () => { setStopArchiveTarget(undefined); setStopArchiveError(undefined); } }, t("action.cancel")),
+            h(Button, { variant: "outline", className: "ima-n-danger-button", disabled: stopArchiveBusy, onClick: confirmStopArchive }, t("rail.stopArchiveConfirm")),
           ),
         },
           h("p", { className: "ima-n-dialog-copy" }, stopArchiveTarget ? t(stopArchiveTarget.group ? "rail.stopArchiveGroupDescription" : "rail.stopArchiveDescription", { name: stopArchiveTarget.title }) : ""),
@@ -3041,8 +3049,8 @@ window.__ModuleLoader__.load({
           closeLabel: t("rail.deleteSessionClose"),
           title: t("rail.deleteSession"),
           footer: h("div", { className: "ima-n-dialog-actions" },
-            h(HostButton, { variant: "outline", disabled: deleteBusy, onClick: () => { setDeleteTarget(undefined); setDeleteError(undefined); } }, t("rail.deleteSessionCancel")),
-            h(HostButton, { variant: "outline", className: "ima-n-danger-button", disabled: deleteBusy, onClick: confirmDelete }, t("rail.deleteSessionConfirm")),
+            h(Button, { variant: "outline", disabled: deleteBusy, onClick: () => { setDeleteTarget(undefined); setDeleteError(undefined); } }, t("rail.deleteSessionCancel")),
+            h(Button, { variant: "outline", className: "ima-n-danger-button", disabled: deleteBusy, onClick: confirmDelete }, t("rail.deleteSessionConfirm")),
           ),
         },
           h("p", { className: "ima-n-dialog-copy" }, deleteTarget ? t("rail.deleteSessionDescription", { name: deleteTarget.title }) : ""),

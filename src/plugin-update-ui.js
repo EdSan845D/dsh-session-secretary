@@ -1,7 +1,12 @@
 const UPDATE_HEADER = "x-michengai-plugin-update";
 const STYLE_ID = "michengai-plugin-update-ui";
-const updateUiPrimitives = typeof require === "function" ? require("@deepseek-ai/dsh-client-ui-primitives") : {};
-const UpdateButton = typeof updateUiPrimitives.Button === "function" ? updateUiPrimitives.Button : (typeof HostButton === "function" ? HostButton : function FallbackButton(props) { return React.createElement("button", props); });
+const updatePrimitives = (typeof require === "function" ? (function () { try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; } })() : {});
+const UpdatePrimitiveButton = typeof updatePrimitives.Button === "function" ? updatePrimitives.Button : function FallbackButton(props) {
+  const iconNode = props && props.icon ? React.createElement("span", { key: "icon", className: "ant-btn-icon", style: { display: "inline-flex", alignItems: "center" } }, props.icon) : null;
+  const content = iconNode ? [iconNode, props && props.children] : (props && props.children);
+  const classes = ["ant-btn", "ima-btn", "ima-link-btn", props && props.className].filter(Boolean).join(" ");
+  return React.createElement("button", Object.assign({}, props, { type: "button", className: classes, icon: undefined }), content);
+};
 const CSS = `
 .mpi-version{margin-left:8px;color:var(--dsw-alias-label-tertiary,#a0a0a0);font-family:inherit;font-size:12px;font-weight:500;line-height:18px;letter-spacing:0;white-space:nowrap;vertical-align:baseline}.mpi-check-host{display:inline-flex;align-items:center}.mpi-icon{display:inline-flex;flex:0 0 auto;width:16px;height:16px;align-items:center;justify-content:center;pointer-events:none}.mpi-icon svg{display:block;width:16px;height:16px}
 .mpi-intro{margin:0 0 16px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:13px;line-height:20px}.mpi-meta{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 18px;margin:0 0 16px;font-size:12px;line-height:18px}.mpi-meta dt{color:var(--dsw-alias-label-secondary,#b9b9b9)}.mpi-meta dd{margin:0}.mpi-mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.mpi-latest{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}.mpi-status{font-size:13px;font-weight:600;line-height:18px}.mpi-status[data-kind=error]{color:var(--dsw-alias-state-error-primary,#ef7272)}.mpi-status[data-kind=success]{color:var(--dsw-alias-state-success-primary,#51b976)}.mpi-status[data-kind=update]{color:#e8b15a !important}.mpi-manual{border-top:1px solid var(--dsw-alias-border-l2,#494949);padding-top:16px}.mpi-manual h3{margin:0 0 6px;font-size:14px;line-height:20px}.mpi-manual p{margin:0 0 10px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:12px;line-height:18px}.mpi-command{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--dsw-alias-border-l2,#494949);border-radius:7px;padding:10px;background:var(--dsw-alias-bg-layer-3,var(--dsw-specific-menu-item-hover,#353638))}.mpi-command code{min-width:0;flex:1;overflow:visible;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}@media(max-width:560px){.mpi-meta{grid-template-columns:1fr;gap:2px}.mpi-meta dd{margin-bottom:6px}}
@@ -236,7 +241,7 @@ function observePluginUpdate(options) {
     if (buttonRoot === undefined) return;
     if (iconNode === undefined) iconNode = options.createIcon("refresh");
     const icon = iconNode;
-    buttonRoot.render(React.createElement(UpdateButton, {
+    buttonRoot.render(React.createElement(UpdatePrimitiveButton, {
       variant: "outline", size: "sm", className: "ima-link-btn", onClick: openDialog, icon: React.createElement(HostIcon, { node: icon }),
     }, React.createElement("span", { "data-mpi-label": "" }, pluginUpdateCopy(document.documentElement.lang).check)));
   };

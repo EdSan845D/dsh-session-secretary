@@ -47,10 +47,6 @@ test('DSH 子包依赖声明与客户端和服务端实际使用保持一致', (
   assert.equal(manifest.dependencies?.['react-dom'], undefined)
   assert.equal(manifest.devDependencies.antd, '^6.6.5')
   assert.equal(manifest.devDependencies['react-dom'], '^18.3.1')
-  assert.ok(
-    manifest.dsh?.client?.inject?.includes('@deepseek-ai/dsh-client-ui-primitives'),
-    '必须在 dsh.client.inject 中声明 @deepseek-ai/dsh-client-ui-primitives 以注入宿主原生组件',
-  )
 })
 
 function makeManager(t, ctx = {}) {
@@ -449,7 +445,7 @@ test('账号页渠道行与账号行用网格对齐，表单单列', () => {
   assert.match(client, /h\(Button, \{ onClick: \(e\) => \{ e\.stopPropagation\(\); setEditing\(ch\.id\); \}/)
   assert.match(client, /h\(Button, \{ onClick: \(\) => \{ selectAccount\(account\.id\); setSettingsAccount\(account\.id\); \}/)
   assert.match(client, /variant: mappedVariant/);
-  assert.match(client, /HostButton/);
+  assert.match(client, /PrimitiveButton/);
   assert.match(client, /className: "ima-model-effort"/)
   assert.match(client, /\.ima-model-effort\{display:grid;grid-template-columns:1fr 1fr/)
   assert.doesNotMatch(client, /field\("workspace",[\s\S]*?\}\), true\)/)

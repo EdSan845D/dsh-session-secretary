@@ -506,7 +506,8 @@ window.__ModuleLoader__.load({
 .ima-heading h2,.ima-title{margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-.4px;white-space:nowrap;text-align:left}
 .ima-title-row{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
 .ima-title-links{display:inline-flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
-.ima-title-links .ant-btn{flex:none}
+.ima-title-links .ant-btn{flex:none;color:var(--dsw-alias-label-secondary,var(--ima-muted))!important;border:0.5px solid var(--dsw-alias-border-l2,var(--ima-line))!important;background:var(--dsw-alias-bg-layer-1,transparent)!important}
+.ima-title-links .ant-btn:hover:not(:disabled){color:var(--dsw-alias-label-primary,var(--ima-text))!important;background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))!important;border-color:var(--dsw-alias-border-l3,var(--ima-line))!important}
 .ima-sub{margin:12px 0 0;max-width:none;color:var(--ima-muted);font-size:14px;line-height:22px;text-align:left}
 .ima-error{color:var(--ima-danger);font-size:12px;margin:0 0 12px}
 .ima-pending,.ima-page>.ant-alert,.ima-inspector .ant-alert{margin:0 0 12px}

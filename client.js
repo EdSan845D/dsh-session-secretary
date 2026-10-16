@@ -66,7 +66,7 @@ window.__ModuleLoader__.load({
     const antd = require("antd");
     const { ConfigProvider, theme, Modal, Select, Switch, Button: AntdButton, Input, Progress, Checkbox, Segmented, Tag, Alert } = antd;
     function Button(props) {
-      return React.createElement(AntdButton, Object.assign({ shape: "round", size: "middle" }, props));
+      return React.createElement(AntdButton, Object.assign({ shape: "default", size: "middle" }, props));
     }
     const zhCN = require("antd/locale/zh_CN");
     const enUS = require("antd/locale/en_US");

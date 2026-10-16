@@ -400,6 +400,9 @@ test('设置标题旁提供项目主页与问题反馈入口', () => {
   assert.match(client, /variant: "outline", size: "sm", "aria-label": t\("settings\.viewProject"\)/)
   assert.match(client, /variant: "outline", size: "sm", "aria-label": t\("settings\.feedback"\)/)
   assert.match(client, /\.ima-title-links\{display:inline-flex;align-items:center;gap:8px/)
+  assert.match(client, /installSettingsNavIcon\(ctx, \(\) => t\("settings\.label"\)\)/)
+  assert.match(client, /data-ima-nav-icon/)
+  assert.match(client, /\.ima-btn,\.ant-btn\{display:inline-flex;align-items:center;justify-content:center/)
   assert.match(client, /@media\(max-width:720px\)\{\.ima-title-row\{flex-wrap:wrap\}\}/)
 })
 

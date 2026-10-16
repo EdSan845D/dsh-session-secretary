@@ -235,7 +235,7 @@ function observePluginUpdate(options) {
     if (iconNode === undefined) iconNode = options.createIcon("refresh");
     const icon = iconNode;
     buttonRoot.render(React.createElement(HostButton, {
-      variant: "outline", size: "sm", onClick: openDialog, icon: React.createElement(HostIcon, { node: icon }),
+      variant: "outline", size: "sm", className: "ima-link-btn", onClick: openDialog, icon: React.createElement(HostIcon, { node: icon }),
     }, React.createElement("span", { "data-mpi-label": "" }, pluginUpdateCopy(document.documentElement.lang).check)));
   };
   const closeDialog = () => { dialogRoot?.unmount(); dialogRoot = undefined; dialogHost?.remove(); dialogHost = undefined; };

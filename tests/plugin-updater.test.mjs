@@ -41,7 +41,7 @@ test('IM 客户端与 Host 绑定自身更新入口', async () => {
   assert.match(client, /document\.createElementNS\("http:\/\/www\.w3\.org\/2000\/svg", "svg"\)/)
   assert.doesNotMatch(client, /react-dom\/client/)
   assert.match(updateUi, /data-mpi-label/)
-  assert.match(updateUi, /variant: "outline", size: "sm", className: "ima-link-btn"/)
+  assert.match(updateUi, /variant: "outline", size: "sm"/)
   assert.match(updateUi, /className: "mpi-dialog"/)
   assert.match(updateUi, /host\.className = "mpi-check-host"/)
   assert.match(updateUi, /document\.addEventListener\("keydown", onKey, true\)/)

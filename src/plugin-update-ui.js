@@ -2,14 +2,34 @@ const UPDATE_HEADER = "x-michengai-plugin-update";
 const STYLE_ID = "michengai-plugin-update-ui";
 const updatePrimitives = (typeof require === "function" ? (function () { try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; } })() : {});
 const UpdatePrimitiveButton = typeof updatePrimitives.Button === "function" ? updatePrimitives.Button : function FallbackButton(props) {
-  const iconNode = props && props.icon ? React.createElement("span", { key: "icon", className: "ant-btn-icon", style: { display: "inline-flex", alignItems: "center" } }, props.icon) : null;
+  const iconNode = props && props.icon ? React.createElement("span", { key: "icon", className: "ima-btn-icon", style: { display: "inline-flex", alignItems: "center" } }, props.icon) : null;
   const content = iconNode ? [iconNode, props && props.children] : (props && props.children);
-  const classes = ["ant-btn", "ima-btn", "ima-link-btn", props && props.className].filter(Boolean).join(" ");
+  const classes = ["ima-btn", "ima-link-btn", props && props.className].filter(Boolean).join(" ");
   return React.createElement("button", Object.assign({}, props, { type: "button", className: classes, icon: undefined }), content);
 };
+function Progress() {
+  return React.createElement("div", { className: "mpi-progress", role: "progressbar", "aria-busy": "true" },
+    React.createElement("div", { className: "mpi-progress-bar" })
+  );
+}
 const CSS = `
 .mpi-version{margin-left:8px;color:var(--dsw-alias-label-tertiary,#a0a0a0);font-family:inherit;font-size:12px;font-weight:500;line-height:18px;letter-spacing:0;white-space:nowrap;vertical-align:baseline}.mpi-check-host{display:inline-flex;align-items:center}.mpi-icon{display:inline-flex;flex:0 0 auto;width:16px;height:16px;align-items:center;justify-content:center;pointer-events:none}.mpi-icon svg{display:block;width:16px;height:16px}
 .mpi-intro{margin:0 0 16px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:13px;line-height:20px}.mpi-meta{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 18px;margin:0 0 16px;font-size:12px;line-height:18px}.mpi-meta dt{color:var(--dsw-alias-label-secondary,#b9b9b9)}.mpi-meta dd{margin:0}.mpi-mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.mpi-latest{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}.mpi-status{font-size:13px;font-weight:600;line-height:18px}.mpi-status[data-kind=error]{color:var(--dsw-alias-state-error-primary,#ef7272)}.mpi-status[data-kind=success]{color:var(--dsw-alias-state-success-primary,#51b976)}.mpi-status[data-kind=update]{color:#e8b15a !important}.mpi-manual{border-top:1px solid var(--dsw-alias-border-l2,#494949);padding-top:16px}.mpi-manual h3{margin:0 0 6px;font-size:14px;line-height:20px}.mpi-manual p{margin:0 0 10px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:12px;line-height:18px}.mpi-command{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--dsw-alias-border-l2,#494949);border-radius:7px;padding:10px;background:var(--dsw-alias-bg-layer-3,var(--dsw-specific-menu-item-hover,#353638))}.mpi-command code{min-width:0;flex:1;overflow:visible;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}@media(max-width:560px){.mpi-meta{grid-template-columns:1fr;gap:2px}.mpi-meta dd{margin-bottom:6px}}
+.mpi-check-host button{border-radius:var(--dsw-radius-sm,8px) !important;corner-shape:unset !important}
+.mpi-check-host button{border:0.5px solid var(--dsw-alias-border-l2) !important;background:transparent !important;color:var(--dsw-alias-label-secondary) !important;font-weight:450 !important;border-radius:var(--dsw-radius-sm,8px) !important;height:28px !important;min-height:28px !important;padding:0 10px !important;transition:color .14s ease,background .14s ease,border-color .14s ease !important}
+.mpi-check-host button:hover:not(:disabled){color:var(--dsw-alias-label-primary) !important;background:var(--dsw-alias-interactive-bg-hover) !important;border-color:var(--dsw-alias-border-l3,#555) !important}
+.mpi-dialog .ima-modal-content{position:relative;isolation:isolate;padding:24px 28px !important;border-radius:var(--dsw-radius-panel,28px) !important;background:transparent !important;box-shadow:var(--dsw-elevation-panel, 0 20px 48px rgba(0,0,0,.35)) !important;border:0.5px solid var(--dsw-alias-border-l2) !important;box-sizing:border-box !important}
+.mpi-dialog .ima-modal-content::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-3,#1e2024)) !important;backdrop-filter:var(--dsw-menu-backdrop-filter, blur(20px)) !important;pointer-events:none}
+.mpi-dialog .ima-modal-header{background:transparent !important;margin-bottom:16px !important}
+.mpi-dialog .ima-modal-title{font-size:16px !important;font-weight:600 !important;color:var(--dsw-alias-label-primary) !important}
+.mpi-dialog .ima-modal-footer{display:flex !important;align-items:center !important;justify-content:flex-end !important;gap:10px !important;margin-top:24px !important;padding-top:16px !important;border-top:0.5px solid var(--dsw-alias-border-l2) !important}
+.mpi-dialog .ima-modal-footer button{height:32px !important;min-height:32px !important;padding:0 16px !important;font-size:13px !important;border-radius:var(--dsw-radius-sm,8px) !important;box-shadow:none !important}
+.mpi-dialog .ima-modal-footer button:not(.is-primary){border:0.5px solid var(--dsw-alias-border-l2) !important;background:transparent !important;color:var(--dsw-alias-label-primary) !important}
+.mpi-dialog .ima-modal-footer button:not(.is-primary):hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover) !important;border-color:var(--dsw-alias-border-l3,#555) !important}
+.mpi-dialog .ima-modal-footer button.is-primary{background:var(--dsw-alias-state-business-primary,#4176e6) !important;color:#fff !important;border-color:transparent !important}
+.mpi-progress{height:3px;border-radius:2px;background:var(--dsw-alias-border-l2,rgba(255,255,255,.1));overflow:hidden;margin:12px 0}
+.mpi-progress-bar{height:100%;width:40%;background:var(--dsw-alias-state-business-primary,#4176e6);border-radius:2px;animation:mpi-progress 1.2s infinite ease-in-out}
+@keyframes mpi-progress{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
 `;
 const ZH = {
   check: "检查更新",
@@ -194,7 +214,7 @@ function UpdateDialog(props) {
   const name = lang.toLowerCase().startsWith("en") ? props.enName : props.zhName;
   const command = manualPluginUpdateCommand(view.profileRaw, props.packageName, view.latestRaw);
   const copyLabel = copyState === "copied" ? view.copy.copied : copyState === "failed" ? view.copy.copyFailed : view.copy.copy;
-  return React.createElement(AntdProvider, null, React.createElement(Modal, {
+  return React.createElement(HostThemeProvider, null, React.createElement(Modal, {
     open: true, className: "mpi-dialog", width: 680, zIndex: 1200, title: `${name} ${view.copy.update}`, keyboard: false, destroyOnHidden: true, onCancel: props.onClose,
     afterOpenChange: (open) => { if (open && bodyRef.current) { bodyRef.current.tabIndex = -1; bodyRef.current.focus(); } },
     footer: [

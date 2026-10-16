@@ -45,7 +45,7 @@ test('DSH 子包依赖声明与客户端和服务端实际使用保持一致', (
   )
   assert.equal(manifest.dependencies?.antd, undefined)
   assert.equal(manifest.dependencies?.['react-dom'], undefined)
-  assert.equal(manifest.devDependencies.antd, '^6.6.5')
+  assert.equal(manifest.devDependencies?.antd, undefined, '彻底移除 antd 开发依赖')
   assert.equal(manifest.devDependencies['react-dom'], '^18.3.1')
 })
 
@@ -294,7 +294,7 @@ test('渠道分组只显示账号数量，账号子行保留状态和独立操�
 test('账号详情操作按钮允许换行，保持标签可读', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /\.ima-inspector-actions\{[^}]*flex-wrap:wrap/)
-  assert.match(client, /\.ima-inspector-actions \.ant-btn\{[^}]*flex:none[^}]*white-space:nowrap/)
+  assert.match(client, /\.ima-inspector-actions \.ima-btn\{[^}]*flex:none[^}]*white-space:nowrap/)
 })
 
 test('企业微信侧边栏小图标移除白色应用底板并放大有效标记', () => {
@@ -402,7 +402,7 @@ test('设置标题旁提供项目主页与问题反馈入口', () => {
   assert.match(client, /\.ima-title-links\{display:flex;align-items:center;gap:8px/)
   assert.match(client, /installSettingsNavIcon\(ctx, \(\) => t\("settings\.label"\)\)/)
   assert.match(client, /data-ima-nav-icon/)
-  assert.match(client, /\.ima-btn,\.ant-btn\{display:inline-flex;align-items:center;justify-content:center/)
+  assert.match(client, /\.ima-btn\{display:inline-flex;align-items:center;justify-content:center/)
   assert.match(client, /@media\(max-width:720px\)\{\.ima-title-row\{flex-wrap:wrap\}\}/)
 })
 
@@ -424,14 +424,14 @@ test('设置页账号行和账号设置都能填写名称备注', () => {
   assert.doesNotMatch(accountPage, /名称备注|留空恢复自动名称/)
 })
 
-test('Ant 亮暗跟随宿主 html/body 的 data-ds-dark-theme', () => {
+test('界面亮暗跟随宿主 html/body 的 data-ds-dark-theme，不再引入 Ant 算法', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /function hostIsDark\(\)/)
   assert.match(client, /document\.documentElement\.hasAttribute\("data-ds-dark-theme"\)/)
   assert.match(client, /document\.body\.hasAttribute\("data-ds-dark-theme"\)/)
   assert.match(client, /function useHostDark\(\)/)
   assert.match(client, /attributeFilter: \["data-ds-dark-theme"\]/)
-  assert.match(client, /algorithm: dark \? theme\.darkAlgorithm : theme\.defaultAlgorithm/)
+  assert.doesNotMatch(client, /theme\.darkAlgorithm/)
   assert.doesNotMatch(client, /function hostDarkTheme\(/)
 })
 

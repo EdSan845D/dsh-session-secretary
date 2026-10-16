@@ -47,6 +47,10 @@ test('DSH 子包依赖声明与客户端和服务端实际使用保持一致', (
   assert.equal(manifest.dependencies?.['react-dom'], undefined)
   assert.equal(manifest.devDependencies.antd, '^6.6.5')
   assert.equal(manifest.devDependencies['react-dom'], '^18.3.1')
+  assert.ok(
+    manifest.dsh?.client?.inject?.includes('@deepseek-ai/dsh-client-ui-primitives'),
+    '必须在 dsh.client.inject 中声明 @deepseek-ai/dsh-client-ui-primitives 以注入宿主原生组件',
+  )
 })
 
 function makeManager(t, ctx = {}) {

@@ -13,6 +13,8 @@ window.__ModuleLoader__.load({
     const PrimitiveButton = primitives.Button;
     const HostMenu = primitives.Menu;
     const HostModal = primitives.Modal;
+    // 只关最上层。下层监听先注册，不是顶层就放行，避免一次 Escape 关掉弹窗和宿主设置。
+    const modalLayers = [];
     // 0.1.7 把尺寸从图标名里拿掉了（IconEditOutlineRegular）。旧宿主仍导出 *16/*20。
     function pickHostIcon(...names) {
       for (const name of names) {
@@ -147,29 +149,92 @@ window.__ModuleLoader__.load({
         }, lbl);
       }));
     }
+    function hostModalButton(label, onClick, kind, extra) {
+      const options = extra || {};
+      const variant = kind === "primary" ? "primary" : "outline";
+      const className = [kind === "danger" ? "ima-n-danger-button" : "", options.className].filter(Boolean).join(" ") || undefined;
+      if (typeof PrimitiveButton === "function") {
+        return React.createElement(PrimitiveButton, {
+          variant,
+          disabled: options.disabled,
+          className,
+          onClick,
+          type: "button",
+        }, label);
+      }
+      return React.createElement(Button, {
+        variant,
+        danger: kind === "danger",
+        disabled: options.disabled,
+        className,
+        onClick,
+      }, label);
+    }
     function Modal(props) {
-      const { open, title, onCancel, onOk, okText, cancelText, okButtonProps, confirmLoading, width = 640, zIndex = 1100, children, footer, className } = props;
+      const { open, title, onCancel, onOk, okText, cancelText, okButtonProps, confirmLoading, width = 640, zIndex = 1100, children, footer, className, keyboard, maskClosable, closeLabel } = props;
+      const requestClose = onCancel || props.onClose;
+      const closeRef = useRef(requestClose);
+      closeRef.current = requestClose;
+      const layerRef = useRef(null);
+      if (!layerRef.current) layerRef.current = { owner: props.layerOwner || "modal" };
+      useEffect(() => {
+        if (!open) return undefined;
+        const layer = layerRef.current;
+        modalLayers.push(layer);
+        const onKey = (event) => {
+          if (event.key !== "Escape") return;
+          if (modalLayers[modalLayers.length - 1] !== layer) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+          if (keyboard === false) return;
+          if (closeRef.current) closeRef.current();
+        };
+        window.addEventListener("keydown", onKey, true);
+        return () => {
+          window.removeEventListener("keydown", onKey, true);
+          const index = modalLayers.lastIndexOf(layer);
+          if (index >= 0) modalLayers.splice(index, 1);
+        };
+      }, [open, keyboard]);
       if (!open) return null;
-      const handleClose = () => { if (onCancel) onCancel(); };
+      const handleClose = () => { if (closeRef.current) closeRef.current(); };
       const handleOk = () => { if (onOk) onOk(); };
-      const defaultFooter = footer === null ? null : (footer || React.createElement("div", { className: "ima-modal-footer" },
-        React.createElement(Button, { onClick: handleClose }, cancelText || "取消"),
-        React.createElement(Button, { type: "primary", loading: confirmLoading, disabled: okButtonProps?.disabled, danger: okButtonProps?.danger, onClick: handleOk }, okText || "确定")
+      const actionRow = footer === null ? null : (footer || React.createElement("div", { className: "ima-modal-actions" },
+        hostModalButton(cancelText || "取消", handleClose, "outline"),
+        hostModalButton(okText || "确定", handleOk, okButtonProps?.danger ? "danger" : "primary", { disabled: okButtonProps?.disabled || confirmLoading })
       ));
+      const footerNode = Array.isArray(actionRow)
+        ? React.createElement("div", { className: "ima-modal-actions" }, actionRow)
+        : actionRow;
+      if (typeof HostModal === "function") {
+        return h(HostModal, {
+          open: true,
+          title,
+          onClose: handleClose,
+          closeLabel: closeLabel || "Close",
+          className,
+          width,
+          zIndex,
+          keyboard: false,
+          footer: footerNode,
+        }, children);
+      }
+      const allowMask = maskClosable !== false && modalLayers[modalLayers.length - 1] === layerRef.current;
       return React.createElement("div", { className: "ima-modal-root", style: { zIndex } },
-        React.createElement("div", { className: "ima-modal-mask", onClick: handleClose }),
+        React.createElement("div", { className: "ima-modal-mask", onClick: allowMask ? handleClose : undefined }),
         React.createElement("div", { className: ["ima-modal-wrap", className].filter(Boolean).join(" ") },
           React.createElement("div", { className: "ima-modal-panel", style: { width } },
             React.createElement("div", { className: "ima-modal-header" },
               React.createElement("div", { className: "ima-modal-title" }, title),
-              React.createElement("button", { type: "button", className: "ima-modal-close", "aria-label": "Close", onClick: handleClose },
+              React.createElement("button", { type: "button", className: "ima-modal-close", "aria-label": closeLabel || "Close", onClick: handleClose },
                 React.createElement("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" },
                   React.createElement("path", { d: "m4 4 8 8M12 4 4 12" })
                 )
               )
             ),
             React.createElement("div", { className: "ima-modal-body" }, children),
-            defaultFooter && React.createElement("div", { className: "ima-modal-footer-wrap" }, defaultFooter)
+            footerNode && React.createElement("div", { className: "ima-modal-footer-wrap" }, footerNode)
           )
         )
       );
@@ -217,16 +282,22 @@ window.__ModuleLoader__.load({
       const [open, setOpen] = useState(false);
       useEffect(() => {
         if (!open || typeof window === "undefined") return undefined;
+        const layer = { owner: "select" };
+        modalLayers.push(layer);
         function onKey(event) {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            setOpen(false);
-          }
+          if (event.key !== "Escape") return;
+          if (modalLayers[modalLayers.length - 1] !== layer) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          setOpen(false);
         }
         window.addEventListener("keydown", onKey, true);
-        return () => window.removeEventListener("keydown", onKey, true);
+        return () => {
+          window.removeEventListener("keydown", onKey, true);
+          const index = modalLayers.lastIndexOf(layer);
+          if (index >= 0) modalLayers.splice(index, 1);
+        };
       }, [open]);
 
       const items = React.useMemo(() => {
@@ -868,8 +939,9 @@ window.__ModuleLoader__.load({
 .ima-modal-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-tertiary,#888);cursor:pointer;transition:all 120ms ease}
 .ima-modal-close:hover{color:var(--dsw-alias-label-primary,#fff);background:var(--dsw-alias-interactive-bg-hover,rgba(128,128,128,.12))}
 .ima-modal-body{min-height:0;overflow:visible;display:flex;flex-direction:column;gap:12px}
-.ima-modal-footer,.ima-modal-footer-wrap{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px;padding-top:16px;border-top:0.5px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08))}
-.ima-modal-footer .ima-btn{min-width:72px}
+.ima-modal-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.ima-modal-footer-wrap{display:flex;justify-content:flex-end;margin-top:12px;padding-top:16px}
+.ima-inspector-actions>button{flex:none;white-space:nowrap}
 .ima-confirm-content{margin:8px 0 0;font-size:13px;line-height:22px;color:var(--dsw-alias-label-secondary,#b9b9b9)}
 .ima-page.ima-account-page{container-type:inline-size;min-width:0;max-width:1080px;width:100%;margin:0 auto;padding:0 0 32px}
 .ima-account-shell,.ima-account-shell *{box-sizing:border-box}
@@ -895,8 +967,7 @@ window.__ModuleLoader__.load({
 .ima-form{display:flex;flex-direction:column;gap:16px;padding-top:20px}
 .ima-command-permissions{min-width:0;margin:0;padding:0;border:0}
 .ima-diagnostic-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ima-inspector-title-row .ima-tag{margin-inline-end:0}.ima-bind-modal .ima-segmented{width:100%;margin:0 0 16px}.ima-bind-modal .ima-alert{margin-bottom:12px}.ima-connection-check{display:grid;gap:6px;padding:12px;border:1px solid var(--ima-line);border-radius:8px;font-size:12px;line-height:1.6;overflow-wrap:anywhere;color:var(--ima-muted)}.ima-connection-check strong{color:var(--ima-text)}.ima-diagnostic-item{padding:8px 0;border-top:1px solid var(--ima-line)}
-.ima-inspector-actions{display:flex!important;flex-wrap:wrap!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;margin-top:16px!important;padding-top:16px!important;padding-bottom:4px!important;border-top:0.5px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08))!important}
-.ima-inspector-actions .ima-btn{flex:none!important;white-space:nowrap!important;height:32px!important;padding:0 14px!important;margin:0!important}
+.ima-inspector-actions{display:flex!important;flex-wrap:wrap!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;margin-top:16px!important;padding-top:16px!important;padding-bottom:4px!important}
 .ima-account-modal .ima-inspector{padding:0 0 16px 0}
 .ima-account-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;width:100%;box-sizing:border-box}
 .ima-account-settings.compact{grid-template-columns:1fr}
@@ -1523,6 +1594,7 @@ window.__ModuleLoader__.load({
       onCloseRef.current = onClose;
       useEffect(() => {
         const onKeyDown = (event) => {
+          if (modalLayers.length && modalLayers[modalLayers.length - 1].owner !== "bind") return;
           if (event.key !== "Escape") return;
           event.preventDefault();
           event.stopPropagation();
@@ -1580,14 +1652,14 @@ window.__ModuleLoader__.load({
         width: 640,
         zIndex: 1100,
         destroyOnHidden: true,
+        layerOwner: "bind",
         maskClosable: !saving,
-        keyboard: false,
         onCancel: close,
         footer: tab === "manual" && hasManual
-          ? [
-              h(Button, { key: "cancel", disabled: busy, onClick: close }, t("action.cancel")),
-              h(Button, { key: "save", type: "primary", disabled: busy || !workspaceIsListed(settings.cwd, workspaces), onClick: saveManual }, busy ? t("action.saving") : t("action.confirm")),
-            ]
+          ? h("div", { className: "ima-modal-actions" },
+              hostModalButton(t("action.cancel"), close, "outline", { disabled: busy }),
+              hostModalButton(busy ? t("action.saving") : t("action.confirm"), saveManual, "primary", { disabled: busy || !workspaceIsListed(settings.cwd, workspaces) }),
+            )
           : null,
       },
         hasQr && hasManual && h(Segmented, {
@@ -1636,13 +1708,13 @@ window.__ModuleLoader__.load({
                 remain > 0 && h("p", { className: "ima-hint" }, t("bind.expire", { time: Math.floor(remain / 60) + ":" + String(remain % 60).padStart(2, "0") })),
                 status === "scanned" && h("p", { className: "ima-hint" }, t("bind.scanned")),
                 (status === "expired" || status === "failed") && h("p", { className: "ima-error" }, serverText(pairing && pairing.error, t) || t("bind.retry")),
-                h(Button, { disabled: busy, onClick: () => startQr(true) }, t("bind.refresh")),
+                hostModalButton(t("bind.refresh"), () => startQr(true), "outline", { disabled: busy }),
               )
               : h("div", { className: "ima-bind-ready" },
                   h("p", { className: "ima-hint" }, hintOf(ch, t)),
                   (busy || status === "starting") && h("div", { className: "ima-bind-status" }, t("bind.generating")),
                   (status === "expired" || status === "failed") && h("div", { className: "ima-error" }, serverText(pairing && pairing.error, t) || t("bind.retry")),
-                  h(Button, { type: "primary", disabled: busy || !workspaceIsListed(settings.cwd, workspaces) || !settings.provider || !settings.model || !settings.permission, onClick: () => startQr(qrStarted) }, busy ? t("bind.generating") : qrStarted ? t("bind.refresh") : t("action.generateQr")),
+                  hostModalButton(busy ? t("bind.generating") : qrStarted ? t("bind.refresh") : t("action.generateQr"), () => startQr(qrStarted), "primary", { disabled: busy || !workspaceIsListed(settings.cwd, workspaces) || !settings.provider || !settings.model || !settings.permission }),
                 )
         ),
         tab === "manual" && hasManual && h("div", null,
@@ -1871,6 +1943,7 @@ window.__ModuleLoader__.load({
         props.showAutoNameNote && h("div", { className: "ima-picker-note" }, t("account.autoNameNote")),
         h(Modal, {
           open: adding,
+          layerOwner: "add-workspace",
           title: t("composer.addWorkspace"),
           onCancel: () => { setAdding(false); setAddPath(""); },
           onOk: () => addWorkspace(addPath),
@@ -1883,6 +1956,7 @@ window.__ModuleLoader__.load({
         ),
         h(Modal, {
           open: confirmingFullAccess,
+          layerOwner: "full-access",
           title: permissionT("confirm.title"),
           keyboard: false,
           maskClosable: false,
@@ -2052,9 +2126,9 @@ window.__ModuleLoader__.load({
           h(CommandPermissionSettings, { value: draft.commandPermissions, onSave: commandPermissions => save({ commandPermissions }), t }),
           note && h("div", { className: note === "status.saved" ? "ima-save-note ok" : "ima-save-note" }, t(note)),
           h("div", { className: "ima-inspector-actions" },
-            h(Button, { disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
-            h(Button, { disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
-            h(Button, { danger: true, disabled: Boolean(busy) || checking, onClick: () => {
+            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
+            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
+            h(Button, { variant: "outline", className: "ima-n-danger-button", disabled: Boolean(busy) || checking, onClick: () => {
               modal.confirm({
                 title: t("action.removeAccount"),
                 content: t("account.removeConfirm"),
@@ -2194,6 +2268,7 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (!settingsAccount) return undefined;
         const onKey = (event) => {
+          if (modalLayers.length && modalLayers[modalLayers.length - 1].owner !== "settings-account") return;
           if (event.key !== "Escape") return;
           if (document.querySelector("[role='listbox'], [role='menu'], .ima-menu-select-dropdown")) return;
           event.preventDefault();
@@ -2338,8 +2413,8 @@ window.__ModuleLoader__.load({
           title: t("action.settings"),
           width: 640,
           zIndex: 1100,
+          layerOwner: "settings-account",
           destroyOnHidden: true,
-          keyboard: false,
           onCancel: () => setSettingsAccount(null),
           footer: null,
         },
@@ -2438,7 +2513,7 @@ window.__ModuleLoader__.load({
 .ima-n-dialog-copy{margin:0;color:var(--dsw-alias-label-secondary);font-size:14px;line-height:22px}
 .ima-n-dialog-status{margin-top:12px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}
 .ima-n-dialog-error{margin-top:12px;color:var(--dsw-alias-state-error-primary,#f85149);font-size:13px;line-height:20px}
-.ima-n-danger-button{color:var(--dsw-alias-state-error-primary,#f85149)!important}
+.ima-n-danger-button{color:var(--dsw-alias-state-error-primary,#f85149)!important;border-color:var(--dsw-alias-state-error-primary,#f85149)!important}
 .ima-n-danger-button:hover{background:var(--dsw-alias-interactive-bg-hover-danger,rgba(248,81,73,.12))!important}
 .ima-n-restore{flex:none;border:0;background:transparent;color:var(--dsw-alias-label-secondary,#c9cdd4);font:12px/16px inherit;padding:2px 4px;cursor:pointer}`;
 
@@ -3138,42 +3213,45 @@ window.__ModuleLoader__.load({
           }),
         ),
         ),
-        h(HostModal, {
+        h(Modal, {
           open: !!archiveGroupTarget,
+          layerOwner: "sidebar-archive",
           onClose: () => { if (!archiveGroupBusy) { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); } },
           closeLabel: t("rail.archiveGroupClose"),
           title: t("rail.archiveGroup"),
           footer: h("div", { className: "ima-n-dialog-actions" },
-            h(Button, { variant: "outline", disabled: archiveGroupBusy, onClick: () => { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); } }, t("rail.archiveGroupCancel")),
-            h(Button, { variant: "outline", className: "ima-n-danger-button", disabled: archiveGroupBusy, onClick: confirmArchiveGroup }, t("rail.archiveGroupConfirm")),
+            hostModalButton(t("rail.archiveGroupCancel"), () => { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); }, "outline", { disabled: archiveGroupBusy }),
+            hostModalButton(t("rail.archiveGroupConfirm"), confirmArchiveGroup, "danger", { disabled: archiveGroupBusy }),
           ),
         },
           h("p", { className: "ima-n-dialog-copy" }, archiveGroupTarget ? t("rail.archiveGroupDescription", { name: archiveGroupTarget.name, count: archiveGroupTarget.sessionIds.length }) : ""),
           archiveGroupBusy && h("div", { className: "ima-n-dialog-status", role: "status" }, t("rail.archiveGroupPending")),
           archiveGroupError && h("div", { className: "ima-n-dialog-error", role: "alert" }, t("rail.archiveGroupFailed", { message: archiveGroupError })),
         ),
-        h(HostModal, {
+        h(Modal, {
           open: !!stopArchiveTarget,
+          layerOwner: "sidebar-stop",
           onClose: () => { if (!stopArchiveBusy) { setStopArchiveTarget(undefined); setStopArchiveError(undefined); } },
           closeLabel: t("action.cancel"),
           title: t("rail.stopArchive"),
           footer: h("div", { className: "ima-n-dialog-actions" },
-            h(Button, { variant: "outline", disabled: stopArchiveBusy, onClick: () => { setStopArchiveTarget(undefined); setStopArchiveError(undefined); } }, t("action.cancel")),
-            h(Button, { variant: "outline", className: "ima-n-danger-button", disabled: stopArchiveBusy, onClick: confirmStopArchive }, t("rail.stopArchiveConfirm")),
+            hostModalButton(t("action.cancel"), () => { setStopArchiveTarget(undefined); setStopArchiveError(undefined); }, "outline", { disabled: stopArchiveBusy }),
+            hostModalButton(t("rail.stopArchiveConfirm"), confirmStopArchive, "danger", { disabled: stopArchiveBusy }),
           ),
         },
           h("p", { className: "ima-n-dialog-copy" }, stopArchiveTarget ? t(stopArchiveTarget.group ? "rail.stopArchiveGroupDescription" : "rail.stopArchiveDescription", { name: stopArchiveTarget.title }) : ""),
           stopArchiveBusy && h("div", { className: "ima-n-dialog-status", role: "status" }, t("rail.stopArchivePending")),
           stopArchiveError && h("div", { className: "ima-n-dialog-error", role: "alert" }, t("rail.archiveFailed")),
         ),
-        h(HostModal, {
+        h(Modal, {
           open: !!deleteTarget,
+          layerOwner: "sidebar-delete",
           onClose: () => { if (!deleteBusy) { setDeleteTarget(undefined); setDeleteError(undefined); } },
           closeLabel: t("rail.deleteSessionClose"),
           title: t("rail.deleteSession"),
           footer: h("div", { className: "ima-n-dialog-actions" },
-            h(Button, { variant: "outline", disabled: deleteBusy, onClick: () => { setDeleteTarget(undefined); setDeleteError(undefined); } }, t("rail.deleteSessionCancel")),
-            h(Button, { variant: "outline", className: "ima-n-danger-button", disabled: deleteBusy, onClick: confirmDelete }, t("rail.deleteSessionConfirm")),
+            hostModalButton(t("rail.deleteSessionCancel"), () => { setDeleteTarget(undefined); setDeleteError(undefined); }, "outline", { disabled: deleteBusy }),
+            hostModalButton(t("rail.deleteSessionConfirm"), confirmDelete, "danger", { disabled: deleteBusy }),
           ),
         },
           h("p", { className: "ima-n-dialog-copy" }, deleteTarget ? t("rail.deleteSessionDescription", { name: deleteTarget.title }) : ""),

@@ -294,7 +294,7 @@ test('渠道分组只显示账号数量，账号子行保留状态和独立操�
 test('账号详情操作按钮允许换行，保持标签可读', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /\.ima-inspector-actions\{[^}]*flex-wrap:wrap/)
-  assert.match(client, /\.ima-inspector-actions \.ima-btn\{[^}]*flex:none[^}]*white-space:nowrap/)
+  assert.match(client, /\.ima-inspector-actions>button\{[^}]*flex:none[^}]*white-space:nowrap/)
 })
 
 test('企业微信侧边栏小图标移除白色应用底板并放大有效标记', () => {

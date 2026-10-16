@@ -18,15 +18,6 @@ const CSS = `
 .mpi-check-host button{border-radius:var(--dsw-radius-sm,8px) !important;corner-shape:unset !important}
 .mpi-check-host button{border:0.5px solid var(--dsw-alias-border-l2) !important;background:transparent !important;color:var(--dsw-alias-label-secondary) !important;font-weight:450 !important;border-radius:var(--dsw-radius-sm,8px) !important;height:28px !important;min-height:28px !important;padding:0 10px !important;transition:color .14s ease,background .14s ease,border-color .14s ease !important}
 .mpi-check-host button:hover:not(:disabled){color:var(--dsw-alias-label-primary) !important;background:var(--dsw-alias-interactive-bg-hover) !important;border-color:var(--dsw-alias-border-l3,#555) !important}
-.mpi-dialog .ima-modal-content{position:relative;isolation:isolate;padding:24px 28px !important;border-radius:var(--dsw-radius-panel,28px) !important;background:transparent !important;box-shadow:var(--dsw-elevation-panel, 0 20px 48px rgba(0,0,0,.35)) !important;border:0.5px solid var(--dsw-alias-border-l2) !important;box-sizing:border-box !important}
-.mpi-dialog .ima-modal-content::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-3,#1e2024)) !important;backdrop-filter:var(--dsw-menu-backdrop-filter, blur(20px)) !important;pointer-events:none}
-.mpi-dialog .ima-modal-header{background:transparent !important;margin-bottom:16px !important}
-.mpi-dialog .ima-modal-title{font-size:16px !important;font-weight:600 !important;color:var(--dsw-alias-label-primary) !important}
-.mpi-dialog .ima-modal-footer{display:flex !important;align-items:center !important;justify-content:flex-end !important;gap:10px !important;margin-top:24px !important;padding-top:16px !important;border-top:0.5px solid var(--dsw-alias-border-l2) !important}
-.mpi-dialog .ima-modal-footer button{height:32px !important;min-height:32px !important;padding:0 16px !important;font-size:13px !important;border-radius:var(--dsw-radius-sm,8px) !important;box-shadow:none !important}
-.mpi-dialog .ima-modal-footer button:not(.is-primary){border:0.5px solid var(--dsw-alias-border-l2) !important;background:transparent !important;color:var(--dsw-alias-label-primary) !important}
-.mpi-dialog .ima-modal-footer button:not(.is-primary):hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover) !important;border-color:var(--dsw-alias-border-l3,#555) !important}
-.mpi-dialog .ima-modal-footer button.is-primary{background:var(--dsw-alias-state-business-primary,#4176e6) !important;color:#fff !important;border-color:transparent !important}
 .mpi-progress{height:3px;border-radius:2px;background:var(--dsw-alias-border-l2,rgba(255,255,255,.1));overflow:hidden;margin:12px 0}
 .mpi-progress-bar{height:100%;width:40%;background:var(--dsw-alias-state-business-primary,#4176e6);border-radius:2px;animation:mpi-progress 1.2s infinite ease-in-out}
 @keyframes mpi-progress{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
@@ -205,7 +196,10 @@ function UpdateDialog(props) {
   }, []);
   React.useEffect(() => { void props.flow.check(); }, [props.flow]);
   React.useEffect(() => {
-    const onKey = (event) => { handlePluginUpdateEscape(event, props.onClose); };
+    const onKey = (event) => {
+      if (typeof modalLayers !== "undefined" && modalLayers.length && modalLayers[modalLayers.length - 1].owner !== "update") return;
+      handlePluginUpdateEscape(event, props.onClose);
+    };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
   }, [props.onClose]);
@@ -215,12 +209,11 @@ function UpdateDialog(props) {
   const command = manualPluginUpdateCommand(view.profileRaw, props.packageName, view.latestRaw);
   const copyLabel = copyState === "copied" ? view.copy.copied : copyState === "failed" ? view.copy.copyFailed : view.copy.copy;
   return React.createElement(HostThemeProvider, null, React.createElement(Modal, {
-    open: true, className: "mpi-dialog", width: 680, zIndex: 1200, title: `${name} ${view.copy.update}`, keyboard: false, destroyOnHidden: true, onCancel: props.onClose,
-    afterOpenChange: (open) => { if (open && bodyRef.current) { bodyRef.current.tabIndex = -1; bodyRef.current.focus(); } },
-    footer: [
-      React.createElement(Button, { key: "check", disabled: view.busy, loading: view.busy && !view.loading, onClick: () => { void props.flow.check(); } }, view.copy.recheck),
-      React.createElement(Button, { key: "update", type: "primary", disabled: view.disabled, loading: view.loading, onClick: () => { void props.flow.update(); } }, view.updateLabel),
-    ],
+    open: true, className: "mpi-dialog", width: 680, zIndex: 1200, layerOwner: "update", title: `${name} ${view.copy.update}`, onCancel: props.onClose,
+    footer: React.createElement("div", { className: "ima-modal-actions" },
+      React.createElement(UpdatePrimitiveButton, { key: "check", variant: "outline", size: "sm", disabled: view.busy, onClick: () => { void props.flow.check(); } }, view.copy.recheck),
+      React.createElement(UpdatePrimitiveButton, { key: "update", variant: "primary", size: "sm", disabled: view.disabled, onClick: () => { void props.flow.update(); } }, view.updateLabel),
+    ),
   }, React.createElement("div", { ref: bodyRef },
     React.createElement("p", { className: "mpi-intro" }, view.copy.intro),
     React.createElement("dl", { className: "mpi-meta" },
@@ -233,7 +226,7 @@ function UpdateDialog(props) {
       React.createElement("p", null, view.copy.manualHint),
       React.createElement("div", { className: "mpi-command" },
         React.createElement("code", null, command),
-        React.createElement(Button, { disabled: view.busy, onClick: () => {
+        React.createElement(UpdatePrimitiveButton, { variant: "outline", size: "sm", disabled: view.busy, onClick: () => {
           const write = navigator.clipboard?.writeText(command);
           if (write === undefined) { setCopyState("failed"); return; }
           void write.then(() => { setCopyState("copied"); window.setTimeout(() => setCopyState("idle"), 1400); }).catch(() => setCopyState("failed"));

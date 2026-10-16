@@ -655,8 +655,44 @@ window.__ModuleLoader__.load({
         locale: lang === "en" ? antdEn : antdZh,
         theme: {
           algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-          token: { fontFamily: "inherit" },
-          components: { Button: { borderRadius: 8 } },
+          token: {
+            fontFamily: "var(--dsw-font-family, inherit)",
+            borderRadius: 8,
+            borderRadiusSM: 6,
+            borderRadiusLG: 12,
+            controlHeight: 36,
+            controlHeightSM: 28,
+            lineWidth: 0.5,
+            colorBgContainer: "var(--dsw-alias-bg-layer-1, transparent)",
+            colorBorder: "var(--dsw-alias-border-l2, #494949)",
+            colorText: "var(--dsw-alias-label-primary, #eee)",
+            colorTextPlaceholder: "var(--dsw-alias-label-tertiary, #888)",
+            colorPrimary: "var(--dsw-alias-brand-primary, #4b7cff)",
+            colorPrimaryHover: "var(--dsw-alias-brand-primary, #4b7cff)",
+          },
+          components: {
+            Input: {
+              controlHeight: 36,
+              borderRadius: 8,
+              colorBgContainer: "var(--dsw-alias-bg-layer-1, transparent)",
+              colorBorder: "var(--dsw-alias-border-l2, #494949)",
+              colorText: "var(--dsw-alias-label-primary, #eee)",
+              colorTextPlaceholder: "var(--dsw-alias-label-tertiary, #888)",
+              activeBorderColor: "var(--dsw-alias-brand-primary, #4b7cff)",
+              hoverBorderColor: "var(--dsw-alias-border-l3, #666)",
+            },
+            Button: {
+              borderRadius: 8,
+              defaultShadow: "none",
+              primaryShadow: "none",
+              dangerShadow: "none",
+            },
+            Modal: {
+              headerBg: "transparent",
+              footerBg: "transparent",
+              borderRadiusLG: 16,
+            },
+          },
         },
         button: { autoInsertSpace: false },
       }, children);
@@ -705,6 +741,11 @@ window.__ModuleLoader__.load({
 .ima-hint{margin:0;color:var(--ima-muted);font-size:13px;text-align:center;line-height:1.6}
 .ima-field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;font-size:13px}
 .ima-field .ant-input,.ima-field input{width:100%}
+.ima-page .ant-input,.ima-account-modal .ant-input,.ima-bind-modal .ant-input,.ima-account-remark-input,.ima-field input,.ima-rename,.ima-n-search-input{box-sizing:border-box!important;height:36px!important;padding:0 12px!important;border:0.5px solid var(--dsw-alias-border-l2,#494949)!important;border-radius:var(--dsw-radius-sm,8px)!important;background:var(--dsw-alias-bg-layer-1,transparent)!important;color:var(--dsw-alias-label-primary,#eee)!important;font:inherit!important;font-size:13px!important;line-height:20px!important;transition:border-color 120ms ease,background 120ms ease!important}
+.ima-page .ant-input:hover:not(:disabled),.ima-account-modal .ant-input:hover:not(:disabled),.ima-bind-modal .ant-input:hover:not(:disabled),.ima-account-remark-input:hover:not(:disabled),.ima-field input:hover:not(:disabled),.ima-rename:hover,.ima-n-search-input:hover{border-color:var(--dsw-alias-border-l3,#666)!important}
+.ima-page .ant-input:focus,.ima-page .ant-input-focused,.ima-account-modal .ant-input:focus,.ima-account-modal .ant-input-focused,.ima-bind-modal .ant-input:focus,.ima-bind-modal .ant-input-focused,.ima-account-remark-input:focus,.ima-field input:focus,.ima-rename:focus,.ima-n-search-input:focus{border-color:var(--dsw-alias-brand-primary,#4b7cff)!important;outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4b7cff))!important;outline-offset:0!important}
+.ima-page .ant-input::placeholder,.ima-account-modal .ant-input::placeholder,.ima-bind-modal .ant-input::placeholder,.ima-account-remark-input::placeholder,.ima-field input::placeholder,.ima-n-search-input::placeholder{color:var(--dsw-alias-label-tertiary,#888)!important}
+.ima-page .ant-input:disabled,.ima-account-modal .ant-input:disabled,.ima-bind-modal .ant-input:disabled,.ima-account-remark-input:disabled{opacity:.5!important;cursor:not-allowed!important}
 .ima-page.ima-account-page{container-type:inline-size;min-width:0;max-width:1080px;width:100%;margin:0 auto;padding:0 0 32px}
 .ima-account-shell,.ima-account-shell *{box-sizing:border-box}
 .ima-account-shell{display:block;min-height:0;border:0;border-radius:0;overflow:visible;background:transparent}

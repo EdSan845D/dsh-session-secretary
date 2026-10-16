@@ -64,10 +64,110 @@ window.__ModuleLoader__.load({
     const IconClockOutline = pickHostIcon("IconClockOutlineRegular", "IconClockOutline16");
     const IconFlatListOutline = pickHostIcon("IconFlatListOutlineRegular");
     const antd = require("antd");
-    const { ConfigProvider, theme, Modal, Select: AntdSelect, Switch, Button: AntdButton, Input, Progress, Checkbox, Segmented, Tag, Alert } = antd;
+    const { ConfigProvider, theme, Modal, Select: AntdSelect, Switch: AntdSwitch, Button: AntdButton, Input, Progress, Checkbox, Segmented, Tag, Alert } = antd;
+    function Switch(props) {
+      const on = Boolean(props.checked);
+      return React.createElement("button", {
+        type: "button",
+        role: "switch",
+        "aria-checked": on,
+        "aria-label": props["aria-label"],
+        title: props.title,
+        disabled: props.disabled,
+        className: "ima-enable-switch" + (props.className ? " " + props.className : ""),
+        onClick: function (event) {
+          if (event && typeof event.stopPropagation === "function") event.stopPropagation();
+          if (!props.disabled && props.onChange) props.onChange(!on);
+        },
+      }, React.createElement("span", { className: "ima-enable-switch-thumb", "aria-hidden": "true" }));
+    }
     function Select(props) {
-      const popupClassName = ["ima-select-dropdown", props && props.popupClassName].filter(Boolean).join(" ");
-      return React.createElement(AntdSelect, Object.assign({}, props, { popupClassName }));
+      const [open, setOpen] = useState(false);
+      useEffect(() => {
+        if (!open || typeof window === "undefined") return undefined;
+        function onKey(event) {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            setOpen(false);
+          }
+        }
+        window.addEventListener("keydown", onKey, true);
+        return () => window.removeEventListener("keydown", onKey, true);
+      }, [open]);
+
+      const items = React.useMemo(() => {
+        const list = [];
+        (props.options || []).forEach((opt, idx) => {
+          if (Array.isArray(opt.options)) {
+            list.push({ type: "label", id: "group-" + idx, text: opt.label || "" });
+            opt.options.forEach((sub) => {
+              list.push({ id: String(sub.value), label: sub.label, disabled: sub.disabled, danger: sub.danger });
+            });
+          } else {
+            list.push({ id: String(opt.value), label: opt.label, disabled: opt.disabled, danger: opt.danger });
+          }
+        });
+        return list;
+      }, [props.options]);
+
+      const selectedOption = React.useMemo(() => {
+        for (const opt of props.options || []) {
+          if (Array.isArray(opt.options)) {
+            const found = opt.options.find((sub) => String(sub.value) === String(props.value));
+            if (found) return found;
+          } else if (String(opt.value) === String(props.value)) {
+            return opt;
+          }
+        }
+        return null;
+      }, [props.options, props.value]);
+
+      const currentText = selectedOption ? selectedOption.label : (props.placeholder || props["aria-label"] || "");
+
+      return React.createElement("div", {
+        className: "ima-menu-select-wrap " + (props.className || ""),
+        style: props.style,
+      },
+        React.createElement(HostMenu, {
+          open: open,
+          onClose: () => setOpen(false),
+          onSelect: (id) => {
+            if (props.onChange) props.onChange(id);
+            setOpen(false);
+          },
+          selectedId: props.value != null ? String(props.value) : undefined,
+          align: "start",
+          portal: true,
+          dense: true,
+          anchor: React.createElement(HostButton, {
+            variant: "outline",
+            size: "sm",
+            role: "combobox",
+            "aria-label": props["aria-label"] || props.placeholder,
+            "aria-expanded": open,
+            disabled: props.disabled,
+            className: "ima-menu-select-trigger" + (open ? " is-open" : ""),
+            onClick: () => { if (!props.disabled) setOpen((prev) => !prev); },
+          },
+            React.createElement("span", { className: "ima-menu-select-label" }, currentText),
+            React.createElement("svg", {
+              className: "ima-menu-select-arrow",
+              viewBox: "0 0 16 16",
+              width: 12,
+              height: 12,
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: 1.8,
+              strokeLinecap: "round",
+              strokeLinejoin: "round",
+              style: { marginLeft: 4, transition: "transform 150ms ease", transform: open ? "rotate(180deg)" : "none" },
+            }, React.createElement("path", { d: "m4 6 4 4 4-4" }))
+          ),
+          items: items,
+        })
+      );
     }
     function createSpinner() {
       return React.createElement("svg", {
@@ -569,8 +669,6 @@ window.__ModuleLoader__.load({
 .ima-heading h2,.ima-title{margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-.4px;white-space:nowrap;text-align:left}
 .ima-title-row{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
 .ima-title-links{display:inline-flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
-.ima-title-links .ant-btn{flex:none;color:var(--dsw-alias-label-secondary,var(--ima-muted))!important;border:0.5px solid var(--dsw-alias-border-l2,var(--ima-line))!important;background:var(--dsw-alias-bg-layer-1,transparent)!important}
-.ima-title-links .ant-btn:hover:not(:disabled){color:var(--dsw-alias-label-primary,var(--ima-text))!important;background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))!important;border-color:var(--dsw-alias-border-l3,var(--ima-line))!important}
 .ima-sub{margin:12px 0 0;max-width:none;color:var(--ima-muted);font-size:14px;line-height:22px;text-align:left}
 .ima-error{color:var(--ima-danger);font-size:12px;margin:0 0 12px}
 .ima-pending,.ima-page>.ant-alert,.ima-inspector .ant-alert{margin:0 0 12px}
@@ -625,6 +723,19 @@ window.__ModuleLoader__.load({
 .ima-save-note{color:var(--ima-muted);font-size:11px}.ima-save-note.ok{color:var(--ima-ok)}
 .ima-account-modal .ima-inspector,.ima-bind-modal .ima-setup-section{padding:0}.ima-setup-section{margin:0 0 14px;padding-bottom:14px;border-bottom:1px solid var(--ima-line)}
 .ima-account-picker{width:100%}
+.ima-enable-switch{box-sizing:border-box;position:relative;flex:0 0 auto;width:36px;height:20px;padding:2px;border:0;border-radius:999px;corner-shape:round;background:var(--dsw-alias-border-l3,#555);cursor:pointer}
+.ima-enable-switch[aria-checked=true]{background:var(--dsw-alias-brand-primary)}
+.ima-enable-switch:disabled{cursor:default;opacity:.5}
+.ima-enable-switch:focus-visible{outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
+.ima-enable-switch-thumb{display:block;width:16px;height:16px;border-radius:50%;corner-shape:round;background:var(--dsw-alias-label-primary-foreground,#fff);transition:transform 120ms ease;pointer-events:none}
+.ima-enable-switch[aria-checked=false] .ima-enable-switch-thumb{background:var(--dsw-alias-switch-thumb,#fff)}
+.ima-enable-switch[aria-checked=true] .ima-enable-switch-thumb{transform:translateX(16px)}
+.ima-menu-select-wrap{display:inline-flex;width:100%;min-width:0;box-sizing:border-box}
+.ima-menu-select-trigger{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;width:100%;height:32px;padding:0 10px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;cursor:pointer;user-select:none;box-sizing:border-box}
+.ima-menu-select-trigger:hover:not(:disabled){border-color:var(--dsw-alias-border-l3);background:var(--dsw-alias-interactive-bg-hover)}
+.ima-menu-select-trigger.is-open{border-color:var(--dsw-alias-brand-primary);outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary))}
+.ima-menu-select-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:left}
+.ima-menu-select-arrow{flex:none;opacity:0.6}
 .ima-btn-spinner{display:inline-block;vertical-align:-2px;animation:ima-spin 0.8s linear infinite}
 @keyframes ima-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .ima-btn-danger{color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important}
@@ -1956,8 +2067,8 @@ window.__ModuleLoader__.load({
             h("div", { className: "ima-title-row" },
               h("h2", { className: "ima-title" }, t("settings.title")),
               h("div", { className: "ima-title-links" },
-                h(Button, { size: "small", shape: "default", href: "https://github.com/MichengAI/dsh-im-connect", target: "_blank", rel: "noreferrer", "aria-label": t("settings.viewProject"), icon: h(GithubMark16) }, t("settings.viewProject")),
-                h(Button, { size: "small", shape: "default", href: "https://github.com/MichengAI/dsh-im-connect/issues", target: "_blank", rel: "noreferrer", "aria-label": t("settings.feedback"), icon: h(IconListPenOutline16, { size: 16 }) }, t("settings.feedback")),
+                h(HostButton, { variant: "outline", size: "sm", "aria-label": t("settings.viewProject"), icon: h(GithubMark16), onClick: () => { window.open("https://github.com/MichengAI/dsh-im-connect", "_blank", "noreferrer"); } }, t("settings.viewProject")),
+                h(HostButton, { variant: "outline", size: "sm", "aria-label": t("settings.feedback"), icon: h(IconListPenOutline16, { size: 16 }), onClick: () => { window.open("https://github.com/MichengAI/dsh-im-connect/issues", "_blank", "noreferrer"); } }, t("settings.feedback")),
               ),
             ),
             h("p", { className: "ima-sub" }, t("settings.description")),

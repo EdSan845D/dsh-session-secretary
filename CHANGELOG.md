@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 - 2026-10-18
+
+- Upgrade Feishu normal reply cards to Interactive Card Schema 2.0 (`schema: "2.0"` + `body.elements`), fixing Markdown table rendering issues on modern Feishu clients. Interactive question choices and status patch updates retain Schema 1.0 structure for compatibility with existing card instances.
+- Align select dropdown menu width dynamically with the trigger button across responsive viewport resize events.
+- Align modal confirmation dialogs for destructive actions (e.g., account removal) strictly with host danger button specifications (`variant="outline"`, red border and text, red hover background).
+- Revert modal bottom inspector action buttons to host default medium size (`md`, 36px height) to match Skills Manager layout standards.
+- Add CSS rule for `.ima-tag-info` to ensure info-state tags (such as official model checkpoint badges) render with the correct theme primary color instead of neutral gray.
+
 ## 1.0.0 - 2026-10-17
 
 - Supported hosts now match the skills plugin: DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and `0.2.1-rc.2`. Hosts `0.2.1-alpha.1` through `0.2.1-alpha.5`, and anything before `0.2.0`, are refused by the version gate, so the plugin will not run; existing IM settings in the profile are not deleted. If you still use a `0.1.x` host, install plugin `0.1.78` instead of `@latest`. This is not “every release after `0.2.0`”: stable `0.2.0` and any prerelease outside this list are refused too.

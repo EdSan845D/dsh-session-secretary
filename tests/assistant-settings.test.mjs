@@ -335,11 +335,12 @@ test('新增与设置弹窗对齐定时任务宽度 720px，工作区下拉支�
   assert.match(client, /onFooter:\s*\(\)\s*=>\s*\{\s*onAddWorkspace\(\);\s*\}/)
 })
 
-test('账号弹窗继承成功色变量，已连接和诊断通过用绿色 Tag', () => {
+test('账号弹窗继承成功色变量，已连接和诊断通过用绿色 Tag，支持 info 状态', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /\.ima-page,\.ima-account-modal,\.ima-bind-modal,\.ima-inspector\{[^}]*--ima-ok/)
   assert.match(client, /h\(Tag, \{\s*color: account\.receiveConfigured === false \? "warning" : account\.connectionState === "connected" \? "success"/)
   assert.match(client, /h\(Tag, \{ color: item\.status === "passed" \? "success"/)
+  assert.match(client, /\.ima-tag-info/)
   assert.doesNotMatch(client, /function ChannelCard|\.ima-chip|ima-inspector-empty|ima-diagnostic-passed|\.ima-control\{/)
 })
 

@@ -155,8 +155,9 @@ window.__ModuleLoader__.load({
     }
     function hostModalButton(label, onClick, kind, extra) {
       const options = extra || {};
-      const variant = (kind === "primary" && !options.danger) ? "primary" : "outline";
-      const dangerClass = (kind === "danger" || options.danger) ? "ima-btn-danger" : "";
+      const isDanger = kind === "danger" || options.danger;
+      const variant = isDanger ? "outline" : (kind === "primary" ? "primary" : "outline");
+      const dangerClass = isDanger ? "ima-btn-danger" : "";
       const className = [options.className, dangerClass].filter(Boolean).join(" ") || undefined;
       if (isHostComponent(PrimitiveButton)) {
         return React.createElement(PrimitiveButton, {
@@ -206,7 +207,7 @@ window.__ModuleLoader__.load({
       const handleOk = () => { if (onOk) onOk(); };
       const actionRow = footer === null ? null : (footer || React.createElement(React.Fragment, null,
         hostModalButton(cancelText || "取消", handleClose, "outline"),
-        hostModalButton(okText || "确定", handleOk, "primary", { disabled: okButtonProps?.disabled || confirmLoading })
+        hostModalButton(okText || "确定", handleOk, okButtonProps?.danger ? "danger" : "primary", { disabled: okButtonProps?.disabled || confirmLoading, danger: okButtonProps?.danger })
       ));
       const footerNode = Array.isArray(actionRow)
         ? React.createElement(React.Fragment, null, actionRow)
@@ -899,17 +900,17 @@ window.__ModuleLoader__.load({
 .ima-title-row{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}
 .ima-title-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ima-title-links>span[data-mpi-check]{display:inline-flex;align-items:center}
-.ima-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border:0.5px solid var(--dsw-alias-border-l3,#555);border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-primary,#eee);font:inherit;font-size:13px;line-height:20px;cursor:pointer;user-select:none;box-sizing:border-box;text-decoration:none;transition:border-color 120ms ease,color 120ms ease,background 120ms ease}
-.ima-btn:not(.is-primary){color:var(--dsw-alias-label-primary,#eee)}
-.ima-btn:hover:not(:disabled){border-color:var(--dsw-alias-border-l3,#555);color:var(--dsw-alias-label-primary,#fff);background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))}
-.ima-btn:focus-visible{outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4b7cff));outline-offset:0}
-.ima-btn:disabled,.ima-btn.is-disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.ima-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 12px;border:0.5px solid var(--dsw-alias-border-l3,#555);border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-primary,#eee);font:inherit;font-size:13px;line-height:20px;cursor:pointer;user-select:none;box-sizing:border-box;text-decoration:none;transition:border-color 120ms ease,color 120ms ease,background 120ms ease}
+.ima-btn:not(.is-primary):not(.ima-btn-danger){color:var(--dsw-alias-label-primary,#eee)!important}
+.ima-btn:hover:not(:disabled):not(.ima-btn-danger){border-color:var(--dsw-alias-border-l3,#666)!important;color:var(--dsw-alias-label-primary,#fff)!important;background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))!important}
+.ima-btn:focus-visible{outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4b7cff))!important;outline-offset:0!important}
+.ima-btn:disabled,.ima-btn.is-disabled{opacity:.4!important;cursor:not-allowed!important;pointer-events:none!important}
 .ima-btn.is-primary,.ima-bind-ready .ima-btn.is-primary{background:var(--dsw-alias-button-primary-fill,#f9fafb)!important;border-color:transparent!important;color:var(--dsw-alias-label-primary-foreground,#0f1115)!important}
 .ima-btn.is-primary *,.ima-bind-ready .ima-btn.is-primary *{color:inherit!important;fill:currentColor!important}
 .ima-btn.is-primary:hover:not(:disabled),.ima-bind-ready .ima-btn.is-primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,#ebeef2)!important;color:var(--dsw-alias-label-primary-foreground,#0f1115)!important}
 .ima-btn.is-primary:disabled,.ima-bind-ready .ima-btn.is-primary:disabled{opacity:.4!important;cursor:not-allowed!important}
-.ima-btn.is-block{width:100%}
-.ima-link-btn{height:28px;padding:0 10px;font-size:12px}
+.ima-btn.is-block{width:100%!important}
+.ima-link-btn{height:28px!important;padding:0 10px!important;font-size:12px!important}
 .ima-sub{margin:12px 0 0;max-width:none;color:var(--ima-muted);font-size:14px;line-height:22px;text-align:left}
 .ima-error{color:var(--ima-danger);font-size:12px;margin:0 0 12px}
 .ima-pending,.ima-page>.ima-alert,.ima-inspector .ima-alert{margin:0 0 12px}
@@ -2201,14 +2202,15 @@ window.__ModuleLoader__.load({
           h(CommandPermissionSettings, { value: draft.commandPermissions, onSave: commandPermissions => save({ commandPermissions }), t }),
           note && h("div", { className: note === "status.saved" ? "ima-save-note ok" : "ima-save-note" }, t(note)),
           h("div", { className: "ima-inspector-actions" },
-            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
-            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
-            h(Button, { variant: "outline", danger: true, disabled: Boolean(busy) || checking, onClick: () => {
+            h(Button, { variant: "outline", size: "sm", disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
+            h(Button, { variant: "outline", size: "sm", disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
+            h(Button, { variant: "outline", size: "sm", danger: true, disabled: Boolean(busy) || checking, onClick: () => {
               modal.confirm({
                 title: t("action.removeAccount"),
                 description: t("account.removeConfirm"),
                 okText: t("action.removeAccount"),
                 cancelText: t("action.cancel"),
+                okButtonProps: { danger: true },
                 onOk: () => onAction(account.id, "remove"),
               });
             } }, t("action.removeAccount")),

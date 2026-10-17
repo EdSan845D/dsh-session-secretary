@@ -52,7 +52,12 @@ test('飞书普通回复改用卡片 markdown，超过表格上限时拆成多�
   await channel.send('chat', text)
   assert.equal(calls.length, 2)
   assert.ok(calls.every((data) => data.msg_type === 'interactive'), JSON.stringify(calls))
-  assert.deepEqual(calls.map((data) => markdownTableOffsets(JSON.parse(data.content).elements[0].content).length), [5, 1])
+  // 必须使用 Schema 2.0 结构（schema: '2.0', body: { elements: [...] }），飞书客户端才能正常渲染 markdown 表格
+  assert.ok(calls.every((data) => {
+    const card = JSON.parse(data.content)
+    return card.schema === '2.0' && Array.isArray(card.body?.elements)
+  }), '飞书普通回复卡片必须符合 Schema 2.0 结构')
+  assert.deepEqual(calls.map((data) => markdownTableOffsets(JSON.parse(data.content).body.elements[0].content).length), [5, 1])
 })
 
 test('飞书卡片被拒时退回纯文本，正文不丢', async (t) => {

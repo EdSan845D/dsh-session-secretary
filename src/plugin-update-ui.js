@@ -1,7 +1,7 @@
 const UPDATE_HEADER = "x-michengai-plugin-update";
 const STYLE_ID = "michengai-plugin-update-ui";
 const updatePrimitives = (typeof require === "function" ? (function () { try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; } })() : {});
-const UpdatePrimitiveButton = typeof updatePrimitives.Button === "function" ? updatePrimitives.Button : function FallbackButton(props) {
+const UpdatePrimitiveButton = (typeof updatePrimitives.Button === "function" || (updatePrimitives.Button && typeof updatePrimitives.Button === "object" && typeof updatePrimitives.Button.render === "function")) ? updatePrimitives.Button : function FallbackButton(props) {
   const iconNode = props && props.icon ? React.createElement("span", { key: "icon", className: "ima-btn-icon", style: { display: "inline-flex", alignItems: "center" } }, props.icon) : null;
   const content = iconNode ? [iconNode, props && props.children] : (props && props.children);
   const classes = ["ima-btn", "ima-link-btn", props && props.className].filter(Boolean).join(" ");

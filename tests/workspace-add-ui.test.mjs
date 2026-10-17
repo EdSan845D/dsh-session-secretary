@@ -18,10 +18,18 @@ for (const mode of ['missing', 'empty', 'throw', 'reject', 'selected']) {
       { pickDirectory }, value => { open = value }, () => {}, value => { adding = value }, value => { path = value }, async value => { created.push(value) },
     )
     const pending = handler()
-    assert.equal(adding, true)
-    assert.equal(path, '')
     await pending
-    assert.deepEqual(created, mode === 'selected' ? ['D:\\Work'] : [])
+    if (mode === 'selected') {
+      assert.equal(adding, false, '原生选择器成功选择时不需要弹出手输路径框')
+      assert.deepEqual(created, ['D:\\Work'])
+    } else if (mode === 'empty') {
+      assert.equal(adding, false, '原生选择器取消时不需要弹出手输路径框')
+      assert.deepEqual(created, [])
+    } else {
+      assert.equal(adding, true, '无原生选择器或选择器异常时作为兜底弹出手输路径框')
+      assert.equal(path, '')
+      assert.deepEqual(created, [])
+    }
   })
 }
 

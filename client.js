@@ -1864,14 +1864,16 @@ window.__ModuleLoader__.load({
       };
       const onAddWorkspace = () => {
         setHint("");
-        setAdding(true);
-        setAddPath("");
         if (typeof props.pickDirectory === "function") {
-          // Web 宿主可能返回空路径；始终保留可见的手动输入入口。
           return Promise.resolve().then(() => props.pickDirectory()).then(picked => {
             if (typeof picked === "string" && picked.trim()) return addWorkspace(picked);
-          }).catch(() => { setAdding(true); });
+          }).catch(() => {
+            setAdding(true);
+            setAddPath("");
+          });
         }
+        setAdding(true);
+        setAddPath("");
       };
       const selectPermission = (next) => {
         if (next === permission) return;

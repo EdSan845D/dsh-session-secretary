@@ -66,8 +66,8 @@ WeChat is QR-only and DM-only, so the same WeChat account that scanned can talk 
 | Channel | Status | How to connect | You need |
 |---|---|---|---|
 | 🔔 **DingTalk** | ✅ Ready | QR, or Client ID / Secret | DingTalk open-platform bot; replies prefer AI Card |
-| 🐦 **Feishu** | ✅ Ready | QR only; creates the bot automatically | Feishu account |
-| 🌐 **Lark** | ✅ Ready | QR only | Lark account |
+| 🐦 **Feishu** | ✅ Ready | QR, or App ID / App Secret; QR creates the bot automatically | Feishu account, or a self-built bot with App ID / Secret |
+| 🌐 **Lark** | ✅ Ready | QR, or App ID / App Secret | Lark account, or a self-built bot with App ID / Secret |
 | 💬 **WeChat** | ✅ Ready* | Official iLink QR | Dedicated account recommended; DM only |
 | 🏢 **WeCom** | ✅ Ready | QR (recommended), or Bot ID / Secret | WeCom intelligent bot |
 | 🐧 **QQ** | ✅ Ready | QR, or AppID / AppSecret | QQ Open Platform bot, not a personal QQ account |
@@ -243,7 +243,7 @@ Open **Settings → IM Assistant**, select **Add account** under the target chan
 
 | Goal | Action | Notes |
 | --- | --- | --- |
-| Add an account | Select **Add account** under a channel, choose the account settings, then scan or enter credentials | The same channel can contain multiple accounts; Feishu / Lark / WeChat are QR-only, Telegram and Discord need a Bot Token, and Slack needs a Bot Token plus an App Token |
+| Add an account | Select **Add account** under a channel, choose the account settings, then scan or enter credentials | The same channel can contain multiple accounts; WeChat is QR-only, Feishu / Lark accept QR or App ID / App Secret, Telegram and Discord need a Bot Token, and Slack needs a Bot Token plus an App Token |
 | Change account settings | Expand the channel, select an account, then edit its workspace, model, reasoning effort, permission, or private-access mode in its settings dialog | Changes affect only that account and apply to its subsequent sessions immediately |
 | Pause receiving | Turn off **Receive messages** on the account row | Credentials and settings stay; only new inbound messages for that account pause |
 | Send work from IM | WeChat / Feishu / Lark / QQ QR scanners can DM immediately; DingTalk / WeCom scanners and other users need approval. Groups only need a mention | Each chat has its own channel session |

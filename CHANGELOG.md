@@ -7,6 +7,7 @@
 - Align modal confirmation dialogs for destructive actions (e.g., account removal) strictly with host danger button specifications (`variant="outline"`, red border and text, red hover background).
 - Revert modal bottom inspector action buttons to host default medium size (`md`, 36px height) to match Skills Manager layout standards.
 - Add CSS rule for `.ima-tag-info` to ensure info-state tags (such as official model checkpoint badges) render with the correct theme primary color instead of neutral gray.
+- Feishu and Lark can now be bound with a self-built bot's App ID / App Secret in addition to the existing QR flow. The App Secret is stored in the credential vault instead of the channel config file.
 
 ## 1.0.0 - 2026-10-17
 

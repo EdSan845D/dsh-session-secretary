@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0 - 2026-10-17
+
+- Supported hosts now match the skills plugin: DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, and `0.2.1-alpha.5`. Hosts before `0.2.0` are no longer supported. The version gate refuses to load the plugin, so it will not run; existing IM settings in the profile are not deleted. If you still use a `0.1.x` host, install plugin `0.1.78` instead of `@latest`.
+
 ## 0.1.78 - 2026-10-17
 
 - Support DSH `0.2.1-alpha.4` and `0.2.1-alpha.5` while retaining all existing supported versions; pin development `@deepseek-ai/dsh*` dependencies to host `0.2.1-alpha.5`. Cordis stays at `4.0.5-alpha.2`.

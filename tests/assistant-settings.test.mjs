@@ -32,12 +32,12 @@ test('DSH 子包依赖声明与客户端和服务端实际使用保持一致', (
     '@deepseek-ai/dsh-client-ui-slots',
     '@deepseek-ai/dsh-host-webserver',
   ]
-  const hostUnion = '0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5'
+  const hostUnion = '0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2'
   for (const packageName of dshPackages) {
     assert.equal(manifest.peerDependencies[packageName], hostUnion)
-    assert.equal(manifest.devDependencies[packageName], '0.2.1-alpha.5')
+    assert.equal(manifest.devDependencies[packageName], '0.2.1-rc.2')
   }
-  assert.equal(manifest.devDependencies['@deepseek-ai/cordis'], '4.0.5-alpha.2')
+  assert.equal(manifest.devDependencies['@deepseek-ai/cordis'], '4.0.5')
   assert.equal(
     manifest.peerDependencies['@deepseek-ai/dsh-client-runtime'],
     undefined,

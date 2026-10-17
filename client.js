@@ -899,15 +899,15 @@ window.__ModuleLoader__.load({
 .ima-title-row{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}
 .ima-title-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ima-title-links>span[data-mpi-check]{display:inline-flex;align-items:center}
-.ima-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border:0.5px solid var(--dsw-alias-border-l2,#494949);border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-1,transparent);color:var(--dsw-alias-label-primary,#eee);font:inherit;font-size:13px;line-height:20px;cursor:pointer;user-select:none;box-sizing:border-box;text-decoration:none;transition:border-color 120ms ease,color 120ms ease,background 120ms ease}
+.ima-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border:0.5px solid var(--dsw-alias-border-l3,#555);border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-primary,#eee);font:inherit;font-size:13px;line-height:20px;cursor:pointer;user-select:none;box-sizing:border-box;text-decoration:none;transition:border-color 120ms ease,color 120ms ease,background 120ms ease}
 .ima-btn:not(.is-primary){color:var(--dsw-alias-label-primary,#eee)}
 .ima-btn:hover:not(:disabled){border-color:var(--dsw-alias-border-l3,#555);color:var(--dsw-alias-label-primary,#fff);background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))}
-.ima-btn:focus-visible{outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:0}
-.ima-btn:disabled,.ima-btn.is-disabled{opacity:.5;cursor:default;pointer-events:none}
+.ima-btn:focus-visible{outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4b7cff));outline-offset:0}
+.ima-btn:disabled,.ima-btn.is-disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
 .ima-btn.is-primary,.ima-bind-ready .ima-btn.is-primary{background:var(--dsw-alias-button-primary-fill,#f9fafb)!important;border-color:transparent!important;color:var(--dsw-alias-label-primary-foreground,#0f1115)!important}
 .ima-btn.is-primary *,.ima-bind-ready .ima-btn.is-primary *{color:inherit!important;fill:currentColor!important}
 .ima-btn.is-primary:hover:not(:disabled),.ima-bind-ready .ima-btn.is-primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,#ebeef2)!important;color:var(--dsw-alias-label-primary-foreground,#0f1115)!important}
-.ima-btn.is-primary:disabled,.ima-bind-ready .ima-btn.is-primary:disabled{opacity:.45!important;cursor:default!important}
+.ima-btn.is-primary:disabled,.ima-bind-ready .ima-btn.is-primary:disabled{opacity:.4!important;cursor:not-allowed!important}
 .ima-btn.is-block{width:100%}
 .ima-link-btn{height:28px;padding:0 10px;font-size:12px}
 .ima-sub{margin:12px 0 0;max-width:none;color:var(--ima-muted);font-size:14px;line-height:22px;text-align:left}
@@ -1950,7 +1950,7 @@ window.__ModuleLoader__.load({
       return h("div", { className: "ima-account-settings" + (props.compact ? " compact" : "") },
         field("workspace", props.workspaceLabel || t("account.workspace"), items.length === 0
           ? h("div", null,
-              h(Button, { type: "primary", icon: h(PlusIcon), disabled: addBusy, onClick: onAddWorkspace }, t("composer.addWorkspace")),
+              h(Button, { variant: "primary", icon: h(PlusIcon), disabled: addBusy, onClick: onAddWorkspace }, t("composer.addWorkspace")),
               h("div", { className: "ima-picker-note warning" }, t("composer.workspaceRequired")),
             )
           : h(Select, {
@@ -2440,8 +2440,8 @@ window.__ModuleLoader__.load({
           message: t("pending.notice"),
           description: pending.map((p) => h("div", { key: p.channelId + p.userId, className: "ima-pending-row" },
             h("span", { style: { flex: 1 } }, (p.username || p.userId) + " · " + (accountLabel(allAccounts.find((item) => item.id === p.channelId), t) || p.channelId)),
-            h(Button, { onClick: () => onAction(p.channelId, "approve", { userId: p.userId }) }, t("action.approve")),
-            h(Button, { onClick: () => onAction(p.channelId, "deny", { userId: p.userId }) }, t("action.deny")),
+            h(Button, { variant: "primary", size: "sm", onClick: () => onAction(p.channelId, "approve", { userId: p.userId }) }, t("action.approve")),
+            h(Button, { variant: "outline", size: "sm", danger: true, onClick: () => onAction(p.channelId, "deny", { userId: p.userId }) }, t("action.deny")),
           )),
         }),
         channels == null

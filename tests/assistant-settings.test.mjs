@@ -471,6 +471,9 @@ test('账号页渠道行与账号行用网格对齐，表单单列', () => {
   assert.match(client, /h\(Button, \{ onClick: \(e\) => \{ e\.stopPropagation\(\); setEditing\(ch\.id\); \}/)
   assert.match(client, /h\(Button, \{ onClick: \(\) => \{ selectAccount\(account\.id\); setSettingsAccount\(account\.id\); \}/)
   assert.match(client, /variant: mappedVariant/);
+  assert.match(client, /function isHostComponent\(component\)/);
+  assert.match(client, /typeof component\.render === "function"/);
+  assert.doesNotMatch(client, /typeof PrimitiveButton === "function"/, '宿主 Button 是 forwardRef 对象，不能只用 typeof function 判断');
   assert.match(client, /PrimitiveButton/);
   assert.match(client, /className: "ima-model-effort"/)
   assert.match(client, /\.ima-model-effort\{display:grid;grid-template-columns:1fr 1fr/)

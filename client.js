@@ -13,6 +13,10 @@ window.__ModuleLoader__.load({
     const PrimitiveButton = primitives.Button;
     const HostMenu = primitives.Menu;
     const HostModal = primitives.Modal;
+    // 宿主 Button 由 forwardRef 包成对象，typeof 是 object，不是 function。
+    function isHostComponent(component) {
+      return typeof component === "function" || (!!component && typeof component === "object" && typeof component.render === "function");
+    }
     // 只关最上层。下层监听先注册，不是顶层就放行，避免一次 Escape 关掉弹窗和宿主设置。
     const modalLayers = [];
     // 0.1.7 把尺寸从图标名里拿掉了（IconEditOutlineRegular）。旧宿主仍导出 *16/*20。
@@ -151,12 +155,14 @@ window.__ModuleLoader__.load({
     }
     function hostModalButton(label, onClick, kind, extra) {
       const options = extra || {};
-      const variant = kind === "primary" ? "primary" : "outline";
-      if (typeof PrimitiveButton === "function") {
+      const variant = (kind === "primary" && !options.danger) ? "primary" : "outline";
+      const dangerClass = (kind === "danger" || options.danger) ? "ima-btn-danger" : "";
+      const className = [options.className, dangerClass].filter(Boolean).join(" ") || undefined;
+      if (isHostComponent(PrimitiveButton)) {
         return React.createElement(PrimitiveButton, {
           variant,
           disabled: options.disabled,
-          className: options.className,
+          className,
           onClick,
           type: "button",
         }, label);
@@ -164,7 +170,7 @@ window.__ModuleLoader__.load({
       return React.createElement(Button, {
         variant,
         disabled: options.disabled,
-        className: options.className,
+        className,
         onClick,
       }, label);
     }
@@ -280,6 +286,15 @@ window.__ModuleLoader__.load({
     }
     function Select(props) {
       const [open, setOpen] = useState(false);
+      const rootRef = useRef(null);
+
+      useEffect(() => {
+        if (!open) return undefined;
+        const width = rootRef.current?.getBoundingClientRect().width ?? 0;
+        if (width > 0) document.documentElement.style.setProperty("--ima-menu-width", `${Math.round(width)}px`);
+        return () => { document.documentElement.style.removeProperty("--ima-menu-width"); };
+      }, [open]);
+
       useEffect(() => {
         if (!open || typeof window === "undefined") return undefined;
         const layer = { owner: "select" };
@@ -340,11 +355,13 @@ window.__ModuleLoader__.load({
       const currentText = selectedOption ? selectedOption.label : (props.placeholder || props["aria-label"] || "");
 
       return React.createElement("div", {
+        ref: rootRef,
         className: "ima-menu-select-wrap " + (props.className || ""),
         style: props.style,
       },
         React.createElement(HostMenu, {
           open: open,
+          listClassName: ["ima-form-menu", props.listClassName].filter(Boolean).join(" "),
           onClose: () => setOpen(false),
           onSelect: (id) => {
             if (props.footer && props.footer.some((item) => String(item.value) === id)) {
@@ -441,14 +458,14 @@ window.__ModuleLoader__.load({
         }), content);
       }
 
-      if (typeof PrimitiveButton === "function") {
+      if (isHostComponent(PrimitiveButton)) {
         return React.createElement(PrimitiveButton, Object.assign({}, props, {
           variant: mappedVariant,
           size: mappedSize,
-          className: classes || undefined,
+          className: [className, danger ? "ima-btn-danger" : ""].filter(Boolean).join(" ") || undefined,
           disabled: props.disabled || loading,
-          icon: undefined,
-        }), content);
+          icon: loading ? undefined : icon,
+        }), loading ? createSpinner() : children);
       }
 
       return React.createElement("button", Object.assign({}, props, {
@@ -887,9 +904,9 @@ window.__ModuleLoader__.load({
 .ima-btn:hover:not(:disabled){border-color:var(--dsw-alias-border-l3,#555);color:var(--dsw-alias-label-primary,#fff);background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))}
 .ima-btn:focus-visible{outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:0}
 .ima-btn:disabled,.ima-btn.is-disabled{opacity:.5;cursor:default;pointer-events:none}
-.ima-btn.is-primary,.ima-bind-ready .ima-btn.is-primary{background:var(--dsw-alias-state-business-primary,#4176e6)!important;border-color:transparent!important;color:#fff!important}
-.ima-btn.is-primary *,.ima-bind-ready .ima-btn.is-primary *{color:#fff!important;fill:currentColor!important}
-.ima-btn.is-primary:hover:not(:disabled),.ima-bind-ready .ima-btn.is-primary:hover:not(:disabled){background:color-mix(in srgb, var(--dsw-alias-state-business-primary,#4176e6) 88%, #fff)!important;color:#fff!important}
+.ima-btn.is-primary,.ima-bind-ready .ima-btn.is-primary{background:var(--dsw-alias-button-primary-fill,#f9fafb)!important;border-color:transparent!important;color:var(--dsw-alias-label-primary-foreground,#0f1115)!important}
+.ima-btn.is-primary *,.ima-bind-ready .ima-btn.is-primary *{color:inherit!important;fill:currentColor!important}
+.ima-btn.is-primary:hover:not(:disabled),.ima-bind-ready .ima-btn.is-primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,#ebeef2)!important;color:var(--dsw-alias-label-primary-foreground,#0f1115)!important}
 .ima-btn.is-primary:disabled,.ima-bind-ready .ima-btn.is-primary:disabled{opacity:.45!important;cursor:default!important}
 .ima-btn.is-block{width:100%}
 .ima-link-btn{height:28px;padding:0 10px;font-size:12px}
@@ -1007,6 +1024,7 @@ window.__ModuleLoader__.load({
 .ima-enable-switch-thumb{display:block;width:16px;height:16px;border-radius:50%;corner-shape:round;background:var(--dsw-alias-label-primary-foreground,#fff);transition:transform 120ms ease;pointer-events:none}
 .ima-enable-switch[aria-checked=false] .ima-enable-switch-thumb{background:var(--dsw-alias-switch-thumb,#fff)}
 .ima-enable-switch[aria-checked=true] .ima-enable-switch-thumb{transform:translateX(16px)}
+.ima-form-menu{box-sizing:border-box;width:max(var(--ima-menu-width,144px),144px)!important;min-width:max(var(--ima-menu-width,144px),144px)!important;max-width:100%!important}
 .ima-menu-select-wrap,.ima-menu-select-wrap > *,.ima-menu-select-wrap span[class*="_root_"],.ima-menu-select-wrap .ima-menu-select-trigger,.ima-account-picker{display:flex!important;width:100%!important;min-width:0!important;box-sizing:border-box!important}
 .ima-menu-select-trigger{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:6px!important;width:100%!important;height:36px!important;padding:0 12px!important;border:0.5px solid var(--dsw-alias-border-l2,#494949)!important;border-radius:var(--dsw-radius-sm,8px)!important;background:var(--dsw-alias-bg-layer-1,transparent)!important;color:var(--dsw-alias-label-primary,#eee)!important;font:inherit!important;font-size:13px!important;cursor:pointer!important;user-select:none!important;box-sizing:border-box!important;transition:border-color 120ms ease,background 120ms ease!important}
 .ima-menu-select-trigger:hover:not(:disabled){border-color:var(--dsw-alias-border-l3,#666)!important;background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))!important}
@@ -1802,6 +1820,29 @@ window.__ModuleLoader__.load({
       );
     }
 
+    function formatProviderLabel(provider, defaultLabel, modelT) {
+      if (provider === "deepseek-account") {
+        const localized = modelT("provider.account");
+        if (localized && localized !== "provider.account") return localized;
+      }
+      return defaultLabel;
+    }
+
+    function orderProviders(left, right) {
+      const leftRank = left === "deepseek-account" ? 0 : left === "deepseek-official" ? 1 : 2;
+      const rightRank = right === "deepseek-account" ? 0 : right === "deepseek-official" ? 1 : 2;
+      return leftRank - rightRank;
+    }
+
+    function renderModelOptionLabel(item) {
+      const isOfficialFlash = (item.provider === "deepseek-account" || item.provider === "deepseek-official") && item.model === "deepseek-flash";
+      if (!isOfficialFlash) return item.label;
+      return React.createElement("span", { style: { display: "inline-flex", alignItems: "center", gap: 6 } },
+        React.createElement("span", null, item.label),
+        React.createElement(Tag, { color: "info" }, "1017")
+      );
+    }
+
     function AccountSettingsPicker(props) {
       const t = props.t || fallbackT;
       const modelT = props.modelT || ((key) => key);
@@ -1822,19 +1863,22 @@ window.__ModuleLoader__.load({
       const permission = value.permission || "";
       const privateAccess = value.privateAccess === "all" ? "all" : "approved";
       const workspace = items.find((item) => item.path === cwd);
-      const modelGroups = providers.map((item) => ({
-        id: item.id,
-        name: item.name || item.id,
-        models: (item.models || []).map((entry) => ({
-          value: item.id + "::" + entry.id,
-          provider: item.id,
-          providerName: item.name || item.id,
-          model: entry.id,
-          label: entry.name || entry.id,
-          description: entry.description,
-          reasoning: entry.reasoning,
-        })),
-      })).filter((item) => item.models.length > 0);
+      const modelGroups = providers.map((item) => {
+        const providerName = formatProviderLabel(item.id, item.name || item.id, modelT);
+        return {
+          id: item.id,
+          name: providerName,
+          models: (item.models || []).map((entry) => ({
+            value: item.id + "::" + entry.id,
+            provider: item.id,
+            providerName: providerName,
+            model: entry.id,
+            label: entry.name || entry.id,
+            description: entry.description,
+            reasoning: entry.reasoning,
+          })),
+        };
+      }).filter((item) => item.models.length > 0).sort((left, right) => orderProviders(left.id, right.id));
       const models = modelGroups.flatMap((item) => item.models);
       const currentModel = models.find((item) => item.provider === provider && item.model === model);
       const reasoning = currentModel && currentModel.reasoning;
@@ -1946,7 +1990,7 @@ window.__ModuleLoader__.load({
             popupMatchSelectWidth: false,
             options: modelGroups.map((group) => ({
               label: group.name,
-              options: group.models.map((item) => ({ value: item.value, label: item.label })),
+              options: group.models.map((item) => ({ value: item.value, label: renderModelOptionLabel(item) })),
             })),
             notFoundContent: modelT("empty.models"),
             onChange: (next) => {
@@ -2159,7 +2203,7 @@ window.__ModuleLoader__.load({
           h("div", { className: "ima-inspector-actions" },
             h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
             h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
-            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: () => {
+            h(Button, { variant: "outline", danger: true, disabled: Boolean(busy) || checking, onClick: () => {
               modal.confirm({
                 title: t("action.removeAccount"),
                 description: t("account.removeConfirm"),

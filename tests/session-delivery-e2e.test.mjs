@@ -38,7 +38,8 @@ for (const switchCommand of ['/new', '/session session-B']) {
           message: {
             create: async ({ data }) => {
               const content = JSON.parse(data.content)
-              outgoing.push({ chatId: data.receive_id, text: content.text ?? content.elements.filter(item => item.tag === 'markdown').map(item => item.content).join('\n') })
+              const elements = content.body?.elements ?? content.elements ?? []
+              outgoing.push({ chatId: data.receive_id, text: content.text ?? elements.filter(item => item.tag === 'markdown').map(item => item.content).join('\n') })
               return { code: 0, data: { message_id: 'out-' + sequence++ } }
             },
             patch: async () => ({ code: 0 }),

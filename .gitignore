@@ -32,6 +32,8 @@ docs/07-迭代归档/2026/*
 *.log
 *.tgz
 test-shots/
+.codegraph/
+.dsh-host-diff/
 .env
 .env.*
 secrets.json

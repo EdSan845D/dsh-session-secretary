@@ -239,7 +239,7 @@ The settings title shows the installed version and a **Check for updates** butto
 
 ## Usage
 
-Open **Settings → IM Assistant**, select **Add account** under the target channel, then choose that account's workspace, model, permission, and private-access mode.
+Open **Settings → IM Assistant**, select **Add account** under the target channel, then choose that account's workspace, model, permission, and private-access mode. To register a new workspace, click **Add workspace…** in the dropdown footer to invoke the system folder picker (manual path inputs are disallowed); hosts lacking native folder pickers show "This Host cannot create workspaces" (upgrade to `0.2.0-rc.1` or newer, or add via the host sidebar).
 
 | Goal | Action | Notes |
 | --- | --- | --- |

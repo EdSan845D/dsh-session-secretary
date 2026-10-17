@@ -213,9 +213,6 @@ window.__ModuleLoader__.load({
           onClose: handleClose,
           closeLabel: closeLabel || "Close",
           className,
-          width,
-          zIndex,
-          keyboard: false,
           footer: footerNode,
           ...hostDescription,
         }, children);

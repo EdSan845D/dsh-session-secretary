@@ -152,26 +152,24 @@ window.__ModuleLoader__.load({
     function hostModalButton(label, onClick, kind, extra) {
       const options = extra || {};
       const variant = kind === "primary" ? "primary" : "outline";
-      const className = [kind === "danger" ? "ima-n-danger-button" : "", options.className].filter(Boolean).join(" ") || undefined;
       if (typeof PrimitiveButton === "function") {
         return React.createElement(PrimitiveButton, {
           variant,
           disabled: options.disabled,
-          className,
+          className: options.className,
           onClick,
           type: "button",
         }, label);
       }
       return React.createElement(Button, {
         variant,
-        danger: kind === "danger",
         disabled: options.disabled,
-        className,
+        className: options.className,
         onClick,
       }, label);
     }
     function Modal(props) {
-      const { open, title, onCancel, onOk, okText, cancelText, okButtonProps, confirmLoading, width = 640, zIndex = 1100, children, footer, className, keyboard, maskClosable, closeLabel } = props;
+      const { open, title, onCancel, onOk, okText, cancelText, okButtonProps, confirmLoading, width = 640, zIndex = 1100, children, footer, className, keyboard, maskClosable, closeLabel, description } = props;
       const requestClose = onCancel || props.onClose;
       const closeRef = useRef(requestClose);
       closeRef.current = requestClose;
@@ -200,13 +198,14 @@ window.__ModuleLoader__.load({
       if (!open) return null;
       const handleClose = () => { if (closeRef.current) closeRef.current(); };
       const handleOk = () => { if (onOk) onOk(); };
-      const actionRow = footer === null ? null : (footer || React.createElement("div", { className: "ima-modal-actions" },
+      const actionRow = footer === null ? null : (footer || React.createElement(React.Fragment, null,
         hostModalButton(cancelText || "取消", handleClose, "outline"),
-        hostModalButton(okText || "确定", handleOk, okButtonProps?.danger ? "danger" : "primary", { disabled: okButtonProps?.disabled || confirmLoading })
+        hostModalButton(okText || "确定", handleOk, "primary", { disabled: okButtonProps?.disabled || confirmLoading })
       ));
       const footerNode = Array.isArray(actionRow)
-        ? React.createElement("div", { className: "ima-modal-actions" }, actionRow)
+        ? React.createElement(React.Fragment, null, actionRow)
         : actionRow;
+      const hostDescription = typeof description === "string" && description !== "" ? { description } : {};
       if (typeof HostModal === "function") {
         return h(HostModal, {
           open: true,
@@ -218,6 +217,7 @@ window.__ModuleLoader__.load({
           zIndex,
           keyboard: false,
           footer: footerNode,
+          ...hostDescription,
         }, children);
       }
       const allowMask = maskClosable !== false && modalLayers[modalLayers.length - 1] === layerRef.current;
@@ -233,7 +233,9 @@ window.__ModuleLoader__.load({
                 )
               )
             ),
-            React.createElement("div", { className: "ima-modal-body" }, children),
+            React.createElement("div", { className: "ima-modal-body" },
+              description ? React.createElement("p", { className: "ima-confirm-content" }, description) : null,
+              children),
             footerNode && React.createElement("div", { className: "ima-modal-footer-wrap" }, footerNode)
           )
         )
@@ -246,6 +248,7 @@ window.__ModuleLoader__.load({
         open: true,
         title: config.title,
         width: 480,
+        description: config.description,
         onCancel: () => { setConfig(null); },
         onOk: () => {
           const p = config.onOk?.();
@@ -258,7 +261,7 @@ window.__ModuleLoader__.load({
         okText: config.okText,
         cancelText: config.cancelText,
         okButtonProps: config.okButtonProps,
-      }, React.createElement("p", { className: "ima-confirm-content" }, config.content)) : null;
+      }, config.content ? React.createElement("p", { className: "ima-confirm-content" }, config.content) : null) : null;
       return [{ confirm }, holder];
     }
     Modal.useModal = useModal;
@@ -2128,13 +2131,12 @@ window.__ModuleLoader__.load({
           h("div", { className: "ima-inspector-actions" },
             h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
             h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
-            h(Button, { variant: "outline", className: "ima-n-danger-button", disabled: Boolean(busy) || checking, onClick: () => {
+            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: () => {
               modal.confirm({
                 title: t("action.removeAccount"),
-                content: t("account.removeConfirm"),
+                description: t("account.removeConfirm"),
                 okText: t("action.removeAccount"),
                 cancelText: t("action.cancel"),
-                okButtonProps: { danger: true },
                 onOk: () => onAction(account.id, "remove"),
               });
             } }, t("action.removeAccount")),
@@ -2510,11 +2512,8 @@ window.__ModuleLoader__.load({
 .ima-n-menu button.danger:hover{background:var(--dsw-alias-interactive-bg-hover-danger,rgba(248,81,73,.12))}
 .ima-n-rename{flex:1;min-width:0;margin:0 6px 0 4px;border:.5px solid var(--dsw-alias-border-l4);border-radius:4px;outline:none;background:var(--dsw-alias-button-elevated-fill,rgba(255,255,255,.04));color:inherit;padding:0 2px;font-size:14px;line-height:20px}
 .ima-n-dialog-actions{display:flex;justify-content:flex-end;gap:8px}
-.ima-n-dialog-copy{margin:0;color:var(--dsw-alias-label-secondary);font-size:14px;line-height:22px}
 .ima-n-dialog-status{margin-top:12px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}
 .ima-n-dialog-error{margin-top:12px;color:var(--dsw-alias-state-error-primary,#f85149);font-size:13px;line-height:20px}
-.ima-n-danger-button{color:var(--dsw-alias-state-error-primary,#f85149)!important;border-color:var(--dsw-alias-state-error-primary,#f85149)!important}
-.ima-n-danger-button:hover{background:var(--dsw-alias-interactive-bg-hover-danger,rgba(248,81,73,.12))!important}
 .ima-n-restore{flex:none;border:0;background:transparent;color:var(--dsw-alias-label-secondary,#c9cdd4);font:12px/16px inherit;padding:2px 4px;cursor:pointer}`;
 
     function NativeSvg(viewBox, size, children) {
@@ -3219,12 +3218,12 @@ window.__ModuleLoader__.load({
           onClose: () => { if (!archiveGroupBusy) { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); } },
           closeLabel: t("rail.archiveGroupClose"),
           title: t("rail.archiveGroup"),
-          footer: h("div", { className: "ima-n-dialog-actions" },
+          description: archiveGroupTarget ? t("rail.archiveGroupDescription", { name: archiveGroupTarget.name, count: archiveGroupTarget.sessionIds.length }) : "",
+          footer: h(React.Fragment, null,
             hostModalButton(t("rail.archiveGroupCancel"), () => { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); }, "outline", { disabled: archiveGroupBusy }),
-            hostModalButton(t("rail.archiveGroupConfirm"), confirmArchiveGroup, "danger", { disabled: archiveGroupBusy }),
+            hostModalButton(t("rail.archiveGroupConfirm"), confirmArchiveGroup, "primary", { disabled: archiveGroupBusy }),
           ),
         },
-          h("p", { className: "ima-n-dialog-copy" }, archiveGroupTarget ? t("rail.archiveGroupDescription", { name: archiveGroupTarget.name, count: archiveGroupTarget.sessionIds.length }) : ""),
           archiveGroupBusy && h("div", { className: "ima-n-dialog-status", role: "status" }, t("rail.archiveGroupPending")),
           archiveGroupError && h("div", { className: "ima-n-dialog-error", role: "alert" }, t("rail.archiveGroupFailed", { message: archiveGroupError })),
         ),
@@ -3234,12 +3233,12 @@ window.__ModuleLoader__.load({
           onClose: () => { if (!stopArchiveBusy) { setStopArchiveTarget(undefined); setStopArchiveError(undefined); } },
           closeLabel: t("action.cancel"),
           title: t("rail.stopArchive"),
-          footer: h("div", { className: "ima-n-dialog-actions" },
+          description: stopArchiveTarget ? t(stopArchiveTarget.group ? "rail.stopArchiveGroupDescription" : "rail.stopArchiveDescription", { name: stopArchiveTarget.title }) : "",
+          footer: h(React.Fragment, null,
             hostModalButton(t("action.cancel"), () => { setStopArchiveTarget(undefined); setStopArchiveError(undefined); }, "outline", { disabled: stopArchiveBusy }),
-            hostModalButton(t("rail.stopArchiveConfirm"), confirmStopArchive, "danger", { disabled: stopArchiveBusy }),
+            hostModalButton(t("rail.stopArchiveConfirm"), confirmStopArchive, "primary", { disabled: stopArchiveBusy }),
           ),
         },
-          h("p", { className: "ima-n-dialog-copy" }, stopArchiveTarget ? t(stopArchiveTarget.group ? "rail.stopArchiveGroupDescription" : "rail.stopArchiveDescription", { name: stopArchiveTarget.title }) : ""),
           stopArchiveBusy && h("div", { className: "ima-n-dialog-status", role: "status" }, t("rail.stopArchivePending")),
           stopArchiveError && h("div", { className: "ima-n-dialog-error", role: "alert" }, t("rail.archiveFailed")),
         ),
@@ -3249,12 +3248,12 @@ window.__ModuleLoader__.load({
           onClose: () => { if (!deleteBusy) { setDeleteTarget(undefined); setDeleteError(undefined); } },
           closeLabel: t("rail.deleteSessionClose"),
           title: t("rail.deleteSession"),
-          footer: h("div", { className: "ima-n-dialog-actions" },
+          description: deleteTarget ? t("rail.deleteSessionDescription", { name: deleteTarget.title }) : "",
+          footer: h(React.Fragment, null,
             hostModalButton(t("rail.deleteSessionCancel"), () => { setDeleteTarget(undefined); setDeleteError(undefined); }, "outline", { disabled: deleteBusy }),
-            hostModalButton(t("rail.deleteSessionConfirm"), confirmDelete, "danger", { disabled: deleteBusy }),
+            hostModalButton(t("rail.deleteSessionConfirm"), confirmDelete, "primary", { disabled: deleteBusy }),
           ),
         },
-          h("p", { className: "ima-n-dialog-copy" }, deleteTarget ? t("rail.deleteSessionDescription", { name: deleteTarget.title }) : ""),
           deleteBusy && h("div", { className: "ima-n-dialog-status", role: "status" }, t("rail.deleteSessionPending")),
           deleteError && h("div", { className: "ima-n-dialog-error", role: "alert" }, t("rail.deleteSessionFailed", { message: deleteError })),
         ),

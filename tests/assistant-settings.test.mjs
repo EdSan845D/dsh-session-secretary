@@ -49,6 +49,17 @@ test('DSH 子包依赖声明与客户端和服务端实际使用保持一致', (
   assert.equal(manifest.devDependencies['react-dom'], '^18.3.1')
 })
 
+test('client.js 依赖的宿主模块必须在 dsh.client.inject 中声明', () => {
+  // ModuleLoader 只解析 manifest 声明的宿主模块。漏声明时 require 会走 catch 返回 {}，
+  // 组件拿到 undefined 类型后在渲染期直接崩溃（primitives 就是这样漏掉的）。
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  const injected = new Set(manifest.dsh?.client?.inject || [])
+  const required = [...client.matchAll(/require\("(@deepseek-ai\/[^"]+)"\)/g)].map((match) => match[1])
+  assert.ok(required.length > 0, 'client.js 应至少依赖一个宿主模块')
+  for (const name of new Set(required)) assert.ok(injected.has(name), `${name} 未在 dsh.client.inject 中声明`)
+})
+
 function makeManager(t, ctx = {}) {
   const stateDir = mkdtempSync(join(tmpdir(), 'im-connect-assistant-'))
   const permissionPresets = {

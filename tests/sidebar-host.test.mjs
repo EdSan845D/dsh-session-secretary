@@ -34,7 +34,7 @@ test('任务页包裹官方 WorkspaceBrowser，不换掉原生树', () => {
 test('原生任务树保留 Host 的 workspace 翻译器', () => {
   assert.match(client, /const officialT = props\.officialT \|\| t/)
   assert.match(client, /officialProps = Object\.assign\(\{\}, props, \{ useSessions: useTaskSessions, t: officialT, openSession, open: openSession \}\)/)
-  assert.match(client, /return h\(AntdProvider, null, h\(SessionSwitcher, Object\.assign\(\{\}, props, \{ t, officialT: props\.t, openChannelSettings \}\)\)\)/)
+  assert.match(client, /return h\(HostThemeProvider, null, h\(SessionSwitcher, Object\.assign\(\{\}, props, \{ t, officialT: props\.t, openChannelSettings \}\)\)\)/)
   assert.doesNotMatch(client, /officialProps = Object\.assign\(\{\}, props, \{ useSessions: useTaskSessions, t \}\)/)
 })
 
@@ -89,9 +89,8 @@ test('客户端模块按完整包名注册，避免 client-modules 加载失败'
   assert.match(bundled, /id:\s*"@michengai\/dsh-im-connect"/)
   assert.doesNotMatch(bundled, /id:\s*"dsh-im-connect"/)
 })
-test('发布产物把 antd 打进包，不再 require 宿主没有的 antd', () => {
-  assert.match(bundled, /const __imAntdBundle = __imAntdModule\.exports/)
-  assert.match(client, /const antd = __imAntdBundle\.antd/)
+test('客户端产物彻底移除 antd，不再打包或 require antd', () => {
+  assert.doesNotMatch(bundled, /const antd\b|from ['"]antd|require\(['"]antd/)
   assert.doesNotMatch(client, /require\("antd"\)/)
   assert.doesNotMatch(client, /require\("antd\//)
 })

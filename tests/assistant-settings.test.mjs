@@ -32,12 +32,12 @@ test('DSH 子包依赖声明与客户端和服务端实际使用保持一致', (
     '@deepseek-ai/dsh-client-ui-slots',
     '@deepseek-ai/dsh-host-webserver',
   ]
-  const hostUnion = '0.1.2-rc.1 || 0.1.5-rc.1 || 0.1.5-rc.2 || 0.1.5-rc.3 || 0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.2 || 0.2.1-alpha.3'
+  const hostUnion = '0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2'
   for (const packageName of dshPackages) {
     assert.equal(manifest.peerDependencies[packageName], hostUnion)
-    assert.equal(manifest.devDependencies[packageName], '0.2.1-alpha.3')
+    assert.equal(manifest.devDependencies[packageName], '0.2.1-rc.2')
   }
-  assert.equal(manifest.devDependencies['@deepseek-ai/cordis'], '4.0.5-alpha.2')
+  assert.equal(manifest.devDependencies['@deepseek-ai/cordis'], '4.0.5')
   assert.equal(
     manifest.peerDependencies['@deepseek-ai/dsh-client-runtime'],
     undefined,
@@ -45,8 +45,19 @@ test('DSH 子包依赖声明与客户端和服务端实际使用保持一致', (
   )
   assert.equal(manifest.dependencies?.antd, undefined)
   assert.equal(manifest.dependencies?.['react-dom'], undefined)
-  assert.equal(manifest.devDependencies.antd, '^6.6.5')
+  assert.equal(manifest.devDependencies?.antd, undefined, '彻底移除 antd 开发依赖')
   assert.equal(manifest.devDependencies['react-dom'], '^18.3.1')
+})
+
+test('client.js 依赖的宿主模块必须在 dsh.client.inject 中声明', () => {
+  // ModuleLoader 只解析 manifest 声明的宿主模块。漏声明时 require 会走 catch 返回 {}，
+  // 组件拿到 undefined 类型后在渲染期直接崩溃（primitives 就是这样漏掉的）。
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  const injected = new Set(manifest.dsh?.client?.inject || [])
+  const required = [...client.matchAll(/require\("(@deepseek-ai\/[^"]+)"\)/g)].map((match) => match[1])
+  assert.ok(required.length > 0, 'client.js 应至少依赖一个宿主模块')
+  for (const name of new Set(required)) assert.ok(injected.has(name), `${name} 未在 dsh.client.inject 中声明`)
 })
 
 function makeManager(t, ctx = {}) {
@@ -250,7 +261,7 @@ test('添加账号使用 Host 风格选择器且二维码按需生成', () => {
   assert.match(client, /h\(AccountSettingsPicker, \{[\s\S]*showAutoNameNote: true/)
   const bind = client.slice(client.indexOf('function BindModal'), client.indexOf('function AccountSettingsPicker'))
   assert.doesNotMatch(bind, /compact: true/, '新增账号应使用和设置页相同的两列布局')
-  assert.match(bind, /width: 640/)
+  assert.match(bind, /width: 720/)
   assert.match(client, /function mainSessionModel\(state\)/)
   assert.match(client, /modelSelection/)
   assert.match(client, /readMainSessionModel: \(\) => readMainSessionModel\(ctx\)/)
@@ -294,7 +305,7 @@ test('渠道分组只显示账号数量，账号子行保留状态和独立操�
 test('账号详情操作按钮允许换行，保持标签可读', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /\.ima-inspector-actions\{[^}]*flex-wrap:wrap/)
-  assert.match(client, /\.ima-inspector-actions \.ant-btn\{[^}]*flex:none[^}]*white-space:nowrap/)
+  assert.match(client, /\.ima-inspector-actions>button\{[^}]*flex:none[^}]*white-space:nowrap/)
 })
 
 test('企业微信侧边栏小图标移除白色应用底板并放大有效标记', () => {
@@ -313,6 +324,15 @@ test('账号弹窗使用 Ant Modal，不再自制遮罩', () => {
   assert.doesNotMatch(client, /function AccountModalLayer/)
   assert.doesNotMatch(client, /ima-page ima-mask/)
   assert.doesNotMatch(client, /h\("div", \{ className: "ima-mask"/)
+})
+
+test('新增与设置弹窗对齐定时任务宽度 720px，工作区下拉支持 footer 新增工作区', () => {
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.match(client, /\.ima-bind-modal,\.ima-account-modal\{width:min\(720px,100%\) !important/)
+  assert.match(client, /className: "ima-bind-modal",\s*title:[^,]*,[\s\S]*?width: 720/)
+  assert.match(client, /className: "ima-account-modal",\s*title:[^,]*,[\s\S]*?width: 720/)
+  assert.match(client, /footer:\s*\[\{\s*value:\s*"add-workspace",\s*label:\s*t\("composer\.addWorkspace"\)/)
+  assert.match(client, /onFooter:\s*\(\)\s*=>\s*\{\s*onAddWorkspace\(\);\s*\}/)
 })
 
 test('账号弹窗继承成功色变量，已连接和诊断通过用绿色 Tag', () => {
@@ -374,7 +394,13 @@ test('IM 自有界面注册双语词典并随 Host 语言刷新', () => {
   assert.match(client, /t\("action\.addAccount"\)/)
   assert.match(client, /t\("account\.privateAccess"\)/)
   assert.match(client, /t\("account\.receive"\)/)
-  assert.match(client, /content: t\("account\.removeConfirm"\)/)
+  assert.match(client, /description: t\("account\.removeConfirm"\)/)
+  assert.doesNotMatch(client, /okButtonProps: \{ danger: true \}/)
+  assert.doesNotMatch(client, /hostModalButton\([^)]*"danger"/)
+  assert.match(client, /description: archiveGroupTarget \? t\("rail\.archiveGroupDescription"/)
+  assert.match(client, /description: stopArchiveTarget \? t\(stopArchiveTarget\.group \? "rail\.stopArchiveGroupDescription" : "rail\.stopArchiveDescription"/)
+  assert.match(client, /description: deleteTarget \? t\("rail\.deleteSessionDescription"/)
+  assert.doesNotMatch(client, /ima-n-danger-button/)
   assert.match(client, /function accountLabel\(account, t\)/)
   assert.match(client, /t\("error\.detailsInLog"\)/)
 
@@ -390,17 +416,19 @@ test('IM 自有界面注册双语词典并随 Host 语言刷新', () => {
 test('设置标题旁提供项目主页与问题反馈入口', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /className: "ima-title-row"/)
-  assert.match(client, /href: "https:\/\/github\.com\/MichengAI\/dsh-im-connect"/)
-  assert.match(client, /href: "https:\/\/github\.com\/MichengAI\/dsh-im-connect\/issues"/)
+  assert.match(client, /window\.open\("https:\/\/github\.com\/MichengAI\/dsh-im-connect", "_blank", "noreferrer"\)/)
+  assert.match(client, /window\.open\("https:\/\/github\.com\/MichengAI\/dsh-im-connect\/issues", "_blank", "noreferrer"\)/)
   assert.match(client, /function GithubMark16\(\)/)
-  assert.match(client, /target: "_blank", rel: "noreferrer"/)
   assert.match(client, /"settings\.viewProject": "GitHub"/)
   assert.match(client, /"settings\.feedback": "问题反馈"/)
   assert.match(client, /"settings\.feedback": "Issues"/)
   assert.match(client, /className: "ima-title-links"/)
-  assert.match(client, /size: "small", shape: "default", href: "https:\/\/github\.com\/MichengAI\/dsh-im-connect"/)
-  assert.match(client, /size: "small", shape: "default", href: "https:\/\/github\.com\/MichengAI\/dsh-im-connect\/issues"/)
-  assert.match(client, /\.ima-title-links\{display:inline-flex;align-items:center;gap:8px/)
+  assert.match(client, /variant: "outline"[\s\S]*?size: "sm"[\s\S]*?"aria-label": t\("settings\.viewProject"\)/)
+  assert.match(client, /variant: "outline"[\s\S]*?size: "sm"[\s\S]*?"aria-label": t\("settings\.feedback"\)/)
+  assert.match(client, /\.ima-title-links\{display:flex;align-items:center;gap:8px/)
+  assert.match(client, /installSettingsNavIcon\(ctx, \(\) => t\("settings\.label"\)\)/)
+  assert.match(client, /data-ima-nav-icon/)
+  assert.match(client, /\.ima-btn\{display:inline-flex;align-items:center;justify-content:center/)
   assert.match(client, /@media\(max-width:720px\)\{\.ima-title-row\{flex-wrap:wrap\}\}/)
 })
 
@@ -422,14 +450,14 @@ test('设置页账号行和账号设置都能填写名称备注', () => {
   assert.doesNotMatch(accountPage, /名称备注|留空恢复自动名称/)
 })
 
-test('Ant 亮暗跟随宿主 html/body 的 data-ds-dark-theme', () => {
+test('界面亮暗跟随宿主 html/body 的 data-ds-dark-theme，不再引入 Ant 算法', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /function hostIsDark\(\)/)
   assert.match(client, /document\.documentElement\.hasAttribute\("data-ds-dark-theme"\)/)
   assert.match(client, /document\.body\.hasAttribute\("data-ds-dark-theme"\)/)
   assert.match(client, /function useHostDark\(\)/)
   assert.match(client, /attributeFilter: \["data-ds-dark-theme"\]/)
-  assert.match(client, /algorithm: dark \? theme\.darkAlgorithm : theme\.defaultAlgorithm/)
+  assert.doesNotMatch(client, /theme\.darkAlgorithm/)
   assert.doesNotMatch(client, /function hostDarkTheme\(/)
 })
 
@@ -438,11 +466,12 @@ test('账号页渠道行与账号行用网格对齐，表单单列', () => {
   assert.match(client, /className: "ima-platform-meta"/)
   assert.match(client, /\.ima-platform-head\{display:grid;grid-template-columns:auto minmax\(0,1fr\) auto/)
   assert.match(client, /\.ima-account-row\{display:grid;grid-template-columns:minmax\(0,1fr\) auto auto auto/)
-  assert.match(client, /\.ima-account-settings\{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px\}/)
+  assert.match(client, /\.ima-account-settings\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\);gap:14px 16px/)
   assert.match(client, /\.ima-account-settings\.compact\{grid-template-columns:1fr\}/)
   assert.match(client, /h\(Button, \{ onClick: \(e\) => \{ e\.stopPropagation\(\); setEditing\(ch\.id\); \}/)
   assert.match(client, /h\(Button, \{ onClick: \(\) => \{ selectAccount\(account\.id\); setSettingsAccount\(account\.id\); \}/)
-  assert.match(client, /shape: "round", size: "middle"/)
+  assert.match(client, /variant: mappedVariant/);
+  assert.match(client, /PrimitiveButton/);
   assert.match(client, /className: "ima-model-effort"/)
   assert.match(client, /\.ima-model-effort\{display:grid;grid-template-columns:1fr 1fr/)
   assert.doesNotMatch(client, /field\("workspace",[\s\S]*?\}\), true\)/)

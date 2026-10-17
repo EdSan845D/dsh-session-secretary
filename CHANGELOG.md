@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0 - 2026-10-17
+
+- Supported hosts now match the skills plugin: DeepSeek Harness `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and `0.2.1-rc.2`. Hosts `0.2.1-alpha.1` through `0.2.1-alpha.5`, and anything before `0.2.0`, are refused by the version gate, so the plugin will not run; existing IM settings in the profile are not deleted. If you still use a `0.1.x` host, install plugin `0.1.78` instead of `@latest`. This is not “every release after `0.2.0`”: stable `0.2.0` and any prerelease outside this list are refused too.
+- Widen channel binding and account settings dialogs to `720px`, aligning with Automation to prevent cramped form layouts.
+- Add footer action to workspace select dropdown with a divider. Adding workspaces now strictly uses the host native system directory picker without manual path inputs, automatically creating and selecting the picked workspace. Hosts without native picker capabilities show "This Host cannot create workspaces" (upgrade to one of the supported host releases listed in Requirements, or add via the host sidebar).
+- Top action buttons ("GitHub", "Issues", "Check for updates") now strictly match Skills Manager's host outline small button styles and icon layouts, removing custom size and color overrides from update button.
+
+## 0.1.78 - 2026-10-17
+
+- Support DSH `0.2.1-alpha.4` and `0.2.1-alpha.5` while retaining all existing supported versions; pin development `@deepseek-ai/dsh*` dependencies to host `0.2.1-alpha.5`. Cordis stays at `4.0.5-alpha.2`.
+- No production plugin API breaks. Declared host packages have no removed or renamed exports from `0.2.1-alpha.3` to `0.2.1-alpha.5`. Peer still includes `0.1.2-rc.1` and the `0.1.5` release candidates, so the older icon, slot, session-open, and file-read paths stay.
+
 ## 0.1.77 - 2026-10-15
 
 - Fix duplicated question option lists in native-button prompts for WeCom, Feishu/Lark, DingTalk, Telegram, Discord, and Slack. Keep option descriptions, multi-select checkmarks and submission buttons, ordinary menus, approvals, and text fallback intact.

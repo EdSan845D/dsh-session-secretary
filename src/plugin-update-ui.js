@@ -1,8 +1,25 @@
 const UPDATE_HEADER = "x-michengai-plugin-update";
 const STYLE_ID = "michengai-plugin-update-ui";
+const updatePrimitives = (typeof require === "function" ? (function () { try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; } })() : {});
+const UpdatePrimitiveButton = typeof updatePrimitives.Button === "function" ? updatePrimitives.Button : function FallbackButton(props) {
+  const iconNode = props && props.icon ? React.createElement("span", { key: "icon", className: "ima-btn-icon", style: { display: "inline-flex", alignItems: "center" } }, props.icon) : null;
+  const content = iconNode ? [iconNode, props && props.children] : (props && props.children);
+  const classes = ["ima-btn", "ima-link-btn", props && props.className].filter(Boolean).join(" ");
+  return React.createElement("button", Object.assign({}, props, { type: "button", className: classes, icon: undefined }), content);
+};
+function Progress() {
+  return React.createElement("div", { className: "mpi-progress", role: "progressbar", "aria-busy": "true" },
+    React.createElement("div", { className: "mpi-progress-bar" })
+  );
+}
 const CSS = `
 .mpi-version{margin-left:8px;color:var(--dsw-alias-label-tertiary,#a0a0a0);font-family:inherit;font-size:12px;font-weight:500;line-height:18px;letter-spacing:0;white-space:nowrap;vertical-align:baseline}.mpi-check-host{display:inline-flex;align-items:center}.mpi-icon{display:inline-flex;flex:0 0 auto;width:16px;height:16px;align-items:center;justify-content:center;pointer-events:none}.mpi-icon svg{display:block;width:16px;height:16px}
-.mpi-intro{margin:0 0 16px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:13px;line-height:20px}.mpi-meta{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 18px;margin:0 0 16px;font-size:12px;line-height:18px}.mpi-meta dt{color:var(--dsw-alias-label-secondary,#b9b9b9)}.mpi-meta dd{margin:0}.mpi-mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.mpi-latest{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}.mpi-status{font-size:13px;font-weight:600;line-height:18px}.mpi-status[data-kind=error]{color:var(--dsw-alias-state-error-primary,#ef7272)}.mpi-status[data-kind=success]{color:var(--dsw-alias-state-success-primary,#51b976)}.mpi-status[data-kind=update]{color:#e8b15a !important}.mpi-manual{border-top:1px solid var(--dsw-alias-border-l2,#494949);padding-top:16px}.mpi-manual h3{margin:0 0 6px;font-size:14px;line-height:20px}.mpi-manual p{margin:0 0 10px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:12px;line-height:18px}.mpi-command{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--dsw-alias-border-l2,#494949);border-radius:7px;padding:10px;background:var(--dsw-alias-bg-layer-3,var(--dsw-specific-menu-item-hover,#353638))}.mpi-command code{min-width:0;flex:1;overflow:visible;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}@media(max-width:560px){.mpi-meta{grid-template-columns:1fr;gap:2px}.mpi-meta dd{margin-bottom:6px}}
+.mpi-intro{margin:0 0 16px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:13px;line-height:20px}.mpi-meta{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 18px;margin:0 0 16px;font-size:12px;line-height:18px}.mpi-meta dt{color:var(--dsw-alias-label-secondary,#b9b9b9)}.mpi-meta dd{margin:0}.mpi-mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.mpi-latest{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}.mpi-status{font-size:13px;font-weight:600;line-height:18px}.mpi-status[data-kind=error]{color:var(--dsw-alias-state-error-primary,#ef7272)}.mpi-status[data-kind=success]{color:var(--dsw-alias-state-success-primary,#51b976)}.mpi-status[data-kind=update]{color:#e8b15a !important}.mpi-manual{border-top:0.5px solid var(--dsw-alias-border-l2,#494949);padding-top:16px}.mpi-manual h3{margin:0 0 6px;font-size:14px;line-height:20px}.mpi-manual p{margin:0 0 10px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:12px;line-height:18px}.mpi-command{display:flex;align-items:flex-start;gap:8px;border:0.5px solid var(--dsw-alias-border-l2,#494949);border-radius:var(--dsw-radius-lg,16px);padding:10px;background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-interactive-bg-hover,transparent))}.mpi-command code{min-width:0;flex:1;overflow:visible;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
+.mpi-progress{height:4px;border-radius:2px;background:var(--dsw-alias-border-l1,#3a3a3a);overflow:hidden;margin:12px 0;position:relative}
+.mpi-progress-bar{height:100%;width:40%;background:var(--dsw-alias-button-primary-fill,#4176e6);border-radius:2px;animation:mpi-progress 1.4s ease-in-out infinite}
+@keyframes mpi-progress{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+@media (prefers-reduced-motion:reduce){.mpi-progress-bar{animation:none;width:100%;opacity:.6}}
+@media(max-width:560px){.mpi-meta{grid-template-columns:1fr;gap:2px}.mpi-meta dd{margin-bottom:6px}}
 `;
 const ZH = {
   check: "检查更新",
@@ -178,7 +195,10 @@ function UpdateDialog(props) {
   }, []);
   React.useEffect(() => { void props.flow.check(); }, [props.flow]);
   React.useEffect(() => {
-    const onKey = (event) => { handlePluginUpdateEscape(event, props.onClose); };
+    const onKey = (event) => {
+      if (typeof modalLayers !== "undefined" && modalLayers.length && modalLayers[modalLayers.length - 1].owner !== "update") return;
+      handlePluginUpdateEscape(event, props.onClose);
+    };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
   }, [props.onClose]);
@@ -187,13 +207,12 @@ function UpdateDialog(props) {
   const name = lang.toLowerCase().startsWith("en") ? props.enName : props.zhName;
   const command = manualPluginUpdateCommand(view.profileRaw, props.packageName, view.latestRaw);
   const copyLabel = copyState === "copied" ? view.copy.copied : copyState === "failed" ? view.copy.copyFailed : view.copy.copy;
-  return React.createElement(AntdProvider, null, React.createElement(Modal, {
-    open: true, className: "mpi-dialog", width: 680, zIndex: 1200, title: `${name} ${view.copy.update}`, keyboard: false, destroyOnHidden: true, onCancel: props.onClose,
-    afterOpenChange: (open) => { if (open && bodyRef.current) { bodyRef.current.tabIndex = -1; bodyRef.current.focus(); } },
-    footer: [
-      React.createElement(Button, { key: "check", disabled: view.busy, loading: view.busy && !view.loading, onClick: () => { void props.flow.check(); } }, view.copy.recheck),
-      React.createElement(Button, { key: "update", type: "primary", disabled: view.disabled, loading: view.loading, onClick: () => { void props.flow.update(); } }, view.updateLabel),
-    ],
+  return React.createElement(HostThemeProvider, null, React.createElement(Modal, {
+    open: true, className: "mpi-dialog", layerOwner: "update", title: `${name} ${view.copy.update}`, onCancel: props.onClose,
+    footer: React.createElement("div", { className: "ima-modal-actions" },
+      React.createElement(UpdatePrimitiveButton, { key: "check", variant: "outline", size: "sm", disabled: view.busy, onClick: () => { void props.flow.check(); } }, view.copy.recheck),
+      React.createElement(UpdatePrimitiveButton, { key: "update", variant: "primary", size: "sm", disabled: view.disabled, onClick: () => { void props.flow.update(); } }, view.updateLabel),
+    ),
   }, React.createElement("div", { ref: bodyRef },
     React.createElement("p", { className: "mpi-intro" }, view.copy.intro),
     React.createElement("dl", { className: "mpi-meta" },
@@ -206,7 +225,7 @@ function UpdateDialog(props) {
       React.createElement("p", null, view.copy.manualHint),
       React.createElement("div", { className: "mpi-command" },
         React.createElement("code", null, command),
-        React.createElement(Button, { disabled: view.busy, onClick: () => {
+        React.createElement(UpdatePrimitiveButton, { variant: "outline", size: "sm", disabled: view.busy, onClick: () => {
           const write = navigator.clipboard?.writeText(command);
           if (write === undefined) { setCopyState("failed"); return; }
           void write.then(() => { setCopyState("copied"); window.setTimeout(() => setCopyState("idle"), 1400); }).catch(() => setCopyState("failed"));
@@ -234,9 +253,9 @@ function observePluginUpdate(options) {
     if (buttonRoot === undefined) return;
     if (iconNode === undefined) iconNode = options.createIcon("refresh");
     const icon = iconNode;
-    buttonRoot.render(React.createElement(AntdProvider, null, React.createElement(Button, {
-      size: "small", shape: "default", onClick: openDialog, icon: React.createElement(HostIcon, { node: icon }),
-    }, React.createElement("span", { "data-mpi-label": "" }, pluginUpdateCopy(document.documentElement.lang).check))));
+    buttonRoot.render(React.createElement(UpdatePrimitiveButton, {
+      variant: "outline", size: "sm", onClick: openDialog, icon: React.createElement(HostIcon, { node: icon }),
+    }, React.createElement("span", { "data-mpi-label": "" }, pluginUpdateCopy(document.documentElement.lang).check)));
   };
   const closeDialog = () => { dialogRoot?.unmount(); dialogRoot = undefined; dialogHost?.remove(); dialogHost = undefined; };
   function openDialog() {

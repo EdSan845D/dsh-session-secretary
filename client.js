@@ -9,10 +9,12 @@ window.__ModuleLoader__.load({
     const React = require("react");
     const { useState, useEffect, useLayoutEffect, useCallback, useRef, useSyncExternalStore } = React;
     const ReactDOM = require("react-dom");
-    const primitives = require("@deepseek-ai/dsh-client-ui-primitives");
-    const HostMenu = typeof primitives.Menu === "function" ? primitives.Menu : function MissingHostMenu(props) { return props.anchor || null; };
-    const HostModal = typeof primitives.Modal === "function" ? primitives.Modal : function MissingHostModal() { return null; };
-    const HostButton = typeof primitives.Button === "function" ? primitives.Button : function MissingHostButton(props) { return h("button", { type: "button", className: props && props.className, disabled: props && props.disabled, onClick: props && props.onClick }, props && props.children); };
+    const primitives = typeof require === "function" ? (function () { try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; } })() : {};
+    const PrimitiveButton = primitives.Button;
+    const HostMenu = primitives.Menu;
+    const HostModal = primitives.Modal;
+    // 只关最上层。下层监听先注册，不是顶层就放行，避免一次 Escape 关掉弹窗和宿主设置。
+    const modalLayers = [];
     // 0.1.7 把尺寸从图标名里拿掉了（IconEditOutlineRegular）。旧宿主仍导出 *16/*20。
     function pickHostIcon(...names) {
       for (const name of names) {
@@ -63,15 +65,398 @@ window.__ModuleLoader__.load({
     const IconFolderClose = pickHostIcon("IconFolderCloseRegular", "IconFolderClose16", "IconFolderClose");
     const IconClockOutline = pickHostIcon("IconClockOutlineRegular", "IconClockOutline16");
     const IconFlatListOutline = pickHostIcon("IconFlatListOutlineRegular");
-    const antd = require("antd");
-    const { ConfigProvider, theme, Modal, Select, Switch, Button: AntdButton, Input, Progress, Checkbox, Segmented, Tag, Alert } = antd;
-    function Button(props) {
-      return React.createElement(AntdButton, Object.assign({ shape: "round", size: "middle" }, props));
+    function alertIcon(type) {
+      if (type === "success") {
+        return React.createElement("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" },
+          React.createElement("path", { d: "m3 8.5 3.5 3.5 6.5-7" })
+        );
+      }
+      if (type === "error") {
+        return React.createElement("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" },
+          React.createElement("circle", { cx: 8, cy: 8, r: 6 }),
+          React.createElement("path", { d: "m8 5v3.5M8 11.5h.01" })
+        );
+      }
+      return React.createElement("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" },
+        React.createElement("circle", { cx: 8, cy: 8, r: 6 }),
+        React.createElement("path", { d: "M8 7.5v3.5M8 5h.01" })
+      );
     }
-    const zhCN = require("antd/locale/zh_CN");
-    const enUS = require("antd/locale/en_US");
-    const antdZh = zhCN && zhCN.default ? zhCN.default : zhCN;
-    const antdEn = enUS && enUS.default ? enUS.default : enUS;
+    function Alert({ type = "info", message, className, role, showIcon }) {
+      return React.createElement("div", {
+        role: role || (type === "error" ? "alert" : undefined),
+        className: ["ima-alert", "ima-alert-" + type, className].filter(Boolean).join(" "),
+      },
+        showIcon && React.createElement("span", { className: "ima-alert-icon" }, alertIcon(type)),
+        React.createElement("span", { className: "ima-alert-message" }, message)
+      );
+    }
+    function Tag({ color, children, icon, className, bordered, ...props }) {
+      const colorCls = color ? "ima-tag-" + color : "";
+      return React.createElement("span", {
+        ...props,
+        className: ["ima-tag", colorCls, className].filter(Boolean).join(" "),
+      }, icon && React.createElement("span", { className: "ima-tag-icon", style: { display: "inline-flex", alignItems: "center", marginRight: children ? 4 : 0 } }, icon), children);
+    }
+    function Input(props) {
+      const { className, type = "text", ...rest } = props;
+      return React.createElement("input", {
+        type,
+        ...rest,
+        className: ["ima-input", className].filter(Boolean).join(" "),
+      });
+    }
+    function TextArea(props) {
+      const { autoSize, className, rows, ...rest } = props;
+      return React.createElement("textarea", {
+        ...rest,
+        className: ["ima-input ima-textarea", className].filter(Boolean).join(" "),
+        rows: autoSize?.minRows || rows || 4,
+      });
+    }
+    Input.TextArea = TextArea;
+    function Checkbox({ checked, onChange, children, className, disabled, ...props }) {
+      return React.createElement("label", {
+        className: ["ima-checkbox-label", disabled ? "is-disabled" : "", className].filter(Boolean).join(" "),
+      },
+        React.createElement("input", {
+          type: "checkbox",
+          checked: Boolean(checked),
+          disabled,
+          onChange,
+          className: "ima-checkbox",
+          ...props,
+        }),
+        children ? React.createElement("span", { className: "ima-checkbox-text" }, children) : null
+      );
+    }
+    function Segmented({ options = [], value, onChange, disabled, block, className }) {
+      return React.createElement("div", {
+        role: "radiogroup",
+        className: ["ima-segmented", block ? "is-block" : "", className].filter(Boolean).join(" "),
+      }, options.map((opt) => {
+        const val = typeof opt === "object" ? opt.value : opt;
+        const lbl = typeof opt === "object" ? opt.label : opt;
+        const active = val === value;
+        return React.createElement("button", {
+          key: String(val),
+          type: "button",
+          role: "radio",
+          "aria-checked": active,
+          disabled,
+          className: ["ima-segmented-item", active ? "is-active" : ""].filter(Boolean).join(" "),
+          onClick: () => { if (!disabled && onChange) onChange(val); },
+        }, lbl);
+      }));
+    }
+    function hostModalButton(label, onClick, kind, extra) {
+      const options = extra || {};
+      const variant = kind === "primary" ? "primary" : "outline";
+      if (typeof PrimitiveButton === "function") {
+        return React.createElement(PrimitiveButton, {
+          variant,
+          disabled: options.disabled,
+          className: options.className,
+          onClick,
+          type: "button",
+        }, label);
+      }
+      return React.createElement(Button, {
+        variant,
+        disabled: options.disabled,
+        className: options.className,
+        onClick,
+      }, label);
+    }
+    function Modal(props) {
+      const { open, title, onCancel, onOk, okText, cancelText, okButtonProps, confirmLoading, width = 640, zIndex = 1100, children, footer, className, keyboard, maskClosable, closeLabel, description } = props;
+      const requestClose = onCancel || props.onClose;
+      const closeRef = useRef(requestClose);
+      closeRef.current = requestClose;
+      const layerRef = useRef(null);
+      if (!layerRef.current) layerRef.current = { owner: props.layerOwner || "modal" };
+      useEffect(() => {
+        if (!open) return undefined;
+        const layer = layerRef.current;
+        modalLayers.push(layer);
+        const onKey = (event) => {
+          if (event.key !== "Escape") return;
+          if (modalLayers[modalLayers.length - 1] !== layer) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+          if (keyboard === false) return;
+          if (closeRef.current) closeRef.current();
+        };
+        window.addEventListener("keydown", onKey, true);
+        return () => {
+          window.removeEventListener("keydown", onKey, true);
+          const index = modalLayers.lastIndexOf(layer);
+          if (index >= 0) modalLayers.splice(index, 1);
+        };
+      }, [open, keyboard]);
+      if (!open) return null;
+      const handleClose = () => { if (closeRef.current) closeRef.current(); };
+      const handleOk = () => { if (onOk) onOk(); };
+      const actionRow = footer === null ? null : (footer || React.createElement(React.Fragment, null,
+        hostModalButton(cancelText || "取消", handleClose, "outline"),
+        hostModalButton(okText || "确定", handleOk, "primary", { disabled: okButtonProps?.disabled || confirmLoading })
+      ));
+      const footerNode = Array.isArray(actionRow)
+        ? React.createElement(React.Fragment, null, actionRow)
+        : actionRow;
+      const hostDescription = typeof description === "string" && description !== "" ? { description } : {};
+      if (typeof HostModal === "function") {
+        return h(HostModal, {
+          open: true,
+          title,
+          onClose: handleClose,
+          closeLabel: closeLabel || "Close",
+          className,
+          footer: footerNode,
+          ...hostDescription,
+        }, children);
+      }
+      const allowMask = maskClosable !== false && modalLayers[modalLayers.length - 1] === layerRef.current;
+      return React.createElement("div", { className: "ima-modal-root", style: { zIndex } },
+        React.createElement("div", { className: "ima-modal-mask", onClick: allowMask ? handleClose : undefined }),
+        React.createElement("div", { className: ["ima-modal-wrap", className].filter(Boolean).join(" ") },
+          React.createElement("div", { className: "ima-modal-panel", style: { width } },
+            React.createElement("div", { className: "ima-modal-header" },
+              React.createElement("div", { className: "ima-modal-title" }, title),
+              React.createElement("button", { type: "button", className: "ima-modal-close", "aria-label": closeLabel || "Close", onClick: handleClose },
+                React.createElement("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" },
+                  React.createElement("path", { d: "m4 4 8 8M12 4 4 12" })
+                )
+              )
+            ),
+            React.createElement("div", { className: "ima-modal-body" },
+              description ? React.createElement("p", { className: "ima-confirm-content" }, description) : null,
+              children),
+            footerNode && React.createElement("div", { className: "ima-modal-footer-wrap" }, footerNode)
+          )
+        )
+      );
+    }
+    function useModal() {
+      const [config, setConfig] = React.useState(null);
+      const confirm = (opts) => { setConfig(opts); };
+      const holder = config ? React.createElement(Modal, {
+        open: true,
+        title: config.title,
+        width: 480,
+        description: config.description,
+        onCancel: () => { setConfig(null); },
+        onOk: () => {
+          const p = config.onOk?.();
+          if (p && typeof p.then === "function") {
+            p.then(() => setConfig(null));
+          } else {
+            setConfig(null);
+          }
+        },
+        okText: config.okText,
+        cancelText: config.cancelText,
+        okButtonProps: config.okButtonProps,
+      }, config.content ? React.createElement("p", { className: "ima-confirm-content" }, config.content) : null) : null;
+      return [{ confirm }, holder];
+    }
+    Modal.useModal = useModal;
+    function Switch(props) {
+      const on = Boolean(props.checked);
+      return React.createElement("button", {
+        type: "button",
+        role: "switch",
+        "aria-checked": on,
+        "aria-label": props["aria-label"],
+        title: props.title,
+        disabled: props.disabled,
+        className: "ima-enable-switch" + (props.className ? " " + props.className : ""),
+        onClick: function (event) {
+          if (event && typeof event.stopPropagation === "function") event.stopPropagation();
+          if (!props.disabled && props.onChange) props.onChange(!on);
+        },
+      }, React.createElement("span", { className: "ima-enable-switch-thumb", "aria-hidden": "true" }));
+    }
+    function Select(props) {
+      const [open, setOpen] = useState(false);
+      useEffect(() => {
+        if (!open || typeof window === "undefined") return undefined;
+        const layer = { owner: "select" };
+        modalLayers.push(layer);
+        function onKey(event) {
+          if (event.key !== "Escape") return;
+          if (modalLayers[modalLayers.length - 1] !== layer) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          setOpen(false);
+        }
+        window.addEventListener("keydown", onKey, true);
+        return () => {
+          window.removeEventListener("keydown", onKey, true);
+          const index = modalLayers.lastIndexOf(layer);
+          if (index >= 0) modalLayers.splice(index, 1);
+        };
+      }, [open]);
+
+      const items = React.useMemo(() => {
+        const list = [];
+        (props.options || []).forEach((opt, idx) => {
+          if (Array.isArray(opt.options)) {
+            list.push({ type: "label", id: "group-" + idx, text: opt.label || "" });
+            opt.options.forEach((sub) => {
+              list.push({ id: String(sub.value), label: sub.label, disabled: sub.disabled, danger: sub.danger });
+            });
+          } else {
+            list.push({ id: String(opt.value), label: opt.label, disabled: opt.disabled, danger: opt.danger });
+          }
+        });
+        return list;
+      }, [props.options]);
+
+      const footer = React.useMemo(() => {
+        if (!Array.isArray(props.footer) || props.footer.length === 0) return undefined;
+        return props.footer.map((item) => ({
+          id: String(item.value),
+          label: item.label,
+          disabled: item.disabled,
+          danger: item.danger,
+        }));
+      }, [props.footer]);
+
+      const selectedOption = React.useMemo(() => {
+        for (const opt of props.options || []) {
+          if (Array.isArray(opt.options)) {
+            const found = opt.options.find((sub) => String(sub.value) === String(props.value));
+            if (found) return found;
+          } else if (String(opt.value) === String(props.value)) {
+            return opt;
+          }
+        }
+        return null;
+      }, [props.options, props.value]);
+
+      const currentText = selectedOption ? selectedOption.label : (props.placeholder || props["aria-label"] || "");
+
+      return React.createElement("div", {
+        className: "ima-menu-select-wrap " + (props.className || ""),
+        style: props.style,
+      },
+        React.createElement(HostMenu, {
+          open: open,
+          onClose: () => setOpen(false),
+          onSelect: (id) => {
+            if (props.footer && props.footer.some((item) => String(item.value) === id)) {
+              if (typeof props.onFooter === "function") props.onFooter(id);
+              setOpen(false);
+              return;
+            }
+            if (props.onChange) props.onChange(id);
+            setOpen(false);
+          },
+          selectedId: props.value != null ? String(props.value) : undefined,
+          align: "start",
+          portal: true,
+          dense: true,
+          anchor: React.createElement(Button, {
+            variant: "outline",
+            size: "sm",
+            role: "combobox",
+            "aria-label": props["aria-label"] || props.placeholder,
+            "aria-expanded": open,
+            disabled: props.disabled,
+            className: "ima-menu-select-trigger" + (open ? " is-open" : ""),
+            onClick: () => { if (!props.disabled) setOpen((prev) => !prev); },
+          },
+            React.createElement("span", { className: "ima-menu-select-label" }, currentText),
+            React.createElement("svg", {
+              className: "ima-menu-select-arrow",
+              viewBox: "0 0 16 16",
+              width: 12,
+              height: 12,
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: 1.8,
+              strokeLinecap: "round",
+              strokeLinejoin: "round",
+              style: { marginLeft: 4, transition: "transform 150ms ease", transform: open ? "rotate(180deg)" : "none" },
+            }, React.createElement("path", { d: "m4 6 4 4 4-4" }))
+          ),
+          items: items,
+          ...(footer ? { footer } : {}),
+        })
+      );
+    }
+    function createSpinner() {
+      return React.createElement("svg", {
+        className: "ima-btn-spinner",
+        viewBox: "0 0 16 16",
+        width: 14,
+        height: 14,
+        fill: "none",
+        stroke: "currentColor",
+        strokeWidth: 2,
+        strokeLinecap: "round",
+        style: { marginRight: 6, display: "inline-block", verticalAlign: "-2px", animation: "ima-spin 0.8s linear infinite" },
+        "aria-hidden": "true",
+      }, React.createElement("path", { d: "M8 1.5a6.5 6.5 0 1 0 6.5 6.5" }));
+    }
+    function Button({ variant, type, danger, loading, block, size, shape, className, children, href, target, rel, icon, ...props }) {
+      let mappedVariant = variant ?? "outline";
+      if (type === "primary") mappedVariant = "primary";
+      else if (type === "text" || type === "link") mappedVariant = "ghost";
+
+      const isPrimary = mappedVariant === "primary";
+      const mappedSize = (size === "small" || size === "sm") ? "sm" : "md";
+
+      const classes = [
+        "ima-btn",
+        href ? "ima-link-btn" : "",
+        className,
+        isPrimary ? "is-primary" : "",
+        danger ? "is-danger ima-btn-danger" : "",
+        (danger && isPrimary) ? "ima-btn-danger-primary" : "",
+        block ? "is-block" : "",
+        loading ? "is-loading" : "",
+      ].filter(Boolean).join(" ");
+
+      const iconElement = loading
+        ? createSpinner()
+        : (icon ? React.createElement("span", {
+            key: "icon",
+            className: "ima-btn-icon",
+            style: { display: "inline-flex", alignItems: "center" },
+          }, icon) : null);
+      const content = [iconElement, children];
+
+      if (href) {
+        return React.createElement("a", Object.assign({}, props, {
+          href,
+          target,
+          rel: rel || (target === "_blank" ? "noreferrer" : undefined),
+          className: classes || undefined,
+          "aria-label": props["aria-label"],
+          style: props.style,
+        }), content);
+      }
+
+      if (typeof PrimitiveButton === "function") {
+        return React.createElement(PrimitiveButton, Object.assign({}, props, {
+          variant: mappedVariant,
+          size: mappedSize,
+          className: classes || undefined,
+          disabled: props.disabled || loading,
+          icon: undefined,
+        }), content);
+      }
+
+      return React.createElement("button", Object.assign({}, props, {
+        type: "button",
+        className: classes || undefined,
+        disabled: props.disabled || loading,
+      }), content);
+    }
     const HoverCard = primitives.HoverCard;
     const StateDot = primitives.StateDot;
     const IconSettingsOutline16 = pickHostIcon("IconSettingsOutlineRegular", "IconSettingsOutline16");
@@ -419,7 +804,7 @@ window.__ModuleLoader__.load({
         "qr.weixin": "请使用微信扫描二维码完成绑定", "qr.feishu": "请使用飞书扫描二维码，将自动创建机器人", "qr.lark": "请使用 Lark 扫描二维码完成配对", "qr.wecom": "请使用企业微信扫描二维码，快捷绑定机器人", "qr.dingtalk": "请使用钉钉扫描二维码，自动创建机器人", "qr.qq": "请使用手机 QQ 扫描二维码，创建开放平台机器人", "qr.default": "请使用对应 App 扫描二维码",
         "status.connected": "已连接", "action.more": "{channel} 更多",
         "error.loadAssistant": "无法加载账号配置", "error.noModels": "当前 Host 还没有可用模型，请先在网页里配置提供商", "error.save": "保存失败", "error.chooseWorkspace": "请选择工作区目录", "error.workspaceUnavailable": "当前 Host 无法新增工作区", "error.addWorkspace": "新增工作区失败", "error.load": "加载失败", "error.connection": "无法连接本机 IM 助理接口", "error.request": "请求失败", "error.action": "操作失败", "error.qr": "无法生成二维码", "error.detailsInLog": "操作失败，请查看服务器日志。",
-        "composer.noWorkspaces": "暂无工作区", "composer.addWorkspace": "添加工作区…", "composer.workspaceRequired": "请先添加工作区，否则无法保存", "composer.permission": "权限", "composer.noModels": "暂无模型", "composer.workspacePath": "工作区路径", "action.cancel": "取消", "action.adding": "添加中…",
+        "composer.noWorkspaces": "暂无工作区", "composer.addWorkspace": "添加工作区…", "composer.workspaceRequired": "请先添加工作区，否则无法保存", "composer.permission": "权限", "composer.noModels": "暂无模型", "action.cancel": "取消", 
         "permission.readOnly": "只读", "permission.workspaceWrite": "工作区写入", "permission.fullAccess": "完全访问",
         "rail.workspace": "工作区", "rail.sessions": "会话", "rail.search": "搜索", "rail.searchPlaceholder": "搜索会话...", "rail.clearSearch": "清除搜索", "rail.filter": "筛选", "rail.group": "分组方式", "rail.byWorkspace": "按工作区", "rail.list": "单列表", "rail.byWorkspaceTree": "按工作区树", "rail.sort": "排序方式", "rail.recent": "最近更新", "rail.showArchived": "显示已归档", "rail.onlyArchived": "仅显示已归档", "rail.running": "运行中", "rail.idle": "空闲", "rail.waitingApproval": "等待审批", "rail.planReview": "计划待审", "rail.waitingAnswer": "等待回答", "rail.subagents": "{n} 个子代理运行中", "rail.completed": "已完成", "rail.archived": "已归档", "rail.compactApproval": "待审批", "rail.compactPlan": "计划待审", "rail.compactAnswer": "待回答", "rail.renameAria": "重命名会话", "rail.rename": "重命名", "rail.fork": "分叉会话", "rail.archive": "归档会话", "rail.unarchive": "恢复会话", "rail.stopArchive": "停止并归档", "rail.stopArchiveDescription": "会话“{name}”仍在运行。停止后才能归档。", "rail.stopArchiveConfirm": "停止并归档", "rail.stopArchivePending": "正在停止并归档…", "rail.stopArchiveGroupDescription": "“{name}”下仍有运行中的会话。停止这些会话后才能归档整组。", "rail.archiveFailed": "归档失败，未移除会话。请稍后重试或检查宿主日志。", "rail.deleteSession": "删除会话", "rail.deleteSessionConfirm": "删除会话", "rail.deleteSessionDescription": "将永久删除会话“{name}”及其子代理（含正在运行的）和全部记录（对话内容、统计、缓存），此操作不可恢复。", "rail.deleteSessionPending": "正在删除会话…", "rail.deleteSessionFailed": "删除会话失败：{message}", "rail.deleteSessionClose": "关闭", "rail.deleteSessionCancel": "取消", "rail.groupActions": "“{name}”的频道操作", "rail.channelSettings": "渠道设置", "rail.archiveGroup": "归档整组会话", "rail.archiveGroupConfirm": "确认归档", "rail.archiveGroupDescription": "将归档“{name}”下的 {count} 个会话。归档后可以在“设置 → 已归档”中恢复。", "rail.archiveGroupPending": "正在归档整组会话…", "rail.archiveGroupFailed": "部分会话归档失败：{message}", "rail.archiveGroupClose": "关闭", "rail.archiveGroupCancel": "取消", "rail.empty": "还没有频道会话。先在设置 → IM助理 里连接渠道，并给机器人发一条消息。", "rail.noTasks": "暂无网页任务", "rail.ungrouped": "未分组", "rail.tabsAria": "工作区分类", "rail.tasks": "任务", "rail.channels": "频道",
         "time.now": "刚刚", "time.minutes": "{n}分钟", "time.hours": "{n}小时", "time.days": "{n}天", "time.months": "{n}个月", "time.years": "{n}年", "time.ago": "{t}前",
@@ -448,7 +833,7 @@ window.__ModuleLoader__.load({
         "qr.weixin": "Scan the QR code with WeChat to connect", "qr.feishu": "Scan with Feishu; a bot will be created automatically", "qr.lark": "Scan with Lark to pair", "qr.wecom": "Scan with WeCom to quickly connect a bot", "qr.dingtalk": "Scan with DingTalk; a bot will be created automatically", "qr.qq": "Scan with mobile QQ to create an Open Platform bot", "qr.default": "Scan the QR code with the corresponding app",
         "status.connected": "Connected", "action.more": "More options for {channel}",
         "error.loadAssistant": "Could not load account settings", "error.noModels": "No models are available in the Host. Configure a provider in the web app first.", "error.save": "Could not save", "error.chooseWorkspace": "Choose a workspace directory", "error.workspaceUnavailable": "This Host cannot create workspaces", "error.addWorkspace": "Could not add workspace", "error.load": "Could not load", "error.connection": "Could not connect to the local IM Assistant API", "error.request": "Request failed", "error.action": "Action failed", "error.qr": "Could not generate a QR code", "error.detailsInLog": "The operation failed. Check the server logs for details.",
-        "composer.noWorkspaces": "No workspaces", "composer.addWorkspace": "Add workspace…", "composer.workspaceRequired": "Add a workspace before saving.", "composer.permission": "Permission", "composer.noModels": "No models", "composer.workspacePath": "Workspace path", "action.cancel": "Cancel", "action.adding": "Adding…",
+        "composer.noWorkspaces": "No workspaces", "composer.addWorkspace": "Add workspace…", "composer.workspaceRequired": "Add a workspace before saving.", "composer.permission": "Permission", "composer.noModels": "No models", "action.cancel": "Cancel", 
         "permission.readOnly": "Read Only", "permission.workspaceWrite": "Workspace Write", "permission.fullAccess": "Full access",
         "rail.workspace": "Workspaces", "rail.sessions": "Sessions", "rail.search": "Search", "rail.searchPlaceholder": "Search sessions...", "rail.clearSearch": "Clear search", "rail.filter": "Filter", "rail.group": "Group by", "rail.byWorkspace": "By workspace", "rail.list": "Single list", "rail.byWorkspaceTree": "Workspace Tree", "rail.sort": "Sort by", "rail.recent": "Recently updated", "rail.showArchived": "Show archived", "rail.onlyArchived": "Archived only", "rail.running": "Running", "rail.idle": "Idle", "rail.waitingApproval": "Waiting for approval", "rail.planReview": "Plan to review", "rail.waitingAnswer": "Waiting for an answer", "rail.subagents": "{n} subagents running", "rail.completed": "Completed", "rail.archived": "Archived", "rail.compactApproval": "Approval", "rail.compactPlan": "Plan review", "rail.compactAnswer": "Answer", "rail.renameAria": "Rename session", "rail.rename": "Rename", "rail.fork": "Fork session", "rail.archive": "Archive session", "rail.unarchive": "Restore session", "rail.stopArchive": "Stop and archive", "rail.stopArchiveDescription": "Session “{name}” is still running. Stop it before archiving.", "rail.stopArchiveConfirm": "Stop and archive", "rail.stopArchivePending": "Stopping and archiving…", "rail.stopArchiveGroupDescription": "Some conversations in “{name}” are still running. Stop them before archiving the group.", "rail.archiveFailed": "Archive failed. The session was kept. Retry or check the Host logs.", "rail.deleteSession": "Delete session", "rail.deleteSessionConfirm": "Delete session", "rail.deleteSessionDescription": "This permanently deletes session “{name}”, its child agents (including any that are still running), and all of its records (conversation, stats, cache). This cannot be undone.", "rail.deleteSessionPending": "Deleting session…", "rail.deleteSessionFailed": "Could not delete the session: {message}", "rail.deleteSessionClose": "Close", "rail.deleteSessionCancel": "Cancel", "rail.groupActions": "Actions for {name}", "rail.channelSettings": "Channel settings", "rail.archiveGroup": "Archive all conversations", "rail.archiveGroupConfirm": "Archive all", "rail.archiveGroupDescription": "Archive all {count} conversations for “{name}”. You can restore them later in Settings → Archived.", "rail.archiveGroupPending": "Archiving conversations…", "rail.archiveGroupFailed": "Some conversations could not be archived: {message}", "rail.archiveGroupClose": "Close", "rail.archiveGroupCancel": "Cancel", "rail.empty": "No channel sessions yet. Connect a channel in Settings → IM Assistant, then send the bot a message.", "rail.noTasks": "No web tasks", "rail.ungrouped": "Ungrouped", "rail.tabsAria": "Workspace categories", "rail.tasks": "Tasks", "rail.channels": "Channels",
         "time.now": "now", "time.minutes": "{n}min", "time.hours": "{n}h", "time.days": "{n}d", "time.months": "{n}mo", "time.years": "{n}y", "time.ago": "{t} ago",
@@ -485,18 +870,8 @@ window.__ModuleLoader__.load({
       }, []);
       return dark;
     }
-    function AntdProvider({ children, locale }) {
-      const dark = useHostDark();
-      const lang = locale || currentUiLang();
-      return h(ConfigProvider, {
-        locale: lang === "en" ? antdEn : antdZh,
-        theme: {
-          algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-          token: { fontFamily: "inherit" },
-          components: { Button: { borderRadius: 8 } },
-        },
-        button: { autoInsertSpace: false },
-      }, children);
+    function HostThemeProvider({ children }) {
+      return children;
     }
 
     const CSS = `
@@ -504,12 +879,31 @@ window.__ModuleLoader__.load({
 .ima-page{box-sizing:border-box;max-width:none;width:100%;margin:0;padding:0 0 32px;color:var(--ima-text)}
 .ima-head{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin-bottom:12px}
 .ima-heading h2,.ima-title{margin:0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-.4px;white-space:nowrap;text-align:left}
-.ima-title-row{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
-.ima-title-links{display:inline-flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
-.ima-title-links .ant-btn{flex:none}
+.ima-title-row{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}
+.ima-title-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ima-title-links>span[data-mpi-check]{display:inline-flex;align-items:center}
+.ima-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border:0.5px solid var(--dsw-alias-border-l2,#494949);border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-layer-1,transparent);color:var(--dsw-alias-label-primary,#eee);font:inherit;font-size:13px;line-height:20px;cursor:pointer;user-select:none;box-sizing:border-box;text-decoration:none;transition:border-color 120ms ease,color 120ms ease,background 120ms ease}
+.ima-btn:not(.is-primary){color:var(--dsw-alias-label-primary,#eee)}
+.ima-btn:hover:not(:disabled){border-color:var(--dsw-alias-border-l3,#555);color:var(--dsw-alias-label-primary,#fff);background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))}
+.ima-btn:focus-visible{outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:0}
+.ima-btn:disabled,.ima-btn.is-disabled{opacity:.5;cursor:default;pointer-events:none}
+.ima-btn.is-primary,.ima-bind-ready .ima-btn.is-primary{background:var(--dsw-alias-state-business-primary,#4176e6)!important;border-color:transparent!important;color:#fff!important}
+.ima-btn.is-primary *,.ima-bind-ready .ima-btn.is-primary *{color:#fff!important;fill:currentColor!important}
+.ima-btn.is-primary:hover:not(:disabled),.ima-bind-ready .ima-btn.is-primary:hover:not(:disabled){background:color-mix(in srgb, var(--dsw-alias-state-business-primary,#4176e6) 88%, #fff)!important;color:#fff!important}
+.ima-btn.is-primary:disabled,.ima-bind-ready .ima-btn.is-primary:disabled{opacity:.45!important;cursor:default!important}
+.ima-btn.is-block{width:100%}
+.ima-link-btn{height:28px;padding:0 10px;font-size:12px}
 .ima-sub{margin:12px 0 0;max-width:none;color:var(--ima-muted);font-size:14px;line-height:22px;text-align:left}
 .ima-error{color:var(--ima-danger);font-size:12px;margin:0 0 12px}
-.ima-pending,.ima-page>.ant-alert,.ima-inspector .ant-alert{margin:0 0 12px}
+.ima-pending,.ima-page>.ima-alert,.ima-inspector .ima-alert{margin:0 0 12px}
+.ima-alert{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;border-radius:var(--dsw-radius-sm,8px);font-size:13px;line-height:20px;border:0.5px solid var(--dsw-alias-border-l2,rgba(255,255,255,.1))}
+.ima-alert-error{background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#f85149) 12%, transparent);border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary,#f85149) 30%, transparent);color:var(--dsw-alias-label-primary,#eee)}
+.ima-alert-error .ima-alert-icon{color:var(--dsw-alias-state-error-primary,#f85149)}
+.ima-alert-success{background:color-mix(in srgb, var(--dsw-alias-state-success-primary,#3fb950) 12%, transparent);border-color:color-mix(in srgb, var(--dsw-alias-state-success-primary,#3fb950) 30%, transparent);color:var(--dsw-alias-label-primary,#eee)}
+.ima-alert-success .ima-alert-icon{color:var(--dsw-alias-state-success-primary,#3fb950)}
+.ima-alert-info{background:var(--dsw-alias-bg-layer-2,rgba(128,128,128,.08));color:var(--dsw-alias-label-primary,#eee)}
+.ima-alert-icon{display:inline-flex;align-items:center;flex:none;margin-top:3px}
+.ima-alert-message{flex:1;min-width:0;word-break:break-word}
 .ima-pending-row{display:flex;gap:8px;align-items:center;margin-top:8px}
 .ima-wrap{display:flex;flex-direction:column;min-height:0;flex:1;height:100%;overflow:hidden}.ima-official-tree{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}.ima-native.ima-rail,.ima-rail.dcu-wb{box-sizing:border-box;overflow:hidden}
 .ima-tabs{display:flex;gap:18px;padding:4px 12px 0;border-bottom:1px solid var(--ima-line)}
@@ -528,10 +922,43 @@ window.__ModuleLoader__.load({
 .ima-logo.sm[data-brand="wecom"]{border-radius:4px;box-shadow:none;background:transparent}
 .ima-qrbox{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0 4px}
 .ima-qrbox img{width:200px;height:200px;background:#fff;border:1px solid var(--ima-line);border-radius:12px;object-fit:contain}
-.ima-bind-ready{display:flex;flex-direction:column;align-items:center;gap:14px;padding:12px 0 4px}.ima-bind-ready .ant-btn{min-width:136px}.ima-bind-status{min-height:40px;display:grid;place-items:center;color:var(--ima-muted);font-size:13px;text-align:center}
+.ima-bind-ready{display:flex;flex-direction:column;align-items:center;gap:14px;padding:12px 0 4px}.ima-bind-ready .ima-btn{min-width:136px}.ima-bind-status{min-height:40px;display:grid;place-items:center;color:var(--ima-muted);font-size:13px;text-align:center}
 .ima-hint{margin:0;color:var(--ima-muted);font-size:13px;text-align:center;line-height:1.6}
 .ima-field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;font-size:13px}
-.ima-field .ant-input,.ima-field input{width:100%}
+.ima-field .ima-input,.ima-field input{width:100%}
+.ima-input,.ima-account-remark-input,.ima-field input,.ima-rename,.ima-n-search-input{box-sizing:border-box!important;height:36px!important;padding:0 12px!important;border:0.5px solid var(--dsw-alias-border-l2,#494949)!important;border-radius:var(--dsw-radius-sm,8px)!important;background:var(--dsw-alias-bg-layer-1,transparent)!important;color:var(--dsw-alias-label-primary,#eee)!important;font:inherit!important;font-size:13px!important;line-height:20px!important;transition:border-color 120ms ease,background 120ms ease!important}
+.ima-textarea{height:auto!important;min-height:80px;padding:8px 12px!important;resize:vertical}
+.ima-input:hover:not(:disabled),.ima-account-remark-input:hover:not(:disabled),.ima-field input:hover:not(:disabled),.ima-rename:hover,.ima-n-search-input:hover{border-color:var(--dsw-alias-border-l3,#666)!important}
+.ima-input:focus,.ima-account-remark-input:focus,.ima-field input:focus,.ima-rename:focus,.ima-n-search-input:focus{border-color:var(--dsw-alias-brand-primary,#4b7cff)!important;outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4b7cff))!important;outline-offset:0!important}
+.ima-input::placeholder,.ima-account-remark-input::placeholder,.ima-field input::placeholder,.ima-n-search-input::placeholder{color:var(--dsw-alias-label-tertiary,#888)!important}
+.ima-input:disabled,.ima-account-remark-input:disabled{opacity:.5!important;cursor:not-allowed!important}
+.ima-checkbox-label{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--dsw-alias-label-primary,#eee);cursor:pointer;user-select:none}
+.ima-checkbox-label.is-disabled{opacity:.5;cursor:not-allowed}
+.ima-checkbox{width:16px;height:16px;margin:0;accent-color:var(--dsw-alias-state-business-primary,#4176e6);cursor:inherit}
+.ima-segmented{display:inline-flex;background:var(--dsw-alias-bg-layer-2,rgba(128,128,128,.1));padding:2px;border-radius:var(--dsw-radius-sm,8px);gap:2px;border:0.5px solid var(--dsw-alias-border-l1,rgba(255,255,255,.06))}
+.ima-segmented.is-block{display:flex;width:100%}
+.ima-segmented-item{flex:1;min-width:0;height:28px;padding:0 12px;border:none;border-radius:calc(var(--dsw-radius-sm,8px) - 2px);background:transparent;color:var(--dsw-alias-label-secondary,#a0a0a0);font:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:all 120ms ease;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ima-segmented-item:hover:not(:disabled){color:var(--dsw-alias-label-primary,#eee)}
+.ima-segmented-item.is-active{background:var(--dsw-alias-bg-layer-1,#222);color:var(--dsw-alias-label-primary,#fff);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.ima-tag{display:inline-flex!important;align-items:center!important;gap:4px!important;height:22px!important;padding:0 8px!important;font-size:12px!important;line-height:20px!important;border-radius:var(--dsw-radius-sm,6px)!important;font-weight:500!important;box-sizing:border-box!important;vertical-align:middle!important;background:var(--dsw-alias-interactive-bg-hover,rgba(128,128,128,.12));color:var(--dsw-alias-label-secondary,#b9b9b9);border:none}
+.ima-tag .ima-btn-spinner{width:11px!important;height:11px!important;margin-right:2px!important;vertical-align:0!important}
+.ima-tag-processing,.ima-tag.is-busy{background:color-mix(in srgb,var(--dsw-alias-state-business-primary,#4176e6) 14%,transparent)!important;color:var(--dsw-alias-state-business-primary,#4176e6)!important}
+.ima-tag-success{background:color-mix(in srgb,var(--dsw-alias-state-success-primary,#3fb950) 14%,transparent)!important;color:var(--dsw-alias-state-success-primary,#3fb950)!important}
+.ima-tag-warning{background:color-mix(in srgb,var(--dsw-alias-state-warn-primary,#d29922) 14%,transparent)!important;color:var(--dsw-alias-state-warn-primary,#d29922)!important}
+.ima-tag-error{background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#f85149) 14%,transparent)!important;color:var(--dsw-alias-state-error-primary,#f85149)!important}
+.ima-modal-root{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1100}
+.ima-modal-mask{position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.ima-modal-wrap{position:relative;max-width:calc(100vw - 32px);max-height:calc(100vh - 48px);overflow:auto;display:flex}
+.ima-modal-panel{position:relative;isolation:isolate;box-sizing:border-box;padding:24px 28px 28px;border-radius:var(--dsw-radius-panel,28px);background:var(--dsw-specific-menu,var(--dsw-alias-bg-layer-1));backdrop-filter:var(--dsw-menu-backdrop-filter,blur(20px));-webkit-backdrop-filter:var(--dsw-menu-backdrop-filter,blur(20px));border:0.5px solid var(--dsw-alias-border-l1,rgba(255,255,255,.1));box-shadow:var(--dsw-elevation-panel,0 20px 48px -12px rgba(0,0,0,.35));color:var(--dsw-alias-label-primary,#eee);display:flex;flex-direction:column;gap:16px}
+.ima-modal-header{display:flex;align-items:center;justify-content:space-between;min-height:24px}
+.ima-modal-title{font-size:17px;font-weight:600;line-height:24px;color:var(--dsw-alias-label-primary,#eee)}
+.ima-modal-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-tertiary,#888);cursor:pointer;transition:all 120ms ease}
+.ima-modal-close:hover{color:var(--dsw-alias-label-primary,#fff);background:var(--dsw-alias-interactive-bg-hover,rgba(128,128,128,.12))}
+.ima-modal-body{min-height:0;overflow:visible;display:flex;flex-direction:column;gap:12px}
+.ima-modal-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.ima-modal-footer-wrap{display:flex;justify-content:flex-end;margin-top:12px;padding-top:16px}
+.ima-inspector-actions>button{flex:none;white-space:nowrap}
+.ima-confirm-content{margin:8px 0 0;font-size:13px;line-height:22px;color:var(--dsw-alias-label-secondary,#b9b9b9)}
 .ima-page.ima-account-page{container-type:inline-size;min-width:0;max-width:1080px;width:100%;margin:0 auto;padding:0 0 32px}
 .ima-account-shell,.ima-account-shell *{box-sizing:border-box}
 .ima-account-shell{display:block;min-height:0;border:0;border-radius:0;overflow:visible;background:transparent}
@@ -548,19 +975,49 @@ window.__ModuleLoader__.load({
 .ima-account-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:12px;width:100%;min-height:48px;padding:10px 12px;border:0;border-radius:8px;background:color-mix(in srgb,var(--ima-text) 7%,transparent);color:inherit;text-align:left}
 .ima-account-row:hover{background:var(--ima-card-hover)}
 .ima-platform-head:focus-visible,.ima-account-row:focus-visible{outline:2px solid var(--ima-accent);outline-offset:2px}
-.ima-account-copy{min-width:0}.ima-account-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}.ima-account-rename-button{width:100%;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:text}.ima-account-rename-button:hover,.ima-account-rename-button:focus-visible{color:var(--ima-accent)}.ima-account-rename,.ima-account-remark-input{box-sizing:border-box;width:100%;height:32px;padding:4px 8px;border:1px solid var(--ima-line);border-radius:6px;background:transparent;color:inherit;font:inherit}.ima-account-id{display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ima-muted);font-size:11px}.ima-account-row .ant-tag{margin-inline-end:0}
+.ima-account-copy{min-width:0}.ima-account-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}.ima-account-rename-button{width:100%;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:text}.ima-account-rename-button:hover,.ima-account-rename-button:focus-visible{color:var(--ima-accent)}.ima-account-rename,.ima-account-remark-input{box-sizing:border-box;width:100%;height:32px;padding:4px 8px;border:1px solid var(--ima-line);border-radius:6px;background:transparent;color:inherit;font:inherit}.ima-account-id{display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ima-muted);font-size:11px}
+.ima-account-row .ima-tag{margin-inline-end:0}
 .ima-account-receive{display:inline-flex;align-items:center;justify-content:flex-end;gap:8px;white-space:nowrap;font-size:12px;color:var(--ima-muted)}
 .ima-inspector{padding:22px 24px 26px;min-width:0}.ima-inspector-head{display:flex;align-items:flex-start;gap:12px;padding-bottom:18px;border-bottom:1px solid var(--ima-line)}.ima-inspector-head-copy{min-width:0;flex:1}.ima-inspector-title{margin:1px 0 3px;font-size:17px;line-height:24px}.ima-inspector-title-row{display:flex;align-items:center;gap:12px;min-width:0}.ima-inspector-title-row .ima-inspector-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0}.ima-inspector-title-row .ima-inspector-status{flex:none;white-space:nowrap;font-size:11px}.ima-inspector-head-copy>.ima-account-id{margin-top:5px}
 .ima-inspector-status{flex:none}
 .ima-form{display:flex;flex-direction:column;gap:16px;padding-top:20px}
 .ima-command-permissions{min-width:0;margin:0;padding:0;border:0}
-.ima-diagnostic-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ima-inspector-title-row .ant-tag{margin-inline-end:0}.ima-bind-modal .ant-segmented{width:100%;margin:0 0 16px}.ima-bind-modal .ant-alert{margin-bottom:12px}.ima-connection-check{display:grid;gap:6px;padding:12px;border:1px solid var(--ima-line);border-radius:8px;font-size:12px;line-height:1.6;overflow-wrap:anywhere;color:var(--ima-muted)}.ima-connection-check strong{color:var(--ima-text)}.ima-diagnostic-item{padding:8px 0;border-top:1px solid var(--ima-line)}
-.ima-inspector-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;padding-top:18px;border-top:1px solid var(--ima-line)}.ima-inspector-actions .ant-btn{flex:none;white-space:nowrap}.ima-inspector-actions .ant-btn-dangerous{margin-left:auto}
-.ima-account-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}.ima-account-settings.compact{grid-template-columns:1fr}.ima-account-settings .ant-select{width:100%;min-width:0}.ima-account-settings .ant-select-selector{min-height:36px}
-.ima-picker-field{display:flex;min-width:0;flex-direction:column;gap:6px}.ima-picker-field.wide,.ima-picker-note,.ima-model-effort{grid-column:1/-1}.ima-model-effort{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;min-width:0}.ima-account-settings.compact .ima-model-effort{grid-template-columns:1fr}.ima-picker-label{color:var(--ima-muted);font-size:12px;font-weight:550}.ima-picker-note{color:var(--ima-muted);font-size:11px;line-height:1.5}.ima-picker-note.warning{color:var(--ima-warning)}
+.ima-diagnostic-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ima-inspector-title-row .ima-tag{margin-inline-end:0}.ima-bind-modal .ima-segmented{width:100%;margin:0 0 16px}.ima-bind-modal .ima-alert{margin-bottom:12px}.ima-connection-check{display:grid;gap:6px;padding:12px;border:1px solid var(--ima-line);border-radius:8px;font-size:12px;line-height:1.6;overflow-wrap:anywhere;color:var(--ima-muted)}.ima-connection-check strong{color:var(--ima-text)}.ima-diagnostic-item{padding:8px 0;border-top:1px solid var(--ima-line)}
+.ima-inspector-actions{display:flex!important;flex-wrap:wrap!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;margin-top:16px!important;padding-top:16px!important;padding-bottom:4px!important}
+.ima-account-modal .ima-inspector{padding:0 0 16px 0}
+.ima-bind-modal,.ima-account-modal{width:min(720px,100%) !important;max-height:100%}
+.ima-account-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;width:100%;box-sizing:border-box}
+.ima-account-settings.compact{grid-template-columns:1fr}
+.ima-picker-field{display:flex;min-width:0;width:100%;flex-direction:column;gap:6px;box-sizing:border-box}
+.ima-picker-field.wide,.ima-picker-note,.ima-model-effort{grid-column:1/-1}
+.ima-model-effort{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;min-width:0;width:100%;box-sizing:border-box}
+.ima-account-settings.compact .ima-model-effort{grid-template-columns:1fr}
+.ima-picker-label{color:var(--dsw-alias-label-secondary,var(--ima-muted));font-size:12px;font-weight:550;line-height:16px}
+.ima-picker-note{color:var(--dsw-alias-label-tertiary,var(--ima-muted));font-size:11px;line-height:1.6;margin-top:2px}
+.ima-picker-note.warning{color:var(--ima-warning)}
 .ima-save-note{color:var(--ima-muted);font-size:11px}.ima-save-note.ok{color:var(--ima-ok)}
-.ima-account-modal .ima-inspector,.ima-bind-modal .ima-setup-section{padding:0}.ima-setup-section{margin:0 0 14px;padding-bottom:14px;border-bottom:1px solid var(--ima-line)}
+.ima-bind-modal .ima-setup-section{padding:16px!important;margin:0 0 16px!important;border-radius:var(--dsw-radius-md,12px)!important;background:var(--dsw-alias-bg-layer-2,rgba(128,128,128,.04))!important;border:0.5px solid var(--dsw-alias-border-l1,rgba(255,255,255,.06))!important}
+.ima-bind-ready{display:flex!important;flex-direction:column!important;align-items:center!important;gap:14px!important;padding:20px 16px!important;border-radius:var(--dsw-radius-md,12px)!important;background:var(--dsw-alias-bg-layer-2,rgba(128,128,128,.04))!important;border:0.5px solid var(--dsw-alias-border-l1,rgba(255,255,255,.06))!important}
+.ima-bind-ready .ima-btn{min-width:140px!important;height:36px!important}
 .ima-account-picker{width:100%}
+.ima-enable-switch{box-sizing:border-box;position:relative;flex:0 0 auto;width:36px;height:20px;padding:2px;border:0;border-radius:999px;corner-shape:round;background:var(--dsw-alias-border-l3,#555);cursor:pointer}
+.ima-enable-switch[aria-checked=true]{background:var(--dsw-alias-brand-primary)}
+.ima-enable-switch:disabled{cursor:default;opacity:.5}
+.ima-enable-switch:focus-visible{outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
+.ima-enable-switch-thumb{display:block;width:16px;height:16px;border-radius:50%;corner-shape:round;background:var(--dsw-alias-label-primary-foreground,#fff);transition:transform 120ms ease;pointer-events:none}
+.ima-enable-switch[aria-checked=false] .ima-enable-switch-thumb{background:var(--dsw-alias-switch-thumb,#fff)}
+.ima-enable-switch[aria-checked=true] .ima-enable-switch-thumb{transform:translateX(16px)}
+.ima-menu-select-wrap,.ima-menu-select-wrap > *,.ima-menu-select-wrap span[class*="_root_"],.ima-menu-select-wrap .ima-menu-select-trigger,.ima-account-picker{display:flex!important;width:100%!important;min-width:0!important;box-sizing:border-box!important}
+.ima-menu-select-trigger{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:6px!important;width:100%!important;height:36px!important;padding:0 12px!important;border:0.5px solid var(--dsw-alias-border-l2,#494949)!important;border-radius:var(--dsw-radius-sm,8px)!important;background:var(--dsw-alias-bg-layer-1,transparent)!important;color:var(--dsw-alias-label-primary,#eee)!important;font:inherit!important;font-size:13px!important;cursor:pointer!important;user-select:none!important;box-sizing:border-box!important;transition:border-color 120ms ease,background 120ms ease!important}
+.ima-menu-select-trigger:hover:not(:disabled){border-color:var(--dsw-alias-border-l3,#666)!important;background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))!important}
+.ima-menu-select-trigger.is-open{border-color:var(--dsw-alias-brand-primary,#4b7cff)!important;outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4b7cff))!important}
+.ima-menu-select-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:left}
+.ima-menu-select-arrow{flex:none;opacity:0.6}
+.ima-btn-spinner{display:inline-block;vertical-align:-2px;animation:ima-spin 0.8s linear infinite}
+@keyframes ima-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.ima-btn-danger{color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important}
+.ima-btn-danger:hover:not(:disabled){color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;background:rgba(239,68,68,.12)!important}
+.ima-btn-danger-primary,.ima-btn-danger.ima-btn-danger-primary{background:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;color:#fff!important}
 @container (max-width:480px){.ima-account-row{grid-template-columns:minmax(0,1fr) auto auto;gap:8px;padding:10px}.ima-account-receive>span{display:none}.ima-platform-head{padding:10px 12px}.ima-account-list{padding:0 12px 12px}}
 
 `;
@@ -936,10 +1393,32 @@ window.__ModuleLoader__.load({
       }
       return false;
     }
+    function parsePickedPath(value) {
+      if (typeof value === "string" && value.trim() !== "") return value;
+      if (value === null || typeof value !== "object") return undefined;
+      if (value.canceled === true) return undefined;
+      if (typeof value.path === "string" && value.path.trim() !== "") return value.path;
+      const first = Array.isArray(value.filePaths) ? value.filePaths[0] : undefined;
+      return typeof first === "string" && first.trim() !== "" ? first : undefined;
+    }
     function pickHostDirectory(ctx) {
+      const host = typeof globalThis !== "undefined" ? globalThis.__DSH_DIRECTORY_PICKER__ : undefined;
+      if (host && typeof host.pick === "function") {
+        return Promise.resolve(host.pick()).then(parsePickedPath);
+      }
       const uiWorkspace = probeService(ctx, "uiWorkspace");
-      if (uiWorkspace && typeof uiWorkspace.pickDirectory === "function") return uiWorkspace.pickDirectory();
-      if (ctx.workspaces && typeof ctx.workspaces.pickDirectory === "function") return ctx.workspaces.pickDirectory();
+      if (uiWorkspace && typeof uiWorkspace.pickDirectory === "function") return Promise.resolve(uiWorkspace.pickDirectory()).then(parsePickedPath);
+      const dialog = probeService(ctx, "dialog");
+      if (dialog && typeof dialog.pickDirectory === "function") return Promise.resolve(dialog.pickDirectory()).then(parsePickedPath);
+      if (ctx && ctx.workspaces && typeof ctx.workspaces.pickDirectory === "function") return Promise.resolve(ctx.workspaces.pickDirectory()).then(parsePickedPath);
+      // 全部来源都不可用时必须显式拒绝：调用方据此提示“当前 Host 无法新增工作区”，
+      // 否则点击“添加工作区…”会静默无响应（取消选择由 resolve(undefined) 表示，二者不能混淆）。
+      return Promise.reject(workspacePickerUnavailable());
+    }
+    function workspacePickerUnavailable() {
+      const error = new Error("workspace picker unavailable");
+      error.code = "workspace/picker-unavailable";
+      return error;
     }
     function activeSessionRefusal(error) {
       const reason = error && (error.reason || error);
@@ -1154,6 +1633,7 @@ window.__ModuleLoader__.load({
       onCloseRef.current = onClose;
       useEffect(() => {
         const onKeyDown = (event) => {
+          if (modalLayers.length && modalLayers[modalLayers.length - 1].owner !== "bind") return;
           if (event.key !== "Escape") return;
           event.preventDefault();
           event.stopPropagation();
@@ -1208,14 +1688,17 @@ window.__ModuleLoader__.load({
         open: true,
         className: "ima-bind-modal",
         title: t("bind.title", { channel: channelLabel(ch, t) }),
-        width: 640,
+        width: 720,
         zIndex: 1100,
         destroyOnHidden: true,
+        layerOwner: "bind",
         maskClosable: !saving,
-        keyboard: false,
         onCancel: close,
         footer: tab === "manual" && hasManual
-          ? [h(Button, { key: "save", type: "primary", disabled: busy || !workspaceIsListed(settings.cwd, workspaces), onClick: saveManual }, busy ? t("action.saving") : t("action.confirm"))]
+          ? h("div", { className: "ima-modal-actions" },
+              hostModalButton(t("action.cancel"), close, "outline", { disabled: busy }),
+              hostModalButton(busy ? t("action.saving") : t("action.confirm"), saveManual, "primary", { disabled: busy || !workspaceIsListed(settings.cwd, workspaces) }),
+            )
           : null,
       },
         hasQr && hasManual && h(Segmented, {
@@ -1264,13 +1747,13 @@ window.__ModuleLoader__.load({
                 remain > 0 && h("p", { className: "ima-hint" }, t("bind.expire", { time: Math.floor(remain / 60) + ":" + String(remain % 60).padStart(2, "0") })),
                 status === "scanned" && h("p", { className: "ima-hint" }, t("bind.scanned")),
                 (status === "expired" || status === "failed") && h("p", { className: "ima-error" }, serverText(pairing && pairing.error, t) || t("bind.retry")),
-                h(Button, { disabled: busy, onClick: () => startQr(true) }, t("bind.refresh")),
+                hostModalButton(t("bind.refresh"), () => startQr(true), "outline", { disabled: busy }),
               )
               : h("div", { className: "ima-bind-ready" },
                   h("p", { className: "ima-hint" }, hintOf(ch, t)),
                   (busy || status === "starting") && h("div", { className: "ima-bind-status" }, t("bind.generating")),
                   (status === "expired" || status === "failed") && h("div", { className: "ima-error" }, serverText(pairing && pairing.error, t) || t("bind.retry")),
-                  h(Button, { type: "primary", disabled: busy || !workspaceIsListed(settings.cwd, workspaces) || !settings.provider || !settings.model || !settings.permission, onClick: () => startQr(qrStarted) }, busy ? t("bind.generating") : qrStarted ? t("bind.refresh") : t("action.generateQr")),
+                  hostModalButton(busy ? t("bind.generating") : qrStarted ? t("bind.refresh") : t("action.generateQr"), () => startQr(qrStarted), "primary", { disabled: busy || !workspaceIsListed(settings.cwd, workspaces) || !settings.provider || !settings.model || !settings.permission }),
                 )
         ),
         tab === "manual" && hasManual && h("div", null,
@@ -1325,8 +1808,6 @@ window.__ModuleLoader__.load({
       const permissionT = props.permissionT || ((key) => key);
       const presetT = props.presetT || ((key) => key);
       const value = props.value || {};
-      const [adding, setAdding] = useState(false);
-      const [addPath, setAddPath] = useState("");
       const [addBusy, setAddBusy] = useState(false);
       const [hint, setHint] = useState("");
       const [confirmingFullAccess, setConfirmingFullAccess] = useState(false);
@@ -1382,21 +1863,31 @@ window.__ModuleLoader__.load({
         return Promise.resolve(props.createWorkspace({ path: next })).then((created) => {
           const cwdPath = (created && (created.path || created.cwd)) || next;
           update({ cwd: cwdPath });
-          setAdding(false);
-          setAddPath("");
         }).catch((error) => setHint((error && error.message) || t("error.addWorkspace")))
           .finally(() => setAddBusy(false));
       };
       const onAddWorkspace = () => {
         setHint("");
-        setAdding(true);
-        setAddPath("");
-        if (typeof props.pickDirectory === "function") {
-          // Web 宿主可能返回空路径；始终保留可见的手动输入入口。
-          return Promise.resolve().then(() => props.pickDirectory()).then(picked => {
-            if (typeof picked === "string" && picked.trim()) return addWorkspace(picked);
-          }).catch(() => { setAdding(true); });
+        if (typeof props.pickDirectory !== "function") {
+          setHint(t("error.workspaceUnavailable"));
+          return Promise.resolve();
         }
+        setAddBusy(true);
+        return Promise.resolve()
+          .then(() => props.pickDirectory())
+          .then((picked) => {
+            if (typeof picked === "string" && picked.trim()) {
+              return addWorkspace(picked);
+            }
+          })
+          .catch((error) => {
+            setHint(error && error.code === "workspace/picker-unavailable"
+              ? t("error.workspaceUnavailable")
+              : (error && error.message) || t("error.addWorkspace"));
+          })
+          .finally(() => {
+            setAddBusy(false);
+          });
       };
       const selectPermission = (next) => {
         if (next === permission) return;
@@ -1415,7 +1906,7 @@ window.__ModuleLoader__.load({
       return h("div", { className: "ima-account-settings" + (props.compact ? " compact" : "") },
         field("workspace", props.workspaceLabel || t("account.workspace"), items.length === 0
           ? h("div", null,
-              h(Button, { type: "primary", icon: h(PlusIcon), onClick: onAddWorkspace }, t("composer.addWorkspace")),
+              h(Button, { type: "primary", icon: h(PlusIcon), disabled: addBusy, onClick: onAddWorkspace }, t("composer.addWorkspace")),
               h("div", { className: "ima-picker-note warning" }, t("composer.workspaceRequired")),
             )
           : h(Select, {
@@ -1425,13 +1916,10 @@ window.__ModuleLoader__.load({
           "aria-label": props.workspaceLabel || t("account.workspace"),
           popupMatchSelectWidth: false,
           options: items.map((item) => ({ value: item.path, label: item.title || item.path })),
+          footer: [{ value: "add-workspace", label: t("composer.addWorkspace"), disabled: addBusy }],
+          onFooter: () => { onAddWorkspace(); },
           notFoundContent: t("composer.noWorkspaces"),
           onChange: (next) => update({ cwd: next }),
-          dropdownRender: (menu) => h("div", null,
-            menu,
-            h("div", { style: { height: 1, margin: "6px 8px", background: "var(--dsw-alias-border-l2,rgba(255,255,255,.1))" } }),
-            h(Button, { type: "link", icon: h(PlusIcon), onClick: onAddWorkspace }, t("composer.addWorkspace")),
-          ),
         })),
         field("agentPreset", presetT("nav"), h(Select, {
           className: "ima-account-picker",
@@ -1498,19 +1986,8 @@ window.__ModuleLoader__.load({
         hint && h("div", { className: "ima-picker-note" }, hint),
         props.showAutoNameNote && h("div", { className: "ima-picker-note" }, t("account.autoNameNote")),
         h(Modal, {
-          open: adding,
-          title: t("composer.addWorkspace"),
-          onCancel: () => { setAdding(false); setAddPath(""); },
-          onOk: () => addWorkspace(addPath),
-          okButtonProps: { disabled: addBusy || !addPath.trim() },
-          confirmLoading: addBusy,
-          okText: addBusy ? t("action.adding") : t("action.confirm"),
-          cancelText: t("action.cancel"),
-        },
-          h(Input, { autoFocus: true, value: addPath, placeholder: t("composer.workspacePath"), "aria-label": t("composer.workspacePath"), onChange: (event) => setAddPath(event.target.value) }),
-        ),
-        h(Modal, {
           open: confirmingFullAccess,
+          layerOwner: "full-access",
           title: permissionT("confirm.title"),
           keyboard: false,
           maskClosable: false,
@@ -1680,15 +2157,14 @@ window.__ModuleLoader__.load({
           h(CommandPermissionSettings, { value: draft.commandPermissions, onSave: commandPermissions => save({ commandPermissions }), t }),
           note && h("div", { className: note === "status.saved" ? "ima-save-note ok" : "ima-save-note" }, t(note)),
           h("div", { className: "ima-inspector-actions" },
-            h(Button, { disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
-            h(Button, { disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
-            h(Button, { danger: true, disabled: Boolean(busy) || checking, onClick: () => {
+            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
+            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
+            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: () => {
               modal.confirm({
                 title: t("action.removeAccount"),
-                content: t("account.removeConfirm"),
+                description: t("account.removeConfirm"),
                 okText: t("action.removeAccount"),
                 cancelText: t("action.cancel"),
-                okButtonProps: { danger: true },
                 onOk: () => onAction(account.id, "remove"),
               });
             } }, t("action.removeAccount")),
@@ -1769,6 +2245,11 @@ window.__ModuleLoader__.load({
         h("path", { fill: "currentColor", d: "M8 0a8 8 0 0 0-2.53 15.59c.4.074.547-.173.547-.385 0-.19-.007-.693-.01-1.36-2.226.484-2.695-1.073-2.695-1.073-.364-.924-.89-1.17-.89-1.17-.726-.496.055-.486.055-.486.803.056 1.225.824 1.225.824.714 1.223 1.872.87 2.328.665.072-.517.28-.87.508-1.07-1.777-.202-3.645-.888-3.645-3.956 0-.874.31-1.588.823-2.148-.083-.202-.357-1.017.078-2.12 0 0 .672-.215 2.2.82A7.65 7.65 0 0 1 8 4.8c.68.003 1.365.092 2.004.27 1.527-1.035 2.197-.82 2.197-.82.437 1.103.162 1.918.08 2.12.513.56.822 1.274.822 2.148 0 3.076-1.872 3.752-3.654 3.95.288.248.544.735.544 1.482 0 1.07-.01 1.932-.01 2.195 0 .214.144.463.55.384A8.001 8.001 0 0 0 8 0Z" }),
       );
     }
+    function FeedbackIcon() {
+      return h("svg", { viewBox: "0 0 16 16", width: 16, height: 16, "aria-hidden": true, focusable: "false" },
+        h("path", { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", d: "M9.5 2.5 13.5 6.5 6 14H2v-4z" }),
+      );
+    }
 
     function SettingsPage(props) {
       const t = props.t || fallbackT;
@@ -1817,8 +2298,9 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (!settingsAccount) return undefined;
         const onKey = (event) => {
+          if (modalLayers.length && modalLayers[modalLayers.length - 1].owner !== "settings-account") return;
           if (event.key !== "Escape") return;
-          if (document.querySelector(".ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-dropdown:not(.ant-dropdown-hidden)")) return;
+          if (document.querySelector("[role='listbox'], [role='menu'], .ima-menu-select-dropdown")) return;
           event.preventDefault();
           event.stopPropagation();
           if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
@@ -1887,8 +2369,20 @@ window.__ModuleLoader__.load({
             h("div", { className: "ima-title-row" },
               h("h2", { className: "ima-title" }, t("settings.title")),
               h("div", { className: "ima-title-links" },
-                h(Button, { size: "small", shape: "default", href: "https://github.com/MichengAI/dsh-im-connect", target: "_blank", rel: "noreferrer", "aria-label": t("settings.viewProject"), icon: h(GithubMark16) }, t("settings.viewProject")),
-                h(Button, { size: "small", shape: "default", href: "https://github.com/MichengAI/dsh-im-connect/issues", target: "_blank", rel: "noreferrer", "aria-label": t("settings.feedback"), icon: h(IconListPenOutline16, { size: 16 }) }, t("settings.feedback")),
+                h(PrimitiveButton, {
+                  variant: "outline",
+                  size: "sm",
+                  "aria-label": t("settings.viewProject"),
+                  icon: h(GithubMark16),
+                  onClick: () => { window.open("https://github.com/MichengAI/dsh-im-connect", "_blank", "noreferrer"); }
+                }, t("settings.viewProject")),
+                h(PrimitiveButton, {
+                  variant: "outline",
+                  size: "sm",
+                  "aria-label": t("settings.feedback"),
+                  icon: h(FeedbackIcon),
+                  onClick: () => { window.open("https://github.com/MichengAI/dsh-im-connect/issues", "_blank", "noreferrer"); }
+                }, t("settings.feedback")),
               ),
             ),
             h("p", { className: "ima-sub" }, t("settings.description")),
@@ -1928,8 +2422,10 @@ window.__ModuleLoader__.load({
                       ...(ch.accounts || []).map((account) => h("div", { key: account.id, className: "ima-account-row" },
                         h("span", { className: "ima-account-copy" }, h(AccountRemarkEditor, { account, t, disabled: Boolean(busy[account.id]), onSave: (name) => onAction(account.id, "settings", { name }) })),
                         h(Tag, {
-                          color: busy[account.id] ? "default" : account.receiveConfigured === false ? "warning" : account.connectionState === "connected" ? "success" : "warning",
+                          color: busy[account.id] ? "processing" : account.receiveConfigured === false ? "warning" : account.connectionState === "connected" ? "success" : "warning",
                           bordered: false,
+                          className: "ima-account-status-tag" + (busy[account.id] ? " is-busy" : ""),
+                          icon: busy[account.id] ? createSpinner() : undefined,
                         }, busy[account.id] ? t("account.statusProcessing") : t(account.receiveConfigured === false ? "connection.paused" : "connection." + (account.connectionState || "unknown"))),
                         h("div", { className: "ima-account-receive", title: t("account.receiveDescription") },
                           h("span", null, t("account.receive")),
@@ -1945,10 +2441,10 @@ window.__ModuleLoader__.load({
           open: true,
           className: "ima-account-modal",
           title: t("action.settings"),
-          width: 640,
+          width: 720,
           zIndex: 1100,
+          layerOwner: "settings-account",
           destroyOnHidden: true,
-          keyboard: false,
           onCancel: () => setSettingsAccount(null),
           footer: null,
         },
@@ -2044,11 +2540,8 @@ window.__ModuleLoader__.load({
 .ima-n-menu button.danger:hover{background:var(--dsw-alias-interactive-bg-hover-danger,rgba(248,81,73,.12))}
 .ima-n-rename{flex:1;min-width:0;margin:0 6px 0 4px;border:.5px solid var(--dsw-alias-border-l4);border-radius:4px;outline:none;background:var(--dsw-alias-button-elevated-fill,rgba(255,255,255,.04));color:inherit;padding:0 2px;font-size:14px;line-height:20px}
 .ima-n-dialog-actions{display:flex;justify-content:flex-end;gap:8px}
-.ima-n-dialog-copy{margin:0;color:var(--dsw-alias-label-secondary);font-size:14px;line-height:22px}
 .ima-n-dialog-status{margin-top:12px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}
 .ima-n-dialog-error{margin-top:12px;color:var(--dsw-alias-state-error-primary,#f85149);font-size:13px;line-height:20px}
-.ima-n-danger-button{color:var(--dsw-alias-state-error-primary,#f85149)!important}
-.ima-n-danger-button:hover{background:var(--dsw-alias-interactive-bg-hover-danger,rgba(248,81,73,.12))!important}
 .ima-n-restore{flex:none;border:0;background:transparent;color:var(--dsw-alias-label-secondary,#c9cdd4);font:12px/16px inherit;padding:2px 4px;cursor:pointer}`;
 
     function NativeSvg(viewBox, size, children) {
@@ -2747,45 +3240,48 @@ window.__ModuleLoader__.load({
           }),
         ),
         ),
-        h(HostModal, {
+        h(Modal, {
           open: !!archiveGroupTarget,
+          layerOwner: "sidebar-archive",
           onClose: () => { if (!archiveGroupBusy) { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); } },
           closeLabel: t("rail.archiveGroupClose"),
           title: t("rail.archiveGroup"),
-          footer: h("div", { className: "ima-n-dialog-actions" },
-            h(HostButton, { variant: "outline", disabled: archiveGroupBusy, onClick: () => { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); } }, t("rail.archiveGroupCancel")),
-            h(HostButton, { variant: "outline", className: "ima-n-danger-button", disabled: archiveGroupBusy, onClick: confirmArchiveGroup }, t("rail.archiveGroupConfirm")),
+          description: archiveGroupTarget ? t("rail.archiveGroupDescription", { name: archiveGroupTarget.name, count: archiveGroupTarget.sessionIds.length }) : "",
+          footer: h(React.Fragment, null,
+            hostModalButton(t("rail.archiveGroupCancel"), () => { setArchiveGroupTarget(undefined); setArchiveGroupError(undefined); }, "outline", { disabled: archiveGroupBusy }),
+            hostModalButton(t("rail.archiveGroupConfirm"), confirmArchiveGroup, "primary", { disabled: archiveGroupBusy }),
           ),
         },
-          h("p", { className: "ima-n-dialog-copy" }, archiveGroupTarget ? t("rail.archiveGroupDescription", { name: archiveGroupTarget.name, count: archiveGroupTarget.sessionIds.length }) : ""),
           archiveGroupBusy && h("div", { className: "ima-n-dialog-status", role: "status" }, t("rail.archiveGroupPending")),
           archiveGroupError && h("div", { className: "ima-n-dialog-error", role: "alert" }, t("rail.archiveGroupFailed", { message: archiveGroupError })),
         ),
-        h(HostModal, {
+        h(Modal, {
           open: !!stopArchiveTarget,
+          layerOwner: "sidebar-stop",
           onClose: () => { if (!stopArchiveBusy) { setStopArchiveTarget(undefined); setStopArchiveError(undefined); } },
           closeLabel: t("action.cancel"),
           title: t("rail.stopArchive"),
-          footer: h("div", { className: "ima-n-dialog-actions" },
-            h(HostButton, { variant: "outline", disabled: stopArchiveBusy, onClick: () => { setStopArchiveTarget(undefined); setStopArchiveError(undefined); } }, t("action.cancel")),
-            h(HostButton, { variant: "outline", className: "ima-n-danger-button", disabled: stopArchiveBusy, onClick: confirmStopArchive }, t("rail.stopArchiveConfirm")),
+          description: stopArchiveTarget ? t(stopArchiveTarget.group ? "rail.stopArchiveGroupDescription" : "rail.stopArchiveDescription", { name: stopArchiveTarget.title }) : "",
+          footer: h(React.Fragment, null,
+            hostModalButton(t("action.cancel"), () => { setStopArchiveTarget(undefined); setStopArchiveError(undefined); }, "outline", { disabled: stopArchiveBusy }),
+            hostModalButton(t("rail.stopArchiveConfirm"), confirmStopArchive, "primary", { disabled: stopArchiveBusy }),
           ),
         },
-          h("p", { className: "ima-n-dialog-copy" }, stopArchiveTarget ? t(stopArchiveTarget.group ? "rail.stopArchiveGroupDescription" : "rail.stopArchiveDescription", { name: stopArchiveTarget.title }) : ""),
           stopArchiveBusy && h("div", { className: "ima-n-dialog-status", role: "status" }, t("rail.stopArchivePending")),
           stopArchiveError && h("div", { className: "ima-n-dialog-error", role: "alert" }, t("rail.archiveFailed")),
         ),
-        h(HostModal, {
+        h(Modal, {
           open: !!deleteTarget,
+          layerOwner: "sidebar-delete",
           onClose: () => { if (!deleteBusy) { setDeleteTarget(undefined); setDeleteError(undefined); } },
           closeLabel: t("rail.deleteSessionClose"),
           title: t("rail.deleteSession"),
-          footer: h("div", { className: "ima-n-dialog-actions" },
-            h(HostButton, { variant: "outline", disabled: deleteBusy, onClick: () => { setDeleteTarget(undefined); setDeleteError(undefined); } }, t("rail.deleteSessionCancel")),
-            h(HostButton, { variant: "outline", className: "ima-n-danger-button", disabled: deleteBusy, onClick: confirmDelete }, t("rail.deleteSessionConfirm")),
+          description: deleteTarget ? t("rail.deleteSessionDescription", { name: deleteTarget.title }) : "",
+          footer: h(React.Fragment, null,
+            hostModalButton(t("rail.deleteSessionCancel"), () => { setDeleteTarget(undefined); setDeleteError(undefined); }, "outline", { disabled: deleteBusy }),
+            hostModalButton(t("rail.deleteSessionConfirm"), confirmDelete, "primary", { disabled: deleteBusy }),
           ),
         },
-          h("p", { className: "ima-n-dialog-copy" }, deleteTarget ? t("rail.deleteSessionDescription", { name: deleteTarget.title }) : ""),
           deleteBusy && h("div", { className: "ima-n-dialog-status", role: "status" }, t("rail.deleteSessionPending")),
           deleteError && h("div", { className: "ima-n-dialog-error", role: "alert" }, t("rail.deleteSessionFailed", { message: deleteError })),
         ),
@@ -3149,15 +3645,15 @@ window.__ModuleLoader__.load({
       };
       function LocalizedChannelRail(props) {
         useSyncExternalStore(subscribeLocale, localeSnapshot, localeSnapshot);
-        return h(AntdProvider, null, h(ChannelRail, Object.assign({}, props, { t, openChannelSettings })));
+        return h(HostThemeProvider, null, h(ChannelRail, Object.assign({}, props, { t, openChannelSettings })));
       }
       function LocalizedSessionSwitcher(props) {
         useSyncExternalStore(subscribeLocale, localeSnapshot, localeSnapshot);
-        return h(AntdProvider, null, h(SessionSwitcher, Object.assign({}, props, { t, officialT: props.t, openChannelSettings })));
+        return h(HostThemeProvider, null, h(SessionSwitcher, Object.assign({}, props, { t, officialT: props.t, openChannelSettings })));
       }
       function LocalizedSettingsPage(props) {
         useSyncExternalStore(subscribeLocale, localeSnapshot, localeSnapshot);
-        return h(AntdProvider, null, h(SettingsPage, Object.assign({}, props, { t, permissionT, modelT, presetT, readMainSessionModel: () => readMainSessionModel(ctx) })));
+        return h(HostThemeProvider, null, h(SettingsPage, Object.assign({}, props, { t, permissionT, modelT, presetT, readMainSessionModel: () => readMainSessionModel(ctx) })));
       }
       openImSession = (id) => {
         try {
@@ -3166,6 +3662,95 @@ window.__ModuleLoader__.load({
         try { return openHostSession(ctx, id); }
         catch (error) { console.warn("[dsh-im-connect] 无法打开会话", id, error); return false; }
       };
+
+      const NAV_ICON_MARKER = "data-ima-nav-icon";
+      const NAV_ICON_ORIGINAL = "data-ima-nav-original";
+      const NAV_ROW_SELECTOR = '[role="dialog"] nav button';
+      const IM_NAV_PATHS = '<path fill="currentColor" d="M2.15 2.9h11.7v8.2H6.42L2.15 13.85V2.9Zm1.4 1.4v6.62l1.78-1.12h7.12V4.3H3.55Z"/>';
+
+      function isOwnNavRow(rowText, wantedLabel) {
+        const wanted = String(wantedLabel ?? "").trim();
+        if (wanted.length === 0) return false;
+        const current = String(rowText ?? "").trim();
+        return current === wanted;
+      }
+
+      function applySettingsNavIcon(button, wantedLabel) {
+        if (!isOwnNavRow(button.textContent, wantedLabel())) return false;
+        const svg = button.querySelector("svg");
+        if (!svg) return false;
+        if (svg.getAttribute("data-ima-nav-icon") === "assistant") return false;
+
+        if (!svg.getAttribute(NAV_ICON_ORIGINAL)) {
+          svg.setAttribute(NAV_ICON_ORIGINAL, JSON.stringify({
+            innerHTML: svg.innerHTML,
+            viewBox: svg.getAttribute("viewBox"),
+            fill: svg.getAttribute("fill"),
+          }));
+        }
+        svg.setAttribute("data-ima-nav-icon", "assistant");
+        svg.setAttribute("viewBox", "0 0 16 16");
+        svg.setAttribute("fill", "none");
+        svg.innerHTML = IM_NAV_PATHS;
+        button.setAttribute(NAV_ICON_MARKER, "");
+        return true;
+      }
+
+      function restoreSettingsNavIcon(button) {
+        const svg = button.querySelector("svg");
+        button.removeAttribute(NAV_ICON_MARKER);
+        if (!svg) return false;
+        const raw = svg.getAttribute(NAV_ICON_ORIGINAL);
+        svg.removeAttribute("data-ima-nav-icon");
+        svg.removeAttribute(NAV_ICON_ORIGINAL);
+        if (!raw) return false;
+        try {
+          const saved = JSON.parse(raw);
+          svg.innerHTML = saved.innerHTML;
+          if (saved.viewBox == null) svg.removeAttribute("viewBox");
+          else svg.setAttribute("viewBox", saved.viewBox);
+          if (saved.fill == null) svg.removeAttribute("fill");
+          else svg.setAttribute("fill", saved.fill);
+        } catch { /* ignore */ }
+        return true;
+      }
+
+      function installSettingsNavIcon(targetCtx, resolveLabel) {
+        if (typeof document === "undefined") return;
+        targetCtx.effect(() => {
+          let disposed = false;
+          let scheduled = false;
+
+          const sync = () => {
+            scheduled = false;
+            if (disposed) return;
+            for (const row of document.querySelectorAll(NAV_ROW_SELECTOR)) {
+              applySettingsNavIcon(row, resolveLabel);
+            }
+          };
+
+          const schedule = () => {
+            if (scheduled || disposed) return;
+            scheduled = true;
+            queueMicrotask(sync);
+          };
+
+          sync();
+          const observer = new MutationObserver(schedule);
+          observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+          return () => {
+            disposed = true;
+            observer.disconnect();
+            for (const row of document.querySelectorAll(`[${NAV_ICON_MARKER}]`)) {
+              restoreSettingsNavIcon(row);
+            }
+          };
+        }, "im-connect: settings nav icon");
+      }
+
+      installSettingsNavIcon(ctx, () => t("settings.label"));
+
       ctx.slots.inject("settings.section", () => ctx.slots.register({
           name: "settings.section",
           id: "im-assistant",

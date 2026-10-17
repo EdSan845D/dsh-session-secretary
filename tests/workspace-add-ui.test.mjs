@@ -5,30 +5,34 @@ import test from 'node:test'
 const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
 const start = source.indexOf('      const onAddWorkspace = () => {')
 const end = source.indexOf('      const selectPermission', start)
+test('不提供手动输入路径弹窗，严格禁止手输路径', () => {
+  assert.doesNotMatch(source, /layerOwner: "add-workspace"/, '不允许存在手动输入工作区路径的弹窗')
+  assert.doesNotMatch(source, /placeholder: t\("composer\.workspacePath"\)/, '不允许存在工作区路径输入框')
+})
+
 for (const mode of ['missing', 'empty', 'throw', 'reject', 'selected']) {
-  test(`添加工作区始终提供可见入口：${mode}`, async () => {
-    let adding = false, open = 'workspace', path = 'old'
+  test(`添加工作区只走原生目录选择器：${mode}`, async () => {
+    let open = 'workspace', hint = ''
     const created = []
     const pickDirectory = mode === 'missing' ? undefined : () => {
       if (mode === 'throw') throw new Error('unavailable')
       if (mode === 'reject') return Promise.reject(new Error('unavailable'))
       return mode === 'selected' ? 'D:\\Work' : null
     }
-    const handler = new Function('props', 'setOpen', 'setHint', 'setAdding', 'setAddPath', 'addWorkspace', source.slice(start, end) + '\nreturn onAddWorkspace;')(
-      { pickDirectory }, value => { open = value }, () => {}, value => { adding = value }, value => { path = value }, async value => { created.push(value) },
+    const handler = new Function('props', 'setOpen', 'setHint', 'setAddBusy', 't', 'addWorkspace', source.slice(start, end) + '\nreturn onAddWorkspace;')(
+      { pickDirectory }, value => { open = value }, value => { hint = value }, () => {}, key => key, async value => { created.push(value) },
     )
     const pending = handler()
     await pending
     if (mode === 'selected') {
-      assert.equal(adding, false, '原生选择器成功选择时不需要弹出手输路径框')
       assert.deepEqual(created, ['D:\\Work'])
+      assert.equal(hint, '')
     } else if (mode === 'empty') {
-      assert.equal(adding, false, '原生选择器取消时不需要弹出手输路径框')
       assert.deepEqual(created, [])
+      assert.equal(hint, '')
     } else {
-      assert.equal(adding, true, '无原生选择器或选择器异常时作为兜底弹出手输路径框')
-      assert.equal(path, '')
       assert.deepEqual(created, [])
+      assert.ok(hint !== '', '无原生选择器或失败时通过 hint 给出提示，不提供手输弹窗')
     }
   })
 }

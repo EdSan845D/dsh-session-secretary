@@ -1800,8 +1800,6 @@ window.__ModuleLoader__.load({
       const permissionT = props.permissionT || ((key) => key);
       const presetT = props.presetT || ((key) => key);
       const value = props.value || {};
-      const [adding, setAdding] = useState(false);
-      const [addPath, setAddPath] = useState("");
       const [addBusy, setAddBusy] = useState(false);
       const [hint, setHint] = useState("");
       const [confirmingFullAccess, setConfirmingFullAccess] = useState(false);
@@ -1857,23 +1855,29 @@ window.__ModuleLoader__.load({
         return Promise.resolve(props.createWorkspace({ path: next })).then((created) => {
           const cwdPath = (created && (created.path || created.cwd)) || next;
           update({ cwd: cwdPath });
-          setAdding(false);
-          setAddPath("");
         }).catch((error) => setHint((error && error.message) || t("error.addWorkspace")))
           .finally(() => setAddBusy(false));
       };
       const onAddWorkspace = () => {
         setHint("");
-        if (typeof props.pickDirectory === "function") {
-          return Promise.resolve().then(() => props.pickDirectory()).then(picked => {
-            if (typeof picked === "string" && picked.trim()) return addWorkspace(picked);
-          }).catch(() => {
-            setAdding(true);
-            setAddPath("");
-          });
+        if (typeof props.pickDirectory !== "function") {
+          setHint(t("error.workspaceUnavailable"));
+          return Promise.resolve();
         }
-        setAdding(true);
-        setAddPath("");
+        setAddBusy(true);
+        return Promise.resolve()
+          .then(() => props.pickDirectory())
+          .then((picked) => {
+            if (typeof picked === "string" && picked.trim()) {
+              return addWorkspace(picked);
+            }
+          })
+          .catch((error) => {
+            setHint((error && error.message) || t("error.addWorkspace"));
+          })
+          .finally(() => {
+            setAddBusy(false);
+          });
       };
       const selectPermission = (next) => {
         if (next === permission) return;
@@ -1971,19 +1975,6 @@ window.__ModuleLoader__.load({
         privateAccess === "all" && h("div", { className: "ima-picker-note warning" }, t("settings.publicChatNotice")),
         hint && h("div", { className: "ima-picker-note" }, hint),
         props.showAutoNameNote && h("div", { className: "ima-picker-note" }, t("account.autoNameNote")),
-        h(Modal, {
-          open: adding,
-          layerOwner: "add-workspace",
-          title: t("composer.addWorkspace"),
-          onCancel: () => { setAdding(false); setAddPath(""); },
-          onOk: () => addWorkspace(addPath),
-          okButtonProps: { disabled: addBusy || !addPath.trim() },
-          confirmLoading: addBusy,
-          okText: addBusy ? t("action.adding") : t("action.confirm"),
-          cancelText: t("action.cancel"),
-        },
-          h(Input, { autoFocus: true, value: addPath, placeholder: t("composer.workspacePath"), "aria-label": t("composer.workspacePath"), onChange: (event) => setAddPath(event.target.value) }),
-        ),
         h(Modal, {
           open: confirmingFullAccess,
           layerOwner: "full-access",

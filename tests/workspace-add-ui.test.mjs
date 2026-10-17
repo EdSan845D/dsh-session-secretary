@@ -24,3 +24,14 @@ for (const mode of ['missing', 'empty', 'throw', 'reject', 'selected']) {
     assert.deepEqual(created, mode === 'selected' ? ['D:\\Work'] : [])
   })
 }
+
+test('Select 组件支持 footer 与 onFooter，点击 footer 触发回调且不触发 onChange', () => {
+  assert.match(source, /const footer = React\.useMemo\(\(\) => \{/)
+  assert.match(source, /\.\.\.\(footer \? \{ footer \} : \{\}\)/)
+  assert.match(source, /if \(props\.footer && props\.footer\.some\(\(item\) => String\(item\.value\) === id\)\) \{/)
+})
+
+test('pickHostDirectory 优先使用桌面原生 __DSH_DIRECTORY_PICKER__ 并解析对象路径', () => {
+  assert.match(source, /__DSH_DIRECTORY_PICKER__/)
+  assert.match(source, /function parsePickedPath\(value\)/)
+})

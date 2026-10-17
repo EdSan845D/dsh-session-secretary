@@ -250,7 +250,7 @@ test('添加账号使用 Host 风格选择器且二维码按需生成', () => {
   assert.match(client, /h\(AccountSettingsPicker, \{[\s\S]*showAutoNameNote: true/)
   const bind = client.slice(client.indexOf('function BindModal'), client.indexOf('function AccountSettingsPicker'))
   assert.doesNotMatch(bind, /compact: true/, '新增账号应使用和设置页相同的两列布局')
-  assert.match(bind, /width: 640/)
+  assert.match(bind, /width: 720/)
   assert.match(client, /function mainSessionModel\(state\)/)
   assert.match(client, /modelSelection/)
   assert.match(client, /readMainSessionModel: \(\) => readMainSessionModel\(ctx\)/)
@@ -313,6 +313,15 @@ test('账号弹窗使用 Ant Modal，不再自制遮罩', () => {
   assert.doesNotMatch(client, /function AccountModalLayer/)
   assert.doesNotMatch(client, /ima-page ima-mask/)
   assert.doesNotMatch(client, /h\("div", \{ className: "ima-mask"/)
+})
+
+test('新增与设置弹窗对齐定时任务宽度 720px，工作区下拉支持 footer 新增工作区', () => {
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.match(client, /\.ima-bind-modal,\.ima-account-modal\{width:min\(720px,100%\) !important/)
+  assert.match(client, /className: "ima-bind-modal",\s*title:[^,]*,[\s\S]*?width: 720/)
+  assert.match(client, /className: "ima-account-modal",\s*title:[^,]*,[\s\S]*?width: 720/)
+  assert.match(client, /footer:\s*\[\{\s*value:\s*"add-workspace",\s*label:\s*t\("composer\.addWorkspace"\)/)
+  assert.match(client, /onFooter:\s*\(\)\s*=>\s*\{\s*onAddWorkspace\(\);\s*\}/)
 })
 
 test('账号弹窗继承成功色变量，已连接和诊断通过用绿色 Tag', () => {

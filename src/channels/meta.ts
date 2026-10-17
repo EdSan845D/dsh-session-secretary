@@ -44,15 +44,21 @@ export const CHANNEL_META: Record<ChannelId, ChannelMeta> = {
     id: 'feishu',
     label: '飞书',
     description: '通过飞书机器人接收并回复用户消息',
-    kind: 'qr',
-    fields: [],
+    kind: 'qr-or-credentials',
+    fields: [
+      { key: 'appId', label: 'App ID' },
+      { key: 'appSecret', label: 'App Secret', secret: true },
+    ],
   },
   lark: {
     id: 'lark',
     label: 'Lark',
     description: '通过 Lark 机器人接收并回复用户消息',
-    kind: 'qr',
-    fields: [],
+    kind: 'qr-or-credentials',
+    fields: [
+      { key: 'appId', label: 'App ID' },
+      { key: 'appSecret', label: 'App Secret', secret: true },
+    ],
   },
   weixin: {
     id: 'weixin',

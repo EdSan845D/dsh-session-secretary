@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.78 - 2026-10-17
+
+- Support DSH `0.2.1-alpha.4` and `0.2.1-alpha.5` while retaining all existing supported versions; pin development `@deepseek-ai/dsh*` dependencies to host `0.2.1-alpha.5`. Cordis stays at `4.0.5-alpha.2`.
+- No production plugin API breaks. Declared host packages have no removed or renamed exports from `0.2.1-alpha.3` to `0.2.1-alpha.5`. Peer still includes `0.1.2-rc.1` and the `0.1.5` release candidates, so the older icon, slot, session-open, and file-read paths stay.
+
 ## 0.1.77 - 2026-10-15
 
 - Fix duplicated question option lists in native-button prompts for WeCom, Feishu/Lark, DingTalk, Telegram, Discord, and Slack. Keep option descriptions, multi-select checkmarks and submission buttons, ordinary menus, approvals, and text fallback intact.

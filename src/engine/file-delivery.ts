@@ -130,7 +130,7 @@ function encodeFileBytes(result: { data: unknown; eof?: boolean; offset?: number
   throw new Error('incomplete-file')
 }
 
-/** 0.1.5/0.1.6 用 readAll；0.1.7 改为 readBytes({}, 完整文件)；更早宿主走本机 fs。 */
+/** 0.1.5 用 readAll；0.1.7 起改为 readBytes({}, 完整文件)；0.1.2-rc.1 没有该服务，走本机 fs。0.1.6 已不在 peer 里，不再单独分支。 */
 async function readWorkspaceFile(
   host: { get(name: string): unknown },
   sessionId: string,

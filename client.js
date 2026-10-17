@@ -2202,9 +2202,9 @@ window.__ModuleLoader__.load({
           h(CommandPermissionSettings, { value: draft.commandPermissions, onSave: commandPermissions => save({ commandPermissions }), t }),
           note && h("div", { className: note === "status.saved" ? "ima-save-note ok" : "ima-save-note" }, t(note)),
           h("div", { className: "ima-inspector-actions" },
-            h(Button, { variant: "outline", size: "sm", disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
-            h(Button, { variant: "outline", size: "sm", disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
-            h(Button, { variant: "outline", size: "sm", danger: true, disabled: Boolean(busy) || checking, onClick: () => {
+            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: check }, t(checking ? "connection.checking" : "action.checkConnection")),
+            h(Button, { variant: "outline", disabled: Boolean(busy) || checking, onClick: () => { setCheckResult(null); return onAction(account.id, "reconnect"); } }, t("action.reconnectAccount")),
+            h(Button, { variant: "outline", danger: true, disabled: Boolean(busy) || checking, onClick: () => {
               modal.confirm({
                 title: t("action.removeAccount"),
                 description: t("account.removeConfirm"),

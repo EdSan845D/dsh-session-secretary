@@ -24,7 +24,6 @@ interface TgUpdate {
       message_id: number
       chat: { id: number; type: string }
       message_thread_id?: number
-      is_topic_message?: boolean
     }
   }
   message?: {
@@ -40,7 +39,6 @@ interface TgUpdate {
     caption_entities?: Array<{ type: string; offset: number; length: number }>
     reply_to_message?: { from?: { id: number } }
     message_thread_id?: number
-    is_topic_message?: boolean
   }
 }
 
@@ -67,10 +65,10 @@ export function parseTelegramChatId(chatId: string): { chatId: number | string; 
   }
   const idPart = chatId.slice(0, index)
   const num = Number(idPart)
-  const threadPart = Number(chatId.slice(index + 1))
+  const rawThread = chatId.slice(index + 1)
   return {
     chatId: Number.isSafeInteger(num) ? num : idPart,
-    threadId: Number.isSafeInteger(threadPart) ? threadPart : undefined,
+    threadId: /^[1-9]\d*$/.test(rawThread) ? Number(rawThread) : undefined,
   }
 }
 

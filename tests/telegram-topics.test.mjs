@@ -22,6 +22,12 @@ test('telegramChatId 和 parseTelegramChatId 编解码及向后兼容', () => {
   assert.deepEqual(parseTelegramChatId('123'), { chatId: 123, threadId: undefined })
   assert.deepEqual(parseTelegramChatId('-100123456789'), { chatId: -100123456789, threadId: undefined })
   assert.deepEqual(parseTelegramChatId('-100123456789:42'), { chatId: -100123456789, threadId: 42 })
+
+  // 边界用例：防范空 threadId、0 或非法字符误解析为 threadId: 0
+  assert.deepEqual(parseTelegramChatId('123:'), { chatId: 123, threadId: undefined })
+  assert.deepEqual(parseTelegramChatId('123:0'), { chatId: 123, threadId: undefined })
+  assert.deepEqual(parseTelegramChatId('123:-1'), { chatId: 123, threadId: undefined })
+  assert.deepEqual(parseTelegramChatId('123:abc'), { chatId: 123, threadId: undefined })
 })
 
 test('Telegram 话题入站携带 message_thread_id 并在 chatId 隔离', async () => {
@@ -153,6 +159,59 @@ test('Telegram 话题中各类出站请求带上 message_thread_id', async () =>
     assert.ok(placeholderCall)
     assert.equal(placeholderCall.body.chat_id, -1009999)
     assert.equal(placeholderCall.body.message_thread_id, 888)
+  } finally {
+    restore()
+  }
+})
+
+test('Telegram 出站富文本携带 message_thread_id 且普通聊天不携带', async () => {
+  const calls = []
+  const restore = mockFetch(async (url, init) => {
+    const method = String(url).split('/').pop()
+    const body = init?.body ? (typeof init.body === 'string' ? JSON.parse(init.body) : init.body) : {}
+    calls.push({ method, body })
+    return new Response(JSON.stringify({ ok: true, result: { message_id: 5678 } }))
+  })
+
+  try {
+    const channel = createTelegramChannel({ token: 'test-token' }, () => undefined)
+
+    // 1. 话题中的富文本主路径：sendRichMessage 必须带上 chat_id 与 message_thread_id
+    await channel.send('-1009999:888', '**加粗标题**\n正文内容')
+    const richCall = calls.find((c) => c.method === 'sendRichMessage' && c.body?.chat_id === -1009999)
+    assert.ok(richCall, '应该调用 sendRichMessage')
+    assert.equal(richCall.body.chat_id, -1009999)
+    assert.equal(richCall.body.message_thread_id, 888)
+    assert.match(richCall.body.rich_message.markdown, /\*\*加粗标题\*\*/)
+
+    // 2. 普通无话题聊天的出站调用：请求参数中绝对不能出现 message_thread_id 属性，确保向后兼容
+    calls.length = 0
+    await channel.send('-10012345', '**普通群标题**\n正文')
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0].method, 'sendRichMessage')
+    assert.equal(calls[0].body.chat_id, -10012345)
+    assert.equal('message_thread_id' in calls[0].body, false)
+
+    // 3. 当 sendRichMessage 不可用时回退的纯文本 sendMessage 也不能带 message_thread_id
+    calls.length = 0
+    // 模拟 richDisabled 或 rich 报错 404
+    const originalFetch = globalThis.fetch
+    const fallbackRestore = mockFetch(async (url, init) => {
+      const method = String(url).split('/').pop()
+      const body = init?.body ? (typeof init.body === 'string' ? JSON.parse(init.body) : init.body) : {}
+      if (body?.rich_message) return new Response(JSON.stringify({ ok: false, error_code: 404, description: 'Not Found' }))
+      calls.push({ method, body })
+      return new Response(JSON.stringify({ ok: true, result: { message_id: 9999 } }))
+    })
+    try {
+      await channel.send('-10012345', '普通纯文本')
+      assert.equal(calls.length, 1)
+      assert.equal(calls[0].method, 'sendMessage')
+      assert.equal(calls[0].body.chat_id, -10012345)
+      assert.equal('message_thread_id' in calls[0].body, false)
+    } finally {
+      fallbackRestore()
+    }
   } finally {
     restore()
   }

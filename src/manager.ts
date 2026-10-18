@@ -18,7 +18,7 @@ import { ImEngine } from './engine/gateway.js'
 import { SeenStore } from './engine/seen-store.js'
 import { clearWeixinLogin, persistWeixinLogin, readLegacyWeixinBotToken, readWeixinAllowedUserId } from './channels/weixin.js'
 import { normalizeAssistantModel, normalizePermission, normalizeWorkspacePath, type AssistantModel, type PermissionPreset } from './engine/assistant-settings.js'
-import type { ChannelAdapter, EngineConfig, ImMessage } from './engine/types.js'
+import type { ChannelAdapter, EngineConfig, ImMessage, SendMode } from './engine/types.js'
 import { KeyedSerialQueue } from './engine/keyed-queue.js'
 import { backupCorruptFileSync, writeFileAtomicSync } from './engine/atomic-file.js'
 import { sameWorkspacePath } from './engine/workspace-path.js'
@@ -26,6 +26,11 @@ import { sameWorkspacePath } from './engine/workspace-path.js'
 export const API_CLIENT_HEADER = 'x-dsh-im-connect-client'
 const MAX_API_BODY_BYTES = 1024 * 1024
 const ACCOUNT_REMARK_LIMIT = 40
+
+/** 消息发送方式只有排队与插话两档；缺失或未知值一律回到排队，保持旧配置语义。 */
+function normalizeSendMode(input: unknown): SendMode {
+  return input === 'steer' ? 'steer' : 'queue'
+}
 
 function channelAutoPrefix(platform: ChannelId): string {
   return `${CHANNEL_META[platform].label}账号`
@@ -145,6 +150,8 @@ export interface ChannelState {
   permission?: PermissionPreset
   commandPermissions?: CommandPermissions
   privateAccess?: 'approved' | 'all'
+  /** 普通消息的默认发送方式；缺省为排队发送。 */
+  sendMode?: SendMode
   lastCheckedAt?: string
 }
 
@@ -166,6 +173,7 @@ export interface AccountView {
   permission: PermissionPreset
   commandPermissions: CommandPermissions
   privateAccess: 'approved' | 'all'
+  sendMode: SendMode
   lastCheckedAt?: string
 }
 
@@ -340,6 +348,7 @@ export class ChannelManager {
       agentPreset: state.agentPreset || this.engineConfig.agentPreset || 'standard',
       commandPermissions: normalizeCommandPermissions(state.commandPermissions),
       privateAccess: state.privateAccess === 'all' ? 'all' : 'approved',
+      sendMode: normalizeSendMode(state.sendMode),
       lastCheckedAt: state.lastCheckedAt,
     }
   }
@@ -413,6 +422,7 @@ export class ChannelManager {
       agentPreset: normalized.settings.agentPreset,
       commandPermissions: normalized.settings.commandPermissions,
       privateAccess: normalized.settings.privateAccess,
+      sendMode: normalized.settings.sendMode,
       enabled: true,
       receiveEnabled: true,
       config: nextConfig,
@@ -808,6 +818,8 @@ export class ChannelManager {
       state.permission = normalized.settings.permission
       state.commandPermissions = normalized.settings.commandPermissions
       state.privateAccess = normalized.settings.privateAccess
+      // 发送方式按注入时机读取，不需要重载会话。
+      state.sendMode = normalized.settings.sendMode
       this.flush()
       if (reloadSessions) await this.engine.reloadChannel(accountId, { resetSessions })
       return { ok: true, account: this.accountView(accountId, state) }
@@ -1177,6 +1189,7 @@ export class ChannelManager {
       state.cwd = normalizeWorkspacePath(state.cwd) ?? cwd
       state.permission = normalizePermission(state.permission, this.permissionPresets().names) ?? permission
       state.privateAccess = state.privateAccess === 'all' ? 'all' : 'approved'
+      state.sendMode = normalizeSendMode(state.sendMode)
     }
     this.store.version = 2
   }
@@ -1219,7 +1232,7 @@ export class ChannelManager {
     return ordinal
   }
 
-  private async normalizeAccountSettings(platform: ChannelId, input: Record<string, unknown>, previous: ChannelState): Promise<{ ok: true; settings: { name: string; nameOrdinal: number; assistant: AssistantModel; agentPreset: string; cwd: string; permission: PermissionPreset; commandPermissions: CommandPermissions; privateAccess: 'approved' | 'all' } } | { ok: false; error: string }> {
+  private async normalizeAccountSettings(platform: ChannelId, input: Record<string, unknown>, previous: ChannelState): Promise<{ ok: true; settings: { name: string; nameOrdinal: number; assistant: AssistantModel; agentPreset: string; cwd: string; permission: PermissionPreset; commandPermissions: CommandPermissions; privateAccess: 'approved' | 'all'; sendMode: SendMode } } | { ok: false; error: string }> {
     const agentPreset = input.agentPreset ?? previous.agentPreset ?? this.engineConfig.agentPreset ?? 'standard'
     if (typeof agentPreset !== 'string' || !agentPreset.trim()) return { ok: false, error: '请选择 Agent 预设' }
     if (input.agentPreset !== undefined) {
@@ -1241,6 +1254,7 @@ export class ChannelManager {
     const permission = normalizePermission(input.permission ?? previous.permission ?? this.currentPermission(), this.permissionPresets().names)
     if (!permission) return { ok: false, error: '请选择权限' }
     const privateAccess = input.privateAccess === 'all' || (input.privateAccess === undefined && previous.privateAccess === 'all') ? 'all' : 'approved'
+    const sendMode = normalizeSendMode(input.sendMode === undefined ? previous.sendMode : input.sendMode)
     let commandPermissions: CommandPermissions
     try { commandPermissions = normalizeCommandPermissions(input.commandPermissions === undefined ? previous.commandPermissions : input.commandPermissions) }
     catch { return { ok: false, error: '命令权限配置无效' } }
@@ -1250,7 +1264,7 @@ export class ChannelManager {
     if ([...trimmed].length > ACCOUNT_REMARK_LIMIT) return { ok: false, error: `账号备注不能超过 ${ACCOUNT_REMARK_LIMIT} 个字符` }
     if (/[\u0000-\u001F\u007F]/.test(trimmed)) return { ok: false, error: '账号备注不能包含换行或控制字符' }
     const name = trimmed || autoAccountName(platform, nameOrdinal)
-    return { ok: true, settings: { name, nameOrdinal, assistant, agentPreset, cwd, permission, privateAccess, commandPermissions } }
+    return { ok: true, settings: { name, nameOrdinal, assistant, agentPreset, cwd, permission, privateAccess, sendMode, commandPermissions } }
   }
 
   private accountIdFor(platform: ChannelId, config: Record<string, string>): string {
@@ -1304,6 +1318,7 @@ export class ChannelManager {
       model: assistant?.model ?? this.engineConfig.model,
       reasoningEffort: assistant?.reasoningEffort,
       permissionPreset: normalizePermission(state.permission, this.permissionPresets().names) ?? this.engineConfig.permissionPreset,
+      sendMode: normalizeSendMode(state.sendMode),
     }
   }
 
@@ -1362,7 +1377,7 @@ function pairingSettings(input?: Record<string, unknown>): Record<string, string
   if (!input) return {}
   const out: Record<string, string> = {}
   if (input.commandPermissions !== undefined) out.__setting_commandPermissions = JSON.stringify(normalizeCommandPermissions(input.commandPermissions))
-  for (const key of ['name', 'provider', 'model', 'reasoningEffort', 'cwd', 'permission', 'privateAccess', 'agentPreset']) {
+  for (const key of ['name', 'provider', 'model', 'reasoningEffort', 'cwd', 'permission', 'privateAccess', 'sendMode', 'agentPreset']) {
     const value = input[key]
     if (value !== undefined && value !== null) out[`__setting_${key}`] = String(value)
   }

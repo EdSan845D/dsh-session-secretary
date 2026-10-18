@@ -810,3 +810,27 @@ test('取消的换绑不改当前映射', async t => {
   await assert.rejects(f.router.bind('wecom', 'dm', 'cancel-bind', 'forked', '分叉', {}, 'D:/chosen', scope.signal), { name: 'AbortError' })
   assert.equal(f.router.lookup('wecom', 'dm', 'cancel-bind').sessionId, old.sessionId)
 })
+
+test('普通消息按发送方式选择 followup 或 steer，旧宿主无 steer 时回落排队', async t => {
+  const { router } = makeRouter(t)
+  const binding = await router.getOrCreate('wecom', 'dm', 'send-mode', '任务')
+  const calls = []
+  binding.handle.agent.followup = message => calls.push(['followup', message])
+  binding.handle.agent.steer = message => calls.push(['steer', message])
+  const message = { id: 'm1', role: 'user', content: [{ type: 'text', text: '补一句' }] }
+
+  // 缺省与显式 queue 保持既有排队语义。
+  router.followup(binding, message)
+  router.followup(binding, message, 'queue')
+  assert.deepEqual(calls.map(([kind]) => kind), ['followup', 'followup'])
+
+  calls.length = 0
+  router.followup(binding, message, 'steer')
+  assert.deepEqual(calls, [['steer', message]])
+
+  // 宿主 Agent 没有 next-step 注入能力时，插话设置回落为排队，消息不丢失。
+  calls.length = 0
+  delete binding.handle.agent.steer
+  router.followup(binding, message, 'steer')
+  assert.deepEqual(calls, [['followup', message]])
+})

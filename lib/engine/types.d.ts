@@ -74,6 +74,11 @@ export interface ChannelAdapter {
     /** 企业微信等回调通道不能等合并窗口，必须立刻处理。 */
     skipMerge?: boolean;
 }
+/**
+ * 普通消息的默认发送方式。`queue` 排队等待当前任务结束；`steer` 作为补充指令
+ * 在下一步边界注入运行中的任务（宿主 Agent 的 next-step 收件箱）。不提供自动切换。
+ */
+export type SendMode = 'queue' | 'steer';
 export interface EngineConfig {
     cwd: string;
     provider: string;
@@ -82,5 +87,6 @@ export interface EngineConfig {
     mergeTimeoutSecs: number;
     permissionPreset: string;
     reasoningEffort?: string;
+    sendMode?: SendMode;
 }
 //# sourceMappingURL=types.d.ts.map

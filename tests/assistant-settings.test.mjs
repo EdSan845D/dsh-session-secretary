@@ -83,6 +83,11 @@ function makeManager(t, ctx = {}) {
   return manager
 }
 
+/** connect 只回账号 ID；账号视图统一从列表取。 */
+function accountOf(manager, accountId) {
+  return manager.list().flatMap((channel) => channel.accounts).find((account) => account.id === accountId)
+}
+
 test('账号在线统计只接受明确就绪状态，连接中与异常不算在线', t => {
   const manager = makeManager(t)
   manager.store.channels['telegram:test'] = { platform: 'telegram', enabled: true, config: {} }
@@ -810,4 +815,73 @@ test('账号命令权限整组校验保存，失败不改变原有准入与权�
   const preserved = await manager.updateAccount(created.accountId, { name: 'renamed' })
   assert.deepEqual(preserved.account.commandPermissions, commandPermissions)
   assert.equal(preserved.account.privateAccess, 'approved')
+})
+
+test('账号发送方式默认排队，可切换插话并按账号持久化，未知值回落排队', async t => {
+  const manager = makeManager(t)
+  manager.startOne = async () => undefined
+  const created = await manager.connect('telegram', { token: 'send-mode-token' }, {
+    provider: 'send-mode-provider',
+    model: 'send-mode-model',
+    cwd: 'D:\\repo\\send-mode',
+    permission: 'review',
+  })
+  assert.equal(created.ok, true, created.error)
+  assert.equal(accountOf(manager, created.accountId).sendMode, 'queue', '省略发送方式时默认排队发送')
+
+  const steered = await manager.updateAccount(created.accountId, { sendMode: 'steer' })
+  assert.equal(steered.ok, true)
+  assert.equal(steered.account.sendMode, 'steer')
+  const persisted = JSON.parse(readFileSync(manager.file, 'utf8'))
+  assert.equal(persisted.channels[created.accountId].sendMode, 'steer')
+
+  const invalid = await manager.updateAccount(created.accountId, { sendMode: 'auto' })
+  assert.equal(invalid.ok, true)
+  assert.equal(invalid.account.sendMode, 'queue', '未知值必须回落为排队发送')
+
+  // 省略字段的后续保存保留当前值，与私聊准入一致。
+  const preserved = await manager.updateAccount(created.accountId, { sendMode: 'steer' })
+  assert.equal(preserved.account.sendMode, 'steer')
+  const untouched = await manager.updateAccount(created.accountId, { name: 'send-mode-renamed' })
+  assert.equal(untouched.account.sendMode, 'steer')
+})
+
+test('绑定时携带的发送方式随账号保存，只修改发送方式不重载会话', async t => {
+  const manager = makeManager(t)
+  manager.startOne = async () => undefined
+  const created = await manager.connect('telegram', { token: 'send-mode-reload' }, {
+    provider: 'send-mode-provider',
+    model: 'send-mode-model',
+    cwd: 'D:\\repo\\send-mode-reload',
+    permission: 'review',
+    sendMode: 'steer',
+  })
+  assert.equal(created.ok, true, created.error)
+  assert.equal(accountOf(manager, created.accountId).sendMode, 'steer')
+  const reloads = []
+  manager.engine.reloadChannel = async (accountId, options) => { reloads.push({ accountId, options }) }
+
+  const result = await manager.updateAccount(created.accountId, { sendMode: 'queue' })
+
+  assert.equal(result.ok, true)
+  assert.equal(result.account.sendMode, 'queue')
+  assert.deepEqual(reloads, [], '发送方式按注入时机读取，不需要重载会话')
+})
+
+test('发送方式选择器有双语词条，保存请求带上所选值', () => {
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.match(client, /"account\.sendMode": "发送方式"/)
+  assert.match(client, /"account\.sendMode": "Send mode"/)
+  assert.match(client, /"account\.sendQueue": "排队发送"/)
+  assert.match(client, /"account\.sendSteer": "插话发送"/)
+  assert.match(client, /"account\.sendQueue": "Queue"/)
+  assert.match(client, /"account\.sendSteer": "Steer"/)
+  assert.match(client, /"account\.sendSteerNote": "插话发送会把消息作为补充指令立即交给运行中的任务/)
+  assert.match(client, /"account\.sendSteerNote": "Steer hands the message to the running task/)
+  assert.match(client, /const sendMode = value\.sendMode === "steer" \? "steer" : "queue"/)
+  assert.match(client, /field\("sendMode", t\("account\.sendMode"\)/)
+  assert.match(client, /onChange: \(next\) => update\(\{ sendMode: next \}\)/)
+  assert.match(client, /sendMode: next\.sendMode,/)
+  assert.match(client, /account\.privateAccess, account\.sendMode,/)
+  assert.match(client, /sendMode: "queue",/)
 })

@@ -25,7 +25,7 @@
 Send tasks to your local DSH through your usual messenger, even when you are away from the computer. Receive replies, answer questions, and handle tool approvals in the same chat.
 
 - **Connect familiar platforms**: DingTalk, Feishu, Lark, WeChat, WeCom, QQ, Telegram, Discord, and Slack.
-- **Configure accounts separately**: each account has its own workspace, model, reasoning effort, permissions, and private-access mode.
+- **Configure accounts separately**: each account has its own workspace, model, reasoning effort, permissions, private-access mode, and send mode.
 - **Handle task interactions on your phone**: send work, read replies, and answer single- or multiple-choice questions. Approved users can approve or deny tools in private chats.
 - **Keep chat records separate**: each IM chat has its own session under **Channels** in the web workspace.
 - **Connect by QR code or credentials**: use the platform-specific setup in **Settings → IM Assistant**, then control message reception per account.
@@ -155,7 +155,7 @@ Each check reports passed, failed, or unverified, with timing and a suggested ne
 
 ## Screenshots
 
-Add accounts under each channel in **Settings → IM Assistant**. Expand a channel and click an account name to add a remark so you can tell users apart; leave it blank to restore the automatic name. The settings button configures workspace, model, permission, and private access, and can edit the same remark. The **Receive messages** switch is on the account row:
+Add accounts under each channel in **Settings → IM Assistant**. Expand a channel and click an account name to add a remark so you can tell users apart; leave it blank to restore the automatic name. The settings button configures workspace, model, permission, private access, and send mode, and can edit the same remark. The **Receive messages** switch is on the account row:
 
 ![IM Assistant settings](assets/screenshots/settings-channels.png)
 
@@ -239,12 +239,12 @@ The settings title shows the installed version and a **Check for updates** butto
 
 ## Usage
 
-Open **Settings → IM Assistant**, select **Add account** under the target channel, then choose that account's workspace, model, permission, and private-access mode. To register a new workspace, click **Add workspace…** in the dropdown footer to invoke the system folder picker (manual path inputs are disallowed); hosts lacking native folder pickers show "This Host cannot create workspaces" (upgrade to one of the supported host releases listed in Requirements, or add via the host sidebar).
+Open **Settings → IM Assistant**, select **Add account** under the target channel, then choose that account's workspace, model, permission, private-access mode, and send mode. To register a new workspace, click **Add workspace…** in the dropdown footer to invoke the system folder picker (manual path inputs are disallowed); hosts lacking native folder pickers show "This Host cannot create workspaces" (upgrade to one of the supported host releases listed in Requirements, or add via the host sidebar).
 
 | Goal | Action | Notes |
 | --- | --- | --- |
 | Add an account | Select **Add account** under a channel, choose the account settings, then scan or enter credentials | The same channel can contain multiple accounts; WeChat is QR-only, Feishu / Lark accept QR or App ID / App Secret, Telegram and Discord need a Bot Token, and Slack needs a Bot Token plus an App Token |
-| Change account settings | Expand the channel, select an account, then edit its workspace, model, reasoning effort, permission, or private-access mode in its settings dialog | Changes affect only that account and apply to its subsequent sessions immediately |
+| Change account settings | Expand the channel, select an account, then edit its workspace, model, reasoning effort, permission, private-access mode, or send mode in its settings dialog | Changes affect only that account and apply to its subsequent sessions immediately |
 | Pause receiving | Turn off **Receive messages** on the account row | Credentials and settings stay; only new inbound messages for that account pause |
 | Send work from IM | WeChat / Feishu / Lark / QQ QR scanners can DM immediately; DingTalk / WeCom scanners and other users need approval. Groups only need a mention | Each chat has its own channel session |
 | Split input | End with `..` to continue, `!!` to flush now | Default merge window is about 5 seconds |
@@ -254,6 +254,7 @@ Open **Settings → IM Assistant**, select **Add account** under the target chan
 | Command permissions | Open Settings on the account row and toggle DM/group commands | Admission is checked first; disabling commands keeps conversation and approval/question replies available |
 | Sessions / workspaces | `/sessions`, `/session <number or ID>`; `/workspaces`, `/workspace <number or ID>` | Resume ordinary Chat sessions; workspace selection creates a session without changing account defaults |
 | Task controls | `/stop`, `/steer <text>`, `/queue` | Stop, provide instructions, or inspect the queue; stopping preserves Host queued messages |
+| Send mode | Open Settings on the account row and choose Queue or Steer under **Send mode** | Queue (the default) keeps today's behavior; Steer hands an ordinary message to the running task as additional instructions immediately (same as `/steer`), and behaves like Queue while the task is idle |
 | Session with a preset | `/presets`, `/preset <number or ID>`, `/preset --default` | Starts and connects a new session in the current workspace without changing account defaults |
 | Model / reasoning | `/models`, `/model <number or provider/model>`, `/reasoning [effort or --default]` | Changes the current selection and updates the Host default for subsequent Chat sessions |
 | Result recovery | `/delivery`, `/delivery retry <record-ID>` | Check recent deliveries and resend text from the original task |
@@ -309,7 +310,7 @@ Command permission does not grant DM admission or replace tool approval. Enabled
 | Access | Groups need no binding, only a mention. Each account can allow only approved users or all DM users; approved-only is the default, and WeChat / Feishu / Lark / QQ QR scanners are added to that account's allowlist automatically |
 | Management API | Uses `/api/dsh-im-connect`, following the REST prefix used by other DSH plugins. It delegates Host, Origin, and Cookie checks to Host `connection.requestRejection`, including local requests. Unavailable authentication returns 503; mutations retain JSON, client-header, and 1 MiB limits |
 | Secrets | WeChat tokens and other secrets prefer DSH `ctx.credentials`; otherwise they use plaintext `%DSH_HOME%\dsh-im-connect\secrets.json`, restricted to the current user and never safe to sync or share |
-| Account state | `channels.json` stores per-account workspace, model, permission, private access, enablement, and credential refs, not raw secrets |
+| Account state | `channels.json` stores per-account workspace, model, permission, private access, send mode, enablement, and credential refs, not raw secrets |
 | Browser payloads | Never include tokens, secrets, App Secrets, or internal error details |
 | WeChat protocol | Official iLink only; no reverse-engineered personal WeChat protocol |
 | Tool approval | The task initiator replies in the chat bound to that session. DM admission decides who can chat and no longer gates approvals, and approvals never go back to the web. No reply within 5 minutes cancels the action instead of queueing later text |

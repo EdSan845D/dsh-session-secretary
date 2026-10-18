@@ -67,10 +67,10 @@ export function missingFileError(error: unknown): boolean {
   const code = (error as { code?: unknown } | null)?.code
   if (typeof code === 'string') {
     const tail = code.slice(code.lastIndexOf('/') + 1)
-    if (tail === 'not-found' || tail === 'not-regular-file') return true
+    if (tail === 'not-found') return true
   }
   const message = error instanceof Error ? error.message : ''
-  return message === 'not-regular-file' || message === 'file-not-found'
+  return message === 'file-not-found'
 }
 
 /** 复用 Chat 完整文件读取服务，宿主负责路径、文件类型和大小限制。 */

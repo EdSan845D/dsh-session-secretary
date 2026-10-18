@@ -195,7 +195,6 @@ test('Telegram 出站富文本携带 message_thread_id 且普通聊天不携带'
     // 3. 当 sendRichMessage 不可用时回退的纯文本 sendMessage 也不能带 message_thread_id
     calls.length = 0
     // 模拟 richDisabled 或 rich 报错 404
-    const originalFetch = globalThis.fetch
     const fallbackRestore = mockFetch(async (url, init) => {
       const method = String(url).split('/').pop()
       const body = init?.body ? (typeof init.body === 'string' ? JSON.parse(init.body) : init.body) : {}

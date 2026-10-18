@@ -13,6 +13,7 @@ window.__ModuleLoader__.load({
     const PrimitiveButton = primitives.Button;
     const HostMenu = primitives.Menu;
     const HostModal = primitives.Modal;
+    const HostSegmentedTabs = primitives.SegmentedTabs;
     // 宿主 Button 由 forwardRef 包成对象，typeof 是 object，不是 function。
     function isHostComponent(component) {
       return typeof component === "function" || (!!component && typeof component === "object" && typeof component.render === "function");
@@ -938,6 +939,13 @@ window.__ModuleLoader__.load({
 .ima-pending-list{display:flex;flex-direction:column;gap:6px;width:100%}
 .ima-pending-row{display:flex;gap:8px;align-items:center;padding:4px 0}
 .ima-wrap{display:flex;flex-direction:column;min-height:0;flex:1;height:100%;overflow:hidden}.ima-official-tree{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}.ima-native.ima-rail,.ima-rail.dcu-wb{box-sizing:border-box;overflow:hidden}
+.ima-tabs-wrap{display:flex;margin:2px var(--dsh-sidebar-inline-padding,12px) 8px 0;padding:0;width:auto}
+.ima-tabs-wrap .ima-segmented-tabs{width:100%;background:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 3%,transparent)!important;border-radius:8px!important;border:0.5px solid var(--dsw-alias-border-l1,rgba(255,255,255,.05))!important;box-sizing:border-box;padding:2px!important}
+.ima-tabs-wrap .ima-segmented-tabs>span{inset:2px auto 2px 2px!important;border-radius:6px!important;border:0.5px solid var(--dsw-alias-border-l2,rgba(255,255,255,.08))!important;background:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 8%,transparent)!important;border-color:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 12%,transparent)!important;box-shadow:none!important}
+.ima-tabs-wrap .ima-segmented-tabs [role=tab]{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;width:100%!important;height:26px!important;padding:0 6px!important;font-size:13px!important;line-height:18px!important;border-radius:6px!important;color:var(--dsw-alias-label-secondary,#8b8f98);text-align:center!important}
+.ima-tabs-wrap .ima-segmented-tabs [role=tab]>*{display:inline-flex!important;align-items:center!important;justify-content:center!important}
+.ima-tabs-wrap .ima-segmented-tabs [role=tab]:hover{color:var(--dsw-alias-label-primary,inherit)}
+.ima-tabs-wrap .ima-segmented-tabs [role=tab][aria-selected=true]{color:var(--dsw-alias-label-primary,inherit)!important;font-weight:600}
 .ima-tabs{display:flex;gap:18px;padding:4px 12px 0;border-bottom:1px solid var(--ima-line)}
 .ima-tab{appearance:none;border:0;background:transparent;color:var(--ima-muted);padding:8px 0;font-size:13px;cursor:pointer}
 .ima-tab.on{color:var(--ima-text);box-shadow:inset 0 -2px 0 currentColor}
@@ -3599,19 +3607,68 @@ window.__ModuleLoader__.load({
         : null;
       const extra = extraTabs.find((item) => item.id === tab);
       const hasChannelTab = extraTabs.some((item) => item.id === "channels");
+      const imTabItems = [
+        {
+          value: "tasks",
+          id: "ima-tab-tasks",
+          panelId: "ima-panel-tasks",
+          label: h("span", { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
+            h(IconFolderClose, { size: 14 }),
+            h("span", null, t("rail.tasks")),
+          ),
+        },
+      ];
+      if (!hasChannelTab) {
+        imTabItems.push({
+          value: "channels",
+          id: "ima-tab-channels",
+          panelId: "ima-panel-channels",
+          label: h("span", { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
+            h("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", "aria-hidden": "true" },
+              h("path", { fill: "currentColor", d: "M2.15 2.9h11.7v8.2H6.42L2.15 13.85V2.9Zm1.4 1.4v6.62l1.78-1.12h7.12V4.3H3.55Z" }),
+            ),
+            h("span", null, t("rail.channels")),
+          ),
+        });
+      }
+      for (const item of extraTabs) {
+        const itemLabel = item.id === "schedule"
+          ? h("span", { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
+              h(IconClockOutline, { size: 14 }),
+              h("span", null, item.label),
+            )
+          : item.label;
+        imTabItems.push({
+          value: item.id,
+          id: "ima-tab-" + item.id,
+          panelId: "ima-panel-" + item.id,
+          label: itemLabel,
+        });
+      }
+
       return h("div", { className: "ima-wrap" },
-        h("div", { className: "ima-tabs", role: "tablist", "aria-label": t("rail.tabsAria") },
-          h("button", { type: "button", role: "tab", "aria-selected": tab === "tasks", className: tab === "tasks" ? "ima-tab on" : "ima-tab", onClick: () => setTab("tasks") }, t("rail.tasks")),
-          !hasChannelTab && h("button", { type: "button", role: "tab", "aria-selected": tab === "channels", className: tab === "channels" ? "ima-tab on" : "ima-tab", onClick: () => setTab("channels") }, t("rail.channels")),
-          ...extraTabs.map((item) => h("button", {
-            key: item.id,
-            type: "button",
-            role: "tab",
-            "aria-selected": tab === item.id,
-            className: tab === item.id ? "ima-tab on" : "ima-tab",
-            onClick: () => setTab(item.id),
-          }, item.label)),
-        ),
+        HostSegmentedTabs
+          ? h("div", { className: "ima-tabs-wrap" },
+              h(HostSegmentedTabs, {
+                className: "ima-segmented-tabs",
+                label: t("rail.tabsAria"),
+                value: tab,
+                onChange: (next) => setTab(next),
+                items: imTabItems,
+              }),
+            )
+          : h("div", { className: "ima-tabs", role: "tablist", "aria-label": t("rail.tabsAria") },
+              h("button", { type: "button", role: "tab", "aria-selected": tab === "tasks", className: tab === "tasks" ? "ima-tab on" : "ima-tab", onClick: () => setTab("tasks") }, t("rail.tasks")),
+              !hasChannelTab && h("button", { type: "button", role: "tab", "aria-selected": tab === "channels", className: tab === "channels" ? "ima-tab on" : "ima-tab", onClick: () => setTab("channels") }, t("rail.channels")),
+              ...extraTabs.map((item) => h("button", {
+                key: item.id,
+                type: "button",
+                role: "tab",
+                "aria-selected": tab === item.id,
+                className: tab === item.id ? "ima-tab on" : "ima-tab",
+                onClick: () => setTab(item.id),
+              }, item.label)),
+            ),
         tab === "tasks"
           ? (officialTree || h(TaskList, { useSessions: useTaskSessions, useWorkspaces: props.useWorkspaces, openSession }))
           : extra

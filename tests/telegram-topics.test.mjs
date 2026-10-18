@@ -98,9 +98,9 @@ test('Telegram 话题中各类出站请求带上 message_thread_id', async () =>
   const restore = mockFetch(async (url, init) => {
     const method = String(url).split('/').pop()
     const body = init?.body ? (typeof init.body === 'string' ? JSON.parse(init.body) : init.body) : {}
-    if (body?.rich_message) return { json: async () => ({ ok: false, error_code: 404, description: 'Not Found' }) }
+    if (body?.rich_message) return new Response(JSON.stringify({ ok: false, error_code: 404, description: 'Not Found' }))
     calls.push({ method, body, rawBody: init?.body })
-    return { json: async () => ({ ok: true, result: { message_id: 1234 } }) }
+    return new Response(JSON.stringify({ ok: true, result: { message_id: 1234 } }))
   })
 
   try {

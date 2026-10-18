@@ -29,7 +29,7 @@ import {
   type UserQuestionAnswer,
   type UserQuestionItem,
 } from './question.js'
-import type { ChannelAdapter, EngineConfig, ImMessage } from './types.js'
+import type { ChannelAdapter, EngineConfig, ImMessage, SendMode } from './types.js'
 
 /** 分片发送的退避表（毫秒）：第一次立即，随后 1s/3s/8s/20s，累计约 32s。 */
 const SEND_RETRY_DELAYS_MS = [0, 1_000, 3_000, 8_000, 20_000] as const
@@ -597,7 +597,9 @@ export class ImEngine {
     let scope = this.inputScopes.get(channel.id)
     if (!scope) this.inputScopes.set(channel.id, scope = new AbortController())
     const { signal } = scope
-    const items = sources.map(source => new MessageProgress(channel, source, this.ctx, this.log, 'queued'))
+    // 账号级发送方式：steer 作为补充指令进入下一步边界，不再显示「排队中」。
+    const sendMode: SendMode = this.resolveConfig(channel.id).sendMode === 'steer' ? 'steer' : 'queue'
+    const items = sources.map(source => new MessageProgress(channel, source, this.ctx, this.log, sendMode === 'steer' ? 'processing' : 'queued'))
     let accepted = false
     let submitted = false
     let requestId: string | undefined
@@ -631,11 +633,11 @@ export class ImEngine {
         // Optional lookup preserves text-only operation on older Hosts. Keep
         // strict lookup so a pending or unloading provider is never invoked.
         const controller = (this.ctx as unknown as { get(name: string): unknown }).get('sessionController') as {
-          prompt(request: { requestId: string; sessionId: string; mode: 'queue'; content: Array<Record<string, unknown>> }, signal: AbortSignal): Promise<unknown>
+          prompt(request: { requestId: string; sessionId: string; mode: SendMode; content: Array<Record<string, unknown>> }, signal: AbortSignal): Promise<unknown>
         } | undefined
         if (!controller?.prompt) throw new ImageInputError('当前 Host 不支持 Chat 图片输入，请升级 DeepSeek Harness。')
         submitted = true
-        await controller.prompt({ requestId, sessionId: binding.sessionId, mode: 'queue', content }, signal)
+        await controller.prompt({ requestId, sessionId: binding.sessionId, mode: sendMode, content }, signal)
       } else {
         submitted = true
         this.router.followup(binding, {
@@ -643,7 +645,7 @@ export class ImEngine {
         role: 'user',
         content,
         source: { kind: 'user', rpcId: requestId },
-        })
+        }, sendMode)
       }
       accepted = true
       this.log(`[${channel.id}] 已注入 ${binding.sessionId}`)

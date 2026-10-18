@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { ChannelInstanceId, ChatKind, SessionRecord } from './session-id.js';
 import { SessionMapStore } from './session-store.js';
-import type { EngineConfig } from './types.js';
+import type { EngineConfig, SendMode } from './types.js';
 export interface ChatBinding {
     key: string;
     channelId: ChannelInstanceId;
@@ -120,7 +120,11 @@ export declare class SessionRouter {
     disposeAll(): Promise<void>;
     /** 卸载不代表删除日志；只有可靠确认日志不存在才清除索引。 */
     onHostDisposed(sessionId: string): Promise<boolean>;
-    followup(binding: ChatBinding, message: unknown): void;
+    /**
+     * 投递一条普通用户消息。`steer` 模式在宿主 Agent 提供 next-step 注入时作为补充指令
+     * 立即进入运行中的任务；旧宿主没有 `steer` 时保持排队投递，消息不丢失、语义可预期。
+     */
+    followup(binding: ChatBinding, message: unknown, mode?: SendMode): void;
     disposeChannel(channelId: string): Promise<void>;
     resetChannelSessions(channelId: string): Promise<void>;
     private disposeChannelNow;

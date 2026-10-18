@@ -4,7 +4,7 @@ import { type ConnectionState } from './channels/connection-state.js';
 import { type DiagnosticCheck } from './channels/diagnostics.js';
 import type { ChannelId, SessionRecord } from './engine/session-id.js';
 import { type AssistantModel, type PermissionPreset } from './engine/assistant-settings.js';
-import type { EngineConfig } from './engine/types.js';
+import type { EngineConfig, SendMode } from './engine/types.js';
 export declare const API_CLIENT_HEADER = "x-dsh-im-connect-client";
 interface ApiBodyReadResult {
     body: Record<string, unknown>;
@@ -31,6 +31,8 @@ export interface ChannelState {
     permission?: PermissionPreset;
     commandPermissions?: CommandPermissions;
     privateAccess?: 'approved' | 'all';
+    /** 普通消息的默认发送方式；缺省为排队发送。 */
+    sendMode?: SendMode;
     lastCheckedAt?: string;
 }
 export interface AccountView {
@@ -51,6 +53,7 @@ export interface AccountView {
     permission: PermissionPreset;
     commandPermissions: CommandPermissions;
     privateAccess: 'approved' | 'all';
+    sendMode: SendMode;
     lastCheckedAt?: string;
 }
 interface AccountDiagnosticResult {

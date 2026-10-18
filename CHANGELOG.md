@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- New per-account **Send mode** setting with two options, matching Chat's own send modes: **Queue** (default, current behavior) and **Steer**. With Steer, an ordinary chat message is handed to the running task as additional instructions at its next step (the same mechanism as `/steer`) instead of waiting for the current turn to finish; images and files follow the same mode through Chat's prompt admission. On Hosts whose Agent does not expose step-boundary injection, Steer gracefully falls back to queueing so no message is lost. Existing accounts keep queueing until the setting is changed.
+
 ## 1.0.2 - 2026-10-18
 
 - Remove legacy custom `Alert` component and align pending access approval banner (`ima-pending`) with Skills Manager feedback container patterns.

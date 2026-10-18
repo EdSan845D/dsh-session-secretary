@@ -10,7 +10,7 @@ import { SessionMapStore } from '../lib/engine/session-store.js'
 import { SeenStore } from '../lib/engine/seen-store.js'
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWP4z8AAAAMBAQCc479ZAAAAAElFTkSuQmCC', 'base64')
-function setup(t, id = 'account-opaque-123', controller) {
+function setup(t, id = 'account-opaque-123', controller, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'im-images-'))
   const calls = [], messages = [], sent = []
   const sessionId = `im:${id}:dm:1700000000000:u`
@@ -21,7 +21,7 @@ function setup(t, id = 'account-opaque-123', controller) {
   ctx.provide('sessionController')
   ctx.set('agents', { get: () => ({ followup: message => messages.push(message) }) })
   if (controller !== null) ctx.set('sessionController', controller ?? { async prompt(request, signal) { calls.push(request); assert.equal(signal.aborted, false); return { accepted: true } } })
-  const engine = new ImEngine(ctx, store, new SeenStore(join(dir, 'seen.json')), { cwd: dir, provider: 'account-default', model: 'text-only-default', agentPreset: 'standard', mergeTimeoutSecs: 1, permissionPreset: '' }, () => {})
+  const engine = new ImEngine(ctx, store, new SeenStore(join(dir, 'seen.json')), { cwd: dir, provider: 'account-default', model: 'text-only-default', agentPreset: 'standard', mergeTimeoutSecs: 1, permissionPreset: '' }, () => {}, undefined, options.resolveConfig)
   engine.register({ id, label: id, maxMessageLength: 4000, skipMerge: true, start() {}, stop() {}, status: () => 'on', authorizes: () => true, setMessageHandler() {}, async send(chat, text) { sent.push(text) } })
   t.after(() => { engine.dispose(); rmSync(dir, { recursive: true, force: true }) })
   const send = (overrides = {}) => engine.handleInbound(id, { chatId: 'u', userId: 'u', text: 'look', media: [{ kind: 'image', data: png, mediaType: 'image/png', name: 'photo.png' }], ...overrides })
@@ -269,6 +269,16 @@ for (const id of ['weixin', 'wecom', 'dingtalk', 'feishu', 'lark', 'qq', 'telegr
     assert.deepEqual(h.calls[0].content, [{ type: 'text', text: 'look' }, { type: 'image', data: png.toString('base64'), mediaType: 'image/png', name: 'photo.png' }])
   })
 }
+
+test('账号发送方式为插话时，图片经 Chat 投递入口以 steer 模式提交', async t => {
+  const config = { cwd: '.', provider: 'p', model: 'm', agentPreset: 'standard', mergeTimeoutSecs: 1, permissionPreset: '', sendMode: 'steer' }
+  const h = setup(t, undefined, undefined, { resolveConfig: () => config })
+  await h.send()
+  assert.equal(h.calls.length, 1)
+  assert.equal(h.messages.length, 0)
+  assert.equal(h.calls[0].mode, 'steer')
+  assert.equal(h.calls[0].sessionId, h.sessionId)
+})
 
 for (const caption of ['', '/new', '批准']) test(`通用文件经 Chat 凭据提交，说明文字不当命令：${caption}`, async t => {
   const h = setup(t)

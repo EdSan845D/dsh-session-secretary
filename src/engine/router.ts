@@ -3,7 +3,7 @@ import type { ChannelInstanceId, ChatKind, SessionRecord } from './session-id.js
 import { createImSessionId, parseImSessionId, sessionKeyOf } from './session-id.js'
 import { SessionMapStore } from './session-store.js'
 import { readHostDefaultModel, resolveImAgentOptions } from './agent-options.js'
-import type { EngineConfig } from './types.js'
+import type { EngineConfig, SendMode } from './types.js'
 import { KeyedSerialQueue } from './keyed-queue.js'
 import { sameWorkspacePath } from './workspace-path.js'
 import { replyText } from './command-locale.js'
@@ -361,10 +361,18 @@ export class SessionRouter {
     return this.channelOperations.run(record.channel, () => this.removeFromChannel(sessionId, false))
   }
 
-  followup(binding: ChatBinding, message: unknown): void {
+  /**
+   * 投递一条普通用户消息。`steer` 模式在宿主 Agent 提供 next-step 注入时作为补充指令
+   * 立即进入运行中的任务；旧宿主没有 `steer` 时保持排队投递，消息不丢失、语义可预期。
+   */
+  followup(binding: ChatBinding, message: unknown, mode: SendMode = 'queue'): void {
     const raw = binding.handle?.agent ?? this.ctx.agents?.get?.(binding.sessionId)
-    const agent = raw as { followup?: (message: unknown) => void } | undefined
+    const agent = raw as { followup?: (message: unknown) => void; steer?: (message: unknown) => void } | undefined
     if (!agent?.followup) throw new Error(`会话 ${binding.sessionId} 当前没有运行中的 agent`)
+    if (mode === 'steer' && typeof agent.steer === 'function') {
+      agent.steer(message)
+      return
+    }
     agent.followup(message)
   }
 

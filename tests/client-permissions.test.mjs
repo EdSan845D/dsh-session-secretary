@@ -8,8 +8,12 @@ const client = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8'
 test('设置页提供私聊准入批准，且不再提供钉钉开放模式', () => {
   assert.doesNotMatch(client, /accessMode/)
   assert.doesNotMatch(client, /配对模式/)
+  assert.doesNotMatch(client, /function Alert\(/)
   assert.match(client, /ima-pending/)
+  assert.match(client, /ima-pending-row/)
+  assert.match(client, /ima-feedback-warning/)
   assert.match(client, /"approve"/)
+  assert.match(client, /"deny"/)
 })
 
 // Refresh ordering and new approvals are exercised with real effects and

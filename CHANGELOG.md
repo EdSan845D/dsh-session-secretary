@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 - 2026-10-18
+
+- Remove legacy custom `Alert` component and align pending access approval banner (`ima-pending`) with Skills Manager feedback container patterns.
+- Fix issue where pending IM access request rows and \"Approve / Deny\" buttons were omitted due to unhandled `description` prop in custom Alert (Issue #35).
+- Add warning state theme colors and responsive vertical list layout for pending items.
+
 ## 1.0.1 - 2026-10-18
 
 - Upgrade Feishu normal reply cards to Interactive Card Schema 2.0 (`schema: "2.0"` + `body.elements`), fixing Markdown table rendering issues on modern Feishu clients. Interactive question choices and status patch updates retain Schema 1.0 structure for compatibility with existing card instances.

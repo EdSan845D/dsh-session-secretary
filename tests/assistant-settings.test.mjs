@@ -333,11 +333,17 @@ test('账号弹窗使用 Ant Modal，不再自制遮罩', () => {
 
 test('新增与设置弹窗对齐定时任务宽度 720px，工作区下拉支持 footer 新增工作区', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
-  assert.match(client, /\.ima-bind-modal,\.ima-account-modal\{width:min\(720px,100%\) !important/)
+  assert.match(client, /\.ima-bind-modal,\.ima-account-modal\{width:min\(720px,100%\) !important;max-height:100%;min-height:0\}/)
   assert.match(client, /className: "ima-bind-modal",\s*title:[^,]*,[\s\S]*?width: 720/)
   assert.match(client, /className: "ima-account-modal",\s*title:[^,]*,[\s\S]*?width: 720/)
   assert.match(client, /footer:\s*\[\{\s*value:\s*"add-workspace",\s*label:\s*t\("composer\.addWorkspace"\)/)
   assert.match(client, /onFooter:\s*\(\)\s*=>\s*\{\s*onAddWorkspace\(\);\s*\}/)
+})
+
+test('弹窗内容超出视口时内容区滚动，footer 保持可见', () => {
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.match(client, /contentClassName: \["ima-modal-content", contentClassName\]\.filter\(Boolean\)\.join\(" "\)/)
+  assert.match(client, /\.ima-bind-modal>\.ima-modal-content,\.ima-account-modal>\.ima-modal-content\{[^}]*overflow-y:auto/)
 })
 
 test('账号弹窗继承成功色变量，已连接和诊断通过用绿色 Tag，支持 info 状态', () => {

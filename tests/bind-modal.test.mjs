@@ -76,5 +76,6 @@ test('账号保存完成前显示保存中，不提前进入绑定成功分支',
   assert.match(client, /if \(event\.key !== "Escape"\) return;\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);\s*if \(typeof event\.stopImmediatePropagation === "function"\) event\.stopImmediatePropagation\(\);\s*if \(saving\) return;/)
   assert.match(client, /maskClosable: !saving/)
   assert.match(client, /onChange: \(next\) => switchTab\(next\)/)
-  assert.match(client, /h\(Segmented,/)
+  assert.match(client, /className: "ima-bind-tabs"/)
+  assert.match(client, /label: t\("bind\.tabsAria"\)/)
 })

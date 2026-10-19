@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5 - 2026-10-19
+
+- Fix native sidebar tab registry discovery: strictly inspect the current occupant component instead of relying on stale entry references.
+- Clean up own tab contributions immediately when the foreign sidebar host unregisters its native tab registry, and re-attach cleanly upon sidebar change notifications.
+
 ## 1.0.4 - 2026-10-18
 
 - Fix file delivery error handling: do not skip `not-regular-file` (e.g. directory paths), ensuring non-regular files report actionable delivery errors while missing deleted files remain silently skipped.

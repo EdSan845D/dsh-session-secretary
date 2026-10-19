@@ -7,6 +7,79 @@ const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8'
 const body = extractBlock(source, '        let wrappedEntry = null;', '\n      });\n    }\n\n    exports.apply', 'IM 生命周期', ['notifyPeers', 'ownedWrapper', 'ownedRegistry'])
 lifecycleCases(test, body, 'im')
 
+test('带 component 的条目只发现当前组件注册表，不回退残留缓存', () => {
+  const stale = nativeTabs.createNativeTabRegistry(null)
+  const current = nativeTabs.createNativeTabRegistry(null)
+  const component = function CurrentHost() {}
+  component.__dshNativeTabs = current
+  const entry = { component, __dshNativeTabs: stale }
+  assert.equal(nativeTabs.findNativeTabRegistry(entry), current)
+  entry.component = function PendingHost() {}
+  assert.equal(nativeTabs.findNativeTabRegistry(entry), null)
+  entry.component = null
+  assert.equal(nativeTabs.findNativeTabRegistry(entry), null)
+  entry.component = undefined
+  assert.equal(nativeTabs.findNativeTabRegistry(entry), null)
+  assert.equal(nativeTabs.findNativeTabRegistry(Object.create({ component })), current)
+})
+
+test('发现协议只接受 v1 的三个必需函数，并保留对象与函数直传', () => {
+  const valid = { version: 1, getTabs() { return [] }, subscribe() {}, insert() {} }
+  const direct = { __dshNativeTabs: valid }
+  const component = function Host() {}
+  component.__dshNativeTabs = valid
+  for (const target of [direct, component, { component }]) {
+    assert.equal(nativeTabs.findNativeTabRegistry(target), valid)
+  }
+  const malformed = [null, {}, { ...valid, version: 2 }, { ...valid, version: '1' }]
+  for (const method of ['getTabs', 'subscribe', 'insert']) {
+    malformed.push({ ...valid, [method]: undefined }, { ...valid, [method]: true })
+  }
+  for (const registry of malformed) {
+    assert.equal(nativeTabs.findNativeTabRegistry({ __dshNativeTabs: registry }), null)
+    assert.equal(nativeTabs.findNativeTabRegistry({ component: { __dshNativeTabs: registry }, __dshNativeTabs: valid }), null)
+  }
+  for (const target of [null, undefined, false, 1, 'entry']) {
+    assert.equal(nativeTabs.findNativeTabRegistry(target), null)
+  }
+})
+
+test('foreign host 换壳暂无注册表时立即撤出旧页签，通知后恢复且卸载只删自己的项', async () => {
+  const h = createHarness(body, 'im'), entry = h.add()
+  const oldRegistry = h.registry(null), nextRegistry = h.registry(null)
+  const schedule = { id: 'schedule' }
+  oldRegistry.insert(schedule)
+  const host = function ForeignHost() {}
+  host.__dshNativeTabHost = true
+  host.__dshNativeTabs = oldRegistry
+  entry.component = host
+  entry.__dshNativeTabs = oldRegistry
+  const stop = h.start()
+  try {
+    assert.deepEqual(oldRegistry.getTabs().map(tab => tab.id), ['schedule', 'channels'])
+    const pendingHost = function PendingHost() {}
+    pendingHost.__dshNativeTabHost = true
+    entry.component = pendingHost
+    h.window.dispatchEvent(new Event('dsh-native-sidebar-change'))
+    await h.settle()
+    assert.equal(entry.component, pendingHost)
+    assert.deepEqual(oldRegistry.getTabs(), [schedule], '换壳即清理旧表的自有频道页签')
+    assert.equal(entry.__dshNativeTabs, oldRegistry, '不修改其他插件的缓存')
+    nextRegistry.insert(schedule)
+    pendingHost.__dshNativeTabs = nextRegistry
+    h.window.dispatchEvent(new Event('dsh-native-sidebar-change'))
+    await h.settle()
+    assert.deepEqual(nextRegistry.getTabs().map(tab => tab.id), ['schedule', 'channels'])
+    const replacement = { id: 'channels', label: '其他实例' }
+    nextRegistry.insert(replacement)
+    stop()
+    await h.settle()
+    assert.equal(entry.component, pendingHost)
+    assert.deepEqual(oldRegistry.getTabs(), [schedule])
+    assert.deepEqual(nextRegistry.getTabs(), [schedule, replacement])
+  } finally { stop() }
+})
+
 test('抽取拒绝缺失、重复、倒序标记和缺少必要标识符的闭包', () => {
   for (const invalid of ['', 'BEGIN body', 'body END', 'END BEGIN', 'BEGIN BEGIN END', 'BEGIN END END']) {
     assert.throws(() => extractBlock(invalid, 'BEGIN', 'END', '测试闭包'), /测试闭包.*标记/)

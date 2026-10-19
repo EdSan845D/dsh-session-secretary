@@ -11,10 +11,14 @@ export declare class ChatCommands {
     private readonly pending;
     private readonly onSession;
     private readonly showChoices?;
+    /** /rename 成功后把新标题同步到平台话题名；由 ImEngine 注入。 */
+    private readonly onRenamed?;
     private readonly lifetime;
     private readonly choices;
     private readonly reasoningChoices;
-    constructor(host: CommandHost, router: SessionRouter, pending: (sessionId: string) => boolean, onSession?: (sessionId: string, msg: ImMessage) => void, showChoices?: ((channel: ChannelAdapter, msg: ImMessage, text: string, choices: Choice[], session?: string, allowNumber?: boolean) => Promise<string>) | undefined);
+    constructor(host: CommandHost, router: SessionRouter, pending: (sessionId: string) => boolean, onSession?: (sessionId: string, msg: ImMessage) => void, showChoices?: ((channel: ChannelAdapter, msg: ImMessage, text: string, choices: Choice[], session?: string, allowNumber?: boolean) => Promise<string>) | undefined, 
+    /** /rename 成功后把新标题同步到平台话题名；由 ImEngine 注入。 */
+    onRenamed?: ((sessionId: string, title: string) => void) | undefined);
     clear(): void;
     private service;
     private call;

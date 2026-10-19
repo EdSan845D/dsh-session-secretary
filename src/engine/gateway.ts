@@ -18,6 +18,7 @@ import { initialSessionTitle, readSessionTitle } from './session-title.js'
 import { SeenStore } from './seen-store.js'
 import { SessionMapStore } from './session-store.js'
 import { readSessionHistory } from './session-history.js'
+import { TopicTitleStore, clampTopicName, type TopicMode } from './topic-title.js'
 import { type ChatKind } from './session-id.js'
 import { decideAccess } from './access.js'
 import { splitText } from './split.js'
@@ -141,6 +142,8 @@ export class ImEngine {
   private readonly chatCommands: ChatCommands
   private readonly commandScopes = new Map<string, AbortController>()
   private readonly inputScopes = new Map<string, AbortController>()
+  /** 话题名回写状态：默认一个话题只命名一次。 */
+  private readonly topicTitles: TopicTitleStore
 
   constructor(
     private readonly ctx: Context,
@@ -155,7 +158,10 @@ export class ImEngine {
     deliveryFile?: string,
     /** 分片发送的退避表（毫秒）；默认 {@link SEND_RETRY_DELAYS_MS}，测试可传 `[0]` 关闭等待。 */
     private readonly sendRetryDelaysMs: readonly number[] = SEND_RETRY_DELAYS_MS,
+    /** 话题名状态文件；缺省不落盘，仅进程内去重（测试与旧调用不受影响）。 */
+    topicTitleFile?: string,
   ) {
+    this.topicTitles = new TopicTitleStore(topicTitleFile)
     this.deferred = new DeferredDelivery(deliveryFile)
     if (deliveryFile) {
       this.deferredTimer = setInterval(() => { void this.recoverDeliveries() }, 30_000)
@@ -168,7 +174,7 @@ export class ImEngine {
     })
     this.fileDelivery = new FileDelivery(ctx as unknown as { get(name: string): unknown }, log)
     this.chatCommands = new ChatCommands(ctx as unknown as { get(name: string): unknown }, this.router, id => this.questions.has(id) || this.broker.has(id), (id, msg) => { if (msg.userId) this.sessionActors.set(id, msg.userId) }, (channel, msg, text, choices, session, allowNumber = true) => this.choices.show(channel, msg, text, choices, session, undefined,
-      allowNumber ? undefined : replyText('点击按钮或发送对应命令；按钮 15 分钟内有效，普通文字继续聊天。'), allowNumber))
+      allowNumber ? undefined : replyText('点击按钮或发送对应命令；按钮 15 分钟内有效，普通文字继续聊天。'), allowNumber), (sessionId, title) => { void this.renameTopicNow(sessionId, title) })
     this.merger = new SessionMerger((config.mergeTimeoutSecs || 5) * 1000, (key, text) => {
       const sep = key.indexOf(':')
       const channelId = key.slice(0, sep)
@@ -283,6 +289,7 @@ export class ImEngine {
   register(channel: ChannelAdapter): void {
     this.channels.set(channel.id, channel)
     channel.setMessageHandler((msg) => this.enqueue(channel.id, msg))
+    channel.setTopicEditHandler?.((chatId, name) => this.observeTopicEdit(channel.id, chatId, name))
   }
 
   unregister(channelId: string): void {
@@ -1006,7 +1013,14 @@ export class ImEngine {
     if (!this.router.bindingForSession(sessionId)) return
     if (event.type === 'session/title') {
       const title = readSessionTitle(event.data)
-      if (title) this.router.setTitle(sessionId, title.title, title.source)
+      if (title) {
+        this.router.setTitle(sessionId, title.title, title.source)
+        // 首条消息的 fallback 标题就是原文（如「在么」），拿它当话题名太糙；
+        // 真正命名留给紧随其后的 provider 标题。
+        if ((event.data as { source?: { kind?: string } })?.source?.kind !== 'fallback') {
+          void this.syncTopicName(sessionId, title.title)
+        }
+      }
       return
     }
     // 静音会话：保留登记与标题同步，但不向聊天投递任何输出事件。
@@ -1102,6 +1116,59 @@ export class ImEngine {
         outcome.ok = outcome.ok && filesOk
       }
     }
+  }
+
+  /**
+   * 把会话标题写成话题名。
+   *
+   * 默认策略只写一次（`once`）：新话题里第一条非 fallback 标题写进去就固定，
+   * 之后的标题变化不再跟随 —— 既避开 editForumTopic 的频控，也避免话题名频繁跳动。
+   * `/rename` 走 explicit 参数强制同步一次，这是人工换名的入口。
+   */
+  private async syncTopicName(sessionId: string, title: string, explicit = false): Promise<void> {
+    const record = this.store.findSession(sessionId)
+    if (!record || record.detached) return
+    const channel = this.channels.get(record.channel)
+    if (!channel?.renameTopic) return
+    const key = `${record.channel}:${record.chatId}`
+    const name = clampTopicName(title)
+    if (!name) return
+    const mode = this.topicMode()
+    if (!explicit && !this.topicTitles.canWrite(key, mode)) return
+    // 名字没变就不必再调一次接口。
+    if (this.topicTitles.get(key)?.name === name) return
+    const follow = mode === 'follow'
+    try {
+      const renamed = await channel.renameTopic(record.chatId, name)
+      // 频控等原因返回 false：不记录状态，下一轮还能再试。
+      if (!renamed) return
+      this.topicTitles.rememberWritten(key, name, follow)
+      this.log(`[${channel.id}] 话题已命名：${name}`)
+    } catch (error) {
+      this.log(`[${channel.id}] 话题命名失败: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  /** 命名策略；默认 once。 */
+  private topicMode(): TopicMode {
+    const mode = (this.config as { topicNaming?: TopicMode }).topicNaming
+    return mode === 'follow' || mode === 'off' ? mode : 'once'
+  }
+
+  /** 话题被改名：自己写入的回显忽略，人工改名则锁定。私聊话题不会推送此事件。 */
+  private observeTopicEdit(channelId: string, chatId: string, name: string): void {
+    const key = `${channelId}:${chatId}`
+    try {
+      const result = this.topicTitles.observeEdit(key, name)
+      if (result === 'frozen') this.log(`[${channelId}] 话题已被人工改名，后续不再自动同步：${name}`)
+    } catch (error) {
+      this.log(`[${channelId}] 话题改名事件处理失败: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  /** /rename 之后把新标题同步到话题名（显式操作，不受 once 限制）。 */
+  async renameTopicNow(sessionId: string, title: string): Promise<void> {
+    await this.syncTopicName(sessionId, title, true)
   }
 
   /** 正常交付保持安静；仅异常结果追加必要文字提示。 */

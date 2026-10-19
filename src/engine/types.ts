@@ -63,6 +63,13 @@ export interface ChannelAdapter {
   /** 渠道本地白名单。true 放行，false 硬拒绝，undefined 交给引擎白名单。 */
   authorizes?(userId: string): boolean | undefined
   beginReply?(chatId: string): Promise<ReplyStream>
+  /**
+   * 把会话标题写成平台侧的「话题名」（Telegram 论坛话题 / 私聊话题）。
+   * 返回 false 表示该聊天没有话题名这一层级（普通私聊、未开启话题的群），调用方应据此跳过。
+   */
+  renameTopic?(chatId: string, name: string): Promise<boolean>
+  /** 订阅平台侧「话题被改名」事件；Telegram 由 forum_topic_edited 服务消息提供。 */
+  setTopicEditHandler?(handler: (chatId: string, name: string) => void): void
   /** 企业微信等回调通道不能等合并窗口，必须立刻处理。 */
   skipMerge?: boolean
 }

@@ -988,7 +988,7 @@ window.__ModuleLoader__.load({
 .ima-modal-footer-wrap{display:flex;justify-content:flex-end;margin-top:12px;padding-top:16px}
 .ima-inspector-actions>button{flex:none;white-space:nowrap}
 .ima-confirm-content{margin:8px 0 0;font-size:13px;line-height:22px;color:var(--dsw-alias-label-secondary,#b9b9b9)}
-.ima-page.ima-account-page{container-type:inline-size;min-width:0;max-width:1080px;width:100%;margin:0 auto;padding:0 0 32px}
+.ima-page.ima-account-page{container-type:inline-size;min-width:0;width:100%;padding:0 0 32px}
 .ima-account-shell,.ima-account-shell *{box-sizing:border-box}
 .ima-account-shell{display:block;min-height:0;border:0;border-radius:0;overflow:visible;background:transparent}
 .ima-platforms{display:flex;flex-direction:column;gap:12px;padding:0;border:0;background:transparent;min-width:0}

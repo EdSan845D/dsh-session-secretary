@@ -3807,7 +3807,7 @@ window.__ModuleLoader__.load({
 
       function applySettingsNavIcon(button, wantedLabel) {
         if (!isOwnNavRow(button.textContent, wantedLabel())) return false;
-        if (!button.querySelector("svg")) return false;
+        if (!button.querySelector(":scope > svg")) return false;
         if (button.getAttribute(NAV_ICON_MARKER) === "assistant" && button.querySelector(`.${NAV_ICON_CLASS}`)) return false;
         button.setAttribute(NAV_ICON_MARKER, "assistant");
         let icon = button.querySelector(`.${NAV_ICON_CLASS}`);

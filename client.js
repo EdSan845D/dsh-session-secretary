@@ -3509,7 +3509,9 @@ window.__ModuleLoader__.load({
     }
 
     function findNativeTabRegistry(entry) {
-      return entry?.__dshNativeTabs || entry?.component?.__dshNativeTabs || null;
+      const target = entry && (typeof entry === "object" || typeof entry === "function") && "component" in entry ? entry.component : entry;
+      const registry = target?.__dshNativeTabs;
+      return registry?.version === 1 && typeof registry.getTabs === "function" && typeof registry.subscribe === "function" && typeof registry.insert === "function" ? registry : null;
     }
 
     function applyRegistryFilters(state, registry) {
@@ -3988,6 +3990,7 @@ window.__ModuleLoader__.load({
             const occupant = entries.find((item) => item && item.component);
             if (wrappedEntry && (occupant !== wrappedEntry || occupant.component !== ownedWrapper)) unwrap();
             if (!occupant) { clearInsertedTab(); return; }
+            if (insertedTabRegistry && findNativeTabRegistry(occupant) !== insertedTabRegistry) clearInsertedTab();
             if (occupant && (occupant.component.__dshNativeTabHost || occupant.component.__dshAutomationWrapped || findNativeTabRegistry(occupant))) {
               insertChannelTab(occupant);
               return;

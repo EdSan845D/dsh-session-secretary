@@ -79,3 +79,19 @@ test('账号保存完成前显示保存中，不提前进入绑定成功分支',
   assert.match(client, /className: "ima-bind-tabs"/)
   assert.match(client, /label: t\("bind\.tabsAria"\)/)
 })
+
+test('单方法渠道不渲染 tab 语义，双方法渠道常驻两个 tabpanel', () => {
+  const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  const bind = source.slice(source.indexOf('function BindModal'), source.indexOf('function AccountSettingsPicker'))
+  assert.ok(bind.length > 0)
+  assert.match(bind, /const showTabs = hasQr && hasManual/)
+  assert.match(bind, /hasQr && h\("div", showTabs \? \{ className: "ima-bind-panel", id: "ima-bind-panel-qr", role: "tabpanel", "aria-labelledby": "ima-bind-tab-qr", hidden: tab !== "qr" \} : null/)
+  assert.match(bind, /hasManual && h\("div", showTabs \? \{ className: "ima-bind-panel", id: "ima-bind-panel-manual", role: "tabpanel", "aria-labelledby": "ima-bind-tab-manual", hidden: tab !== "manual" \} : null/)
+})
+
+test('页签指示条宽度按 2px 内边距换算，与页签列对齐', () => {
+  const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.match(source, /\.ima-tabs-wrap \.ima-segmented-tabs>span\{[^}]*width:calc\(\(100% - 4px\)\/var\(--ima-tab-count,2\)\)!important/)
+  assert.match(source, /\.ima-bind-tabs-wrap \.ima-bind-tabs>span\{[^}]*width:calc\(\(100% - 4px\)\/2\)!important/)
+  assert.match(source, /style: \{ "--ima-tab-count": String\(imTabItems\.length\) \}/)
+})

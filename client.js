@@ -70,6 +70,7 @@ window.__ModuleLoader__.load({
     const IconFolderClose = pickHostIcon("IconFolderCloseRegular", "IconFolderClose16", "IconFolderClose");
     const IconClockOutline = pickHostIcon("IconClockOutlineRegular", "IconClockOutline16");
     const IconFlatListOutline = pickHostIcon("IconFlatListOutlineRegular");
+    const IconQueueOutline = pickHostIcon("IconQueueOutlineRegular");
     function alertIcon(type) {
       if (type === "success") {
         return React.createElement("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" },
@@ -3622,20 +3623,23 @@ window.__ModuleLoader__.load({
           id: "ima-tab-channels",
           panelId: "ima-panel-channels",
           label: h("span", { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
-            h("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", "aria-hidden": "true" },
-              h("path", { fill: "currentColor", d: "M2.15 2.9h11.7v8.2H6.42L2.15 13.85V2.9Zm1.4 1.4v6.62l1.78-1.12h7.12V4.3H3.55Z" }),
-            ),
+            h(IconQueueOutline, { size: 14 }),
             h("span", null, t("rail.channels")),
           ),
         });
       }
       for (const item of extraTabs) {
-        const itemLabel = item.id === "schedule"
+        const itemLabel = item.id === "channels"
           ? h("span", { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
-              h(IconClockOutline, { size: 14 }),
+              h(IconQueueOutline, { size: 14 }),
               h("span", null, item.label),
             )
-          : item.label;
+          : item.id === "schedule"
+            ? h("span", { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
+                h(IconClockOutline, { size: 14 }),
+                h("span", null, item.label),
+              )
+            : item.label;
         imTabItems.push({
           value: item.id,
           id: "ima-tab-" + item.id,

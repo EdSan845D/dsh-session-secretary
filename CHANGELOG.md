@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.6 - 2026-10-19
+
+- Fix bind modal tab accessibility and layout: dual-method channels keep both tabpanels mounted with `hidden`, single-method channels no longer emit dangling `aria-labelledby`; align the segmented indicator with the 2px inset.
+- Render the IM settings nav icon through a generic CSS mask span instead of rewriting the host `svg`, avoiding conflicts with third-party skin icon detection/hiding engines such as orca-link.
+
 ## 1.0.5 - 2026-10-19
 
 - Fix native sidebar tab registry discovery: strictly inspect the current occupant component instead of relying on stale entry references.

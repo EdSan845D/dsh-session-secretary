@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.8 - 2026-10-19
+
+- Let the account settings page fill the host content column by removing the 1080px cap.
+- Only decorate settings nav buttons that render the host `svg` as a direct child, so wrapped icons keep the host layout.
+
 ## 1.0.7 - 2026-10-19
 
 - Fix the Add account / Account settings dialog not scrolling when its content is taller than the window: once the dialog is capped to the viewport, the content area scrolls normally with the wheel or a trackpad, keeping the QR code and the Cancel / Confirm buttons reachable (Issue #40).

@@ -340,6 +340,12 @@ test('新增与设置弹窗对齐定时任务宽度 720px，工作区下拉支�
   assert.match(client, /onFooter:\s*\(\)\s*=>\s*\{\s*onAddWorkspace\(\);\s*\}/)
 })
 
+test('设置页占满宿主内容区，不再限制 1080px', () => {
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.match(client, /\.ima-page\.ima-account-page\{[^}]*width:100%/)
+  assert.doesNotMatch(client, /\.ima-page\.ima-account-page\{[^}]*max-width:1080px/)
+})
+
 test('弹窗内容超出视口时内容区滚动，footer 保持可见', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /contentClassName: \["ima-modal-content", contentClassName\]\.filter\(Boolean\)\.join\(" "\)/)

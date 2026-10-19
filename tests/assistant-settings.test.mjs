@@ -486,6 +486,7 @@ test('设置导航图标走通用 mask 注入，不改宿主 svg 内容', () => 
     setAttribute(name, value) { this.attributes.set(name, String(value)) },
     removeAttribute(name) { this.attributes.delete(name) },
     querySelector(selector) {
+      if (selector === ':scope > svg') return svg
       if (selector === 'svg') return svg
       if (selector === '.ima-nav-icon-assistant') return this.children.find((node) => node.className === 'ima-nav-icon-assistant') ?? null
       return null

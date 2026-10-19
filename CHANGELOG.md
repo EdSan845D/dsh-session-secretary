@@ -2,6 +2,7 @@
 
 ## 1.0.6 - 2026-10-19
 
+- Fix the Add account / Account settings dialog not scrolling when its content is taller than the window: once the dialog is capped to the viewport, the content area scrolls normally with the wheel or a trackpad, keeping the QR code and the Cancel / Confirm buttons reachable (Issue #40).
 - Fix the "IM Assistant" icon in Settings disappearing when a third-party skin is enabled; the icon now follows the host theme and layout.
 - Improve the Quick setup / Manual setup switch in the bind dialog: screen readers now identify both setup panels correctly, channels with only one setup method no longer present a misleading tab control, and the selection indicator aligns with the labels.
 

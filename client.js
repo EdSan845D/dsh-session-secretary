@@ -890,6 +890,8 @@ window.__ModuleLoader__.load({
 .ima-title-row{display:flex;align-items:center;gap:8px 12px;min-width:0;flex-wrap:wrap}
 .ima-title-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ima-title-links>span[data-mpi-check]{display:inline-flex;align-items:center}
+[data-ima-nav-icon="assistant"]>svg{display:none!important}
+.ima-nav-icon-assistant{--ima-nav-icon-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20fill%3D%22black%22%20d%3D%22M2.15%202.9h11.7v8.2H6.42L2.15%2013.85V2.9Zm1.4%201.4v6.62l1.78-1.12h7.12V4.3H3.55Z%22%2F%3E%3C%2Fsvg%3E");display:inline-block;flex:none;width:16px;height:16px;background:currentColor;-webkit-mask:var(--ima-nav-icon-mask) center/contain no-repeat;mask:var(--ima-nav-icon-mask) center/contain no-repeat}
 .ima-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 12px;border:0.5px solid var(--dsw-alias-border-l3,#555);border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-primary,#eee);font:inherit;font-size:13px;line-height:20px;cursor:pointer;user-select:none;box-sizing:border-box;text-decoration:none;transition:border-color 120ms ease,color 120ms ease,background 120ms ease}
 .ima-btn:not(.is-primary):not(.ima-btn-danger){color:var(--dsw-alias-label-primary,#eee)!important}
 .ima-btn:hover:not(:disabled):not(.ima-btn-danger){border-color:var(--dsw-alias-border-l3,#666)!important;color:var(--dsw-alias-label-primary,#fff)!important;background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.06))!important}
@@ -922,15 +924,16 @@ window.__ModuleLoader__.load({
 .ima-wrap{display:flex;flex-direction:column;min-height:0;flex:1;height:100%;overflow:hidden}.ima-official-tree{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}.ima-native.ima-rail,.ima-rail.dcu-wb{box-sizing:border-box;overflow:hidden}
 .ima-tabs-wrap{display:flex;margin:2px var(--dsh-sidebar-inline-padding,12px) 8px 0;padding:0;width:auto}
 .ima-tabs-wrap .ima-segmented-tabs{width:100%;background:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 3%,transparent)!important;border-radius:8px!important;border:0.5px solid var(--dsw-alias-border-l1,rgba(255,255,255,.05))!important;box-sizing:border-box;padding:2px!important}
-.ima-tabs-wrap .ima-segmented-tabs>span{inset:2px auto 2px 2px!important;border-radius:6px!important;border:0.5px solid var(--dsw-alias-border-l2,rgba(255,255,255,.08))!important;background:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 8%,transparent)!important;border-color:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 12%,transparent)!important;box-shadow:none!important}
+.ima-tabs-wrap .ima-segmented-tabs>span{inset:2px auto 2px 2px!important;width:calc((100% - 4px)/var(--ima-tab-count,2))!important;border-radius:6px!important;border:0.5px solid var(--dsw-alias-border-l2,rgba(255,255,255,.08))!important;background:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 8%,transparent)!important;border-color:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 12%,transparent)!important;box-shadow:none!important}
 .ima-tabs-wrap .ima-segmented-tabs [role=tab]{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;width:100%!important;height:26px!important;padding:0 6px!important;font-size:13px!important;line-height:18px!important;border-radius:6px!important;color:var(--dsw-alias-label-secondary,#8b8f98);text-align:center!important}
 .ima-tabs-wrap .ima-segmented-tabs [role=tab]>*{display:inline-flex!important;align-items:center!important;justify-content:center!important}
 .ima-tabs-wrap .ima-segmented-tabs [role=tab]:hover{color:var(--dsw-alias-label-primary,inherit)}
 .ima-tabs-wrap .ima-segmented-tabs [role=tab][aria-selected=true]{color:var(--dsw-alias-label-primary,inherit)!important;font-weight:600}
 .ima-bind-tabs-wrap{width:100%;margin:0 0 16px}
 .ima-bind-tabs-wrap.is-disabled{opacity:.6;pointer-events:none}
+.ima-bind-panel[hidden]{display:none!important}
 .ima-bind-tabs-wrap .ima-bind-tabs{width:100%;height:32px;box-sizing:border-box;border-bottom:0;background:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 3%,transparent)!important;border-radius:var(--dsw-radius-sm,8px)!important;border:0.5px solid var(--dsw-alias-border-l1,rgba(255,255,255,.05))!important;padding:2px!important}
-.ima-bind-tabs-wrap .ima-bind-tabs>span{inset:2px auto 2px 2px!important;border-radius:calc(var(--dsw-radius-sm,8px) - 2px)!important;border:0.5px solid color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 12%,transparent)!important;background:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 8%,transparent)!important;box-shadow:none!important}
+.ima-bind-tabs-wrap .ima-bind-tabs>span{inset:2px auto 2px 2px!important;width:calc((100% - 4px)/2)!important;border-radius:calc(var(--dsw-radius-sm,8px) - 2px)!important;border:0.5px solid color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 12%,transparent)!important;background:color-mix(in srgb,var(--dsw-alias-label-primary,currentColor) 8%,transparent)!important;box-shadow:none!important}
 .ima-bind-tabs-wrap .ima-bind-tabs [role=tab]{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;width:100%!important;height:26px!important;padding:0 10px!important;font-size:13px!important;line-height:18px!important;border-radius:calc(var(--dsw-radius-sm,8px) - 2px)!important;color:var(--dsw-alias-label-secondary,#8b8f98);text-align:center!important}
 .ima-bind-tabs-wrap .ima-bind-tabs [role=tab]>*{display:inline-flex!important;align-items:center!important;justify-content:center!important}
 .ima-bind-tabs-wrap .ima-bind-tabs [role=tab]:hover{color:var(--dsw-alias-label-primary,inherit)}
@@ -1565,6 +1568,7 @@ window.__ModuleLoader__.load({
                 function BindModal({ ch, onClose, onConnected, catalog, permissions, agentPresets, workspaces, defaults, readMainSessionModel, createWorkspace, pickDirectory, modelT, permissionT, presetT, t = fallbackT }) {
       const hasQr = ch.kind === "qr" || ch.kind === "qr-or-credentials";
       const hasManual = ch.kind === "credentials" || ch.kind === "qr-or-credentials";
+      const showTabs = hasQr && hasManual;
       const [tab, setTab] = useState(hasQr ? "qr" : "manual");
       const [pairing, setPairing] = useState(null);
       const [qrStarted, setQrStarted] = useState(false);
@@ -1727,7 +1731,7 @@ window.__ModuleLoader__.load({
             )
           : null,
       },
-        hasQr && hasManual && h("div", {
+        showTabs && h("div", {
           className: ["ima-bind-tabs-wrap", saving ? "is-disabled" : ""].filter(Boolean).join(" "),
           "aria-disabled": saving ? "true" : undefined,
         }, h(HostSegmentedTabs, {
@@ -1764,7 +1768,7 @@ window.__ModuleLoader__.load({
           }),
           h(CommandPermissionSettings, { value: settings.commandPermissions, onSave: commandPermissions => setSettings(current => ({ ...current, commandPermissions })), t }),
         ),
-        tab === "qr" && hasQr && h("div", { id: "ima-bind-panel-qr", role: "tabpanel", "aria-labelledby": "ima-bind-tab-qr" },
+        hasQr && h("div", showTabs ? { className: "ima-bind-panel", id: "ima-bind-panel-qr", role: "tabpanel", "aria-labelledby": "ima-bind-tab-qr", hidden: tab !== "qr" } : null,
           status === "success"
             ? h(NoticeBar, { type: "success" }, t("bind.success"))
             : status === "saving"
@@ -1785,7 +1789,7 @@ window.__ModuleLoader__.load({
                   hostModalButton(busy ? t("bind.generating") : qrStarted ? t("bind.refresh") : t("action.generateQr"), () => startQr(qrStarted), "primary", { disabled: busy || !workspaceIsListed(settings.cwd, workspaces) || !settings.provider || !settings.model || !settings.permission }),
                 )
         ),
-        tab === "manual" && hasManual && h("div", { id: "ima-bind-panel-manual", role: "tabpanel", "aria-labelledby": "ima-bind-tab-manual" },
+        hasManual && h("div", showTabs ? { className: "ima-bind-panel", id: "ima-bind-panel-manual", role: "tabpanel", "aria-labelledby": "ima-bind-tab-manual", hidden: tab !== "manual" } : null,
           ...ch.fields.map((f) => h("label", { key: f.key, className: "ima-field" },
             fieldLabel(ch, f, t),
             h(Input, {
@@ -3637,7 +3641,7 @@ window.__ModuleLoader__.load({
 
       return h("div", { className: "ima-wrap" },
         HostSegmentedTabs
-          ? h("div", { className: "ima-tabs-wrap" },
+          ? h("div", { className: "ima-tabs-wrap", style: { "--ima-tab-count": String(imTabItems.length) } },
               h(HostSegmentedTabs, {
                 className: "ima-segmented-tabs",
                 label: t("rail.tabsAria"),
@@ -3786,9 +3790,8 @@ window.__ModuleLoader__.load({
       };
 
       const NAV_ICON_MARKER = "data-ima-nav-icon";
-      const NAV_ICON_ORIGINAL = "data-ima-nav-original";
+      const NAV_ICON_CLASS = "ima-nav-icon-assistant";
       const NAV_ROW_SELECTOR = '[role="dialog"] nav button';
-      const IM_NAV_PATHS = '<path fill="currentColor" d="M2.15 2.9h11.7v8.2H6.42L2.15 13.85V2.9Zm1.4 1.4v6.62l1.78-1.12h7.12V4.3H3.55Z"/>';
 
       function isOwnNavRow(rowText, wantedLabel) {
         const wanted = String(wantedLabel ?? "").trim();
@@ -3799,41 +3802,25 @@ window.__ModuleLoader__.load({
 
       function applySettingsNavIcon(button, wantedLabel) {
         if (!isOwnNavRow(button.textContent, wantedLabel())) return false;
-        const svg = button.querySelector("svg");
-        if (!svg) return false;
-        if (svg.getAttribute("data-ima-nav-icon") === "assistant") return false;
-
-        if (!svg.getAttribute(NAV_ICON_ORIGINAL)) {
-          svg.setAttribute(NAV_ICON_ORIGINAL, JSON.stringify({
-            innerHTML: svg.innerHTML,
-            viewBox: svg.getAttribute("viewBox"),
-            fill: svg.getAttribute("fill"),
-          }));
+        if (!button.querySelector("svg")) return false;
+        if (button.getAttribute(NAV_ICON_MARKER) === "assistant" && button.querySelector(`.${NAV_ICON_CLASS}`)) return false;
+        button.setAttribute(NAV_ICON_MARKER, "assistant");
+        let icon = button.querySelector(`.${NAV_ICON_CLASS}`);
+        if (!icon) {
+          // 不改宿主 svg 内容：皮肤的内容级识别/隐藏规则只作用于 svg 子节点，
+          // 这里用独立的 mask 图标，避免与其互相覆盖。
+          icon = document.createElement("span");
+          icon.className = NAV_ICON_CLASS;
+          icon.setAttribute("aria-hidden", "true");
+          button.prepend(icon);
         }
-        svg.setAttribute("data-ima-nav-icon", "assistant");
-        svg.setAttribute("viewBox", "0 0 16 16");
-        svg.setAttribute("fill", "none");
-        svg.innerHTML = IM_NAV_PATHS;
-        button.setAttribute(NAV_ICON_MARKER, "");
         return true;
       }
 
       function restoreSettingsNavIcon(button) {
-        const svg = button.querySelector("svg");
         button.removeAttribute(NAV_ICON_MARKER);
-        if (!svg) return false;
-        const raw = svg.getAttribute(NAV_ICON_ORIGINAL);
-        svg.removeAttribute("data-ima-nav-icon");
-        svg.removeAttribute(NAV_ICON_ORIGINAL);
-        if (!raw) return false;
-        try {
-          const saved = JSON.parse(raw);
-          svg.innerHTML = saved.innerHTML;
-          if (saved.viewBox == null) svg.removeAttribute("viewBox");
-          else svg.setAttribute("viewBox", saved.viewBox);
-          if (saved.fill == null) svg.removeAttribute("fill");
-          else svg.setAttribute("fill", saved.fill);
-        } catch { /* ignore */ }
+        const icon = button.querySelector(`.${NAV_ICON_CLASS}`);
+        if (icon) icon.remove();
         return true;
       }
 

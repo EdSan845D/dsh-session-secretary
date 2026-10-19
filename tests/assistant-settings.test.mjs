@@ -438,6 +438,61 @@ test('设置标题旁提供项目主页与问题反馈入口', () => {
   assert.match(client, /@media\(max-width:720px\)\{\.ima-title-row\{flex-wrap:wrap\}\}/)
 })
 
+test('设置导航图标走通用 mask 注入，不改宿主 svg 内容', () => {
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.doesNotMatch(client, /data-orca-link-icon|NAV_ICON_SKIN/, '不得写死任何皮肤属性')
+  assert.match(client, /\[data-ima-nav-icon="assistant"\]>svg\{display:none!important\}/)
+  assert.match(client, /\.ima-nav-icon-assistant\{/)
+
+  const start = client.indexOf('const NAV_ICON_MARKER')
+  const end = client.indexOf('function installSettingsNavIcon', start)
+  assert.ok(start >= 0 && end > start, '必须能提取设置导航图标补丁')
+  const document = {
+    createElement() {
+      const node = {
+        className: '',
+        attributes: new Map(),
+        setAttribute(name, value) { this.attributes.set(name, String(value)) },
+        remove() {
+          if (!node.parent) return
+          const index = node.parent.children.indexOf(node)
+          if (index >= 0) node.parent.children.splice(index, 1)
+          node.parent = null
+        },
+      }
+      return node
+    },
+  }
+  const { applySettingsNavIcon, restoreSettingsNavIcon } = new Function('document', `${client.slice(start, end)}\nreturn { applySettingsNavIcon, restoreSettingsNavIcon };`)(document)
+
+  const svg = { innerHTML: '<path d="host"/>' }
+  const button = {
+    textContent: 'IM 助理',
+    attributes: new Map(),
+    children: [svg],
+    getAttribute(name) { return this.attributes.has(name) ? this.attributes.get(name) : null },
+    setAttribute(name, value) { this.attributes.set(name, String(value)) },
+    removeAttribute(name) { this.attributes.delete(name) },
+    querySelector(selector) {
+      if (selector === 'svg') return svg
+      if (selector === '.ima-nav-icon-assistant') return this.children.find((node) => node.className === 'ima-nav-icon-assistant') ?? null
+      return null
+    },
+    prepend(node) { this.children.unshift(node); node.parent = this },
+  }
+
+  assert.equal(applySettingsNavIcon(button, () => 'IM 助理'), true)
+  assert.equal(button.getAttribute('data-ima-nav-icon'), 'assistant')
+  assert.equal(button.children[0].className, 'ima-nav-icon-assistant')
+  assert.equal(button.children[0].attributes.get('aria-hidden'), 'true')
+  assert.equal(svg.innerHTML, '<path d="host"/>', '不得改写宿主 svg 内容')
+  assert.equal(applySettingsNavIcon(button, () => 'IM 助理'), false, '重复同步必须幂等')
+
+  restoreSettingsNavIcon(button)
+  assert.equal(button.getAttribute('data-ima-nav-icon'), null)
+  assert.equal(button.querySelector('.ima-nav-icon-assistant'), null)
+})
+
 test('设置页账号行和账号设置都能填写名称备注', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /"account\.remark": "名称备注"/)

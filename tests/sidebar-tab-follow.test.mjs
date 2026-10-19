@@ -6,19 +6,26 @@ const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
 const membership = source.slice(source.indexOf('    let channelSessionIds'), source.indexOf('    const api ='))
 const create = new Function(membership + '; return { updateChannelMembership, followSidebarTab, isHostNewSessionControl };')
 
-test('频道会话切到频道，普通新会话切回任务，定时认领的不抢', () => {
+test('频道会话不自动改页签，普通会话切回任务，定时认领的不抢', () => {
   const f = create()
   f.updateChannelMembership([{ sessions: [{ sessionId: 'session-adopted' }] }])
   const schedule = [{ id: 'schedule', matchSession: (id) => id === 'session-scheduled' }]
   const tasks = [{ id: 'notes', matchSession: (id) => id === 'session-noted' }]
+  const channels = [{ id: 'channels', matchSession: () => true }]
 
-  assert.equal(f.followSidebarTab({ ready: false, previousId: null }, 'im:weixin:1', []).tab, 'channels')
+  assert.equal(f.followSidebarTab({ ready: false, previousId: null }, 'im:weixin:1', []).tab, null)
+  assert.equal(f.followSidebarTab({ ready: false, previousId: null }, 'im:weixin:1', [], 'tasks').tab, null)
+  assert.equal(f.followSidebarTab({ ready: false, previousId: null }, 'im:weixin:1', [], 'channels').tab, null)
   assert.equal(f.followSidebarTab({ ready: true, previousId: 'im:weixin:1' }, 'session-new', []).tab, 'tasks')
   assert.equal(f.followSidebarTab({ ready: false, previousId: null }, 'session-new', []).tab, 'tasks')
-  assert.equal(f.followSidebarTab({ ready: true, previousId: 'session-new' }, 'session-adopted', []).tab, 'channels')
+  assert.equal(f.followSidebarTab({ ready: true, previousId: 'session-new' }, 'session-adopted', []).tab, null)
+  assert.equal(f.followSidebarTab({ ready: true, previousId: 'session-new' }, 'session-adopted', [], 'channels').tab, null)
+  assert.equal(f.followSidebarTab({ ready: true, previousId: 'session-new' }, 'session-adopted', [], 'tasks').tab, null)
   assert.equal(f.followSidebarTab({ ready: true, previousId: 'session-new' }, 'session-new', []).tab, null)
   assert.equal(f.followSidebarTab({ ready: true, previousId: 'im:weixin:1' }, 'session-scheduled', schedule).tab, null)
   assert.equal(f.followSidebarTab({ ready: true, previousId: 'im:weixin:1' }, 'session-noted', tasks).tab, 'notes')
+  assert.equal(f.followSidebarTab({ ready: true, previousId: 'session-new' }, 'session-channel', channels, 'tasks').tab, null)
+  assert.equal(f.followSidebarTab({ ready: true, previousId: 'session-new' }, 'session-channel', channels, 'channels').tab, 'channels')
   assert.equal(f.isHostNewSessionControl('新会话\nCtrl'), true)
   assert.equal(f.isHostNewSessionControl('新建任务'), true)
   assert.equal(f.isHostNewSessionControl('频道'), false)

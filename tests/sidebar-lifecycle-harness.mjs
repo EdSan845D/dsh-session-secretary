@@ -36,15 +36,15 @@ export function createHarness(body, kind) {
   }
   const registry = nativeTabs.createNativeTabRegistry
   const find = nativeTabs.findNativeTabRegistry
-  const ownFlag = kind === 'automation' ? '__dshAutomationWrapped' : '__imConnectWrapped'
+  const ownFlag = '__dshNativeTabWrapped'
   const ctx = { slots }
   const env = {
-    ctx, window, t: key => key, runtime: {}, openTaskSettings() {}, channelSkin: 'native',
+    ctx, window, t: key => key, runtime: {}, openTaskSettings() {},
     readSlotEntries: (_, name) => slots.entriesOfSlot(name), slotHasEntries: () => false,
     hasCodexUiSidebar: () => codex, hasDshCodexUiSidebar: () => codex,
-    pickWrappableWorkspacesEntry: list => list.find(e => !e.component?.__dshAutomationWrapped),
-    pickOfficialWorkspaces: () => winner().find(e => !e.component?.__dshNativeTabHost),
-    isForeignSidebarHost: component => !!component?.__dshNativeTabHost,
+    pickWrappableWorkspacesEntry: list => list.find(e => !e.component?.__dshNativeTabWrapped && !e.component?.__imConnectWrapped && !e.component?.__dshAutomationWrapped),
+    pickOfficialWorkspaces: () => winner().find(e => !e.component?.__dshNativeTabHost && !e.component?.__dshNativeTabWrapped && !e.component?.__imConnectWrapped),
+    isForeignSidebarHost: component => !!component?.__dshNativeTabHost || component?.__dshNativeTabWrapped === true || component?.__imConnectWrapped === true,
     resolveOfficialTreeComponent: component => component,
     createNativeTabRegistry: registry,
     attachNativeTabRegistry: nativeTabs.attachNativeTabRegistry,

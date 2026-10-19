@@ -391,7 +391,7 @@ test('IM 自有界面注册双语词典并随 Host 语言刷新', () => {
   assert.match(client, /ctx\.locale\.register\(IM_LOCALE_NS, IM_LOCALES\)/)
   assert.match(client, /locale: IM_LOCALE_NS/)
   assert.match(client, /label: \(\) => t\("settings\.label"\)/, '设置菜单必须在 Host 语言确定后再解析标签')
-  assert.match(client, /function LocalizedChannelRail\(props\)[\s\S]*useSyncExternalStore/)
+  assert.match(client, /function LocalizedChannelRail\(\)[\s\S]*useSyncExternalStore/)
   assert.match(client, /function LocalizedSessionSwitcher\(props\)[\s\S]*useSyncExternalStore/)
   assert.match(client, /function LocalizedSettingsPage\(props\)[\s\S]*useSyncExternalStore/)
   assert.match(client, /}, LocalizedSettingsPage\)\)/, '设置页本身必须订阅语言变化，模型词条才能立即刷新')
@@ -417,13 +417,12 @@ test('IM 自有界面注册双语词典并随 Host 语言刷新', () => {
   assert.match(client, /hostModalButton\(okText \|\| "确定", handleOk, okButtonProps\?\.danger \? "danger" : "primary"/)
   assert.match(client, /description: archiveGroupTarget \? t\("rail\.archiveGroupDescription"/)
   assert.match(client, /description: stopArchiveTarget \? t\(stopArchiveTarget\.group \? "rail\.stopArchiveGroupDescription" : "rail\.stopArchiveDescription"/)
-  assert.match(client, /description: deleteTarget \? t\("rail\.deleteSessionDescription"/)
   assert.doesNotMatch(client, /ima-n-danger-button/)
   assert.match(client, /function accountLabel\(account, t\)/)
   assert.match(client, /t\("error\.detailsInLog"\)/)
 
   const bindAndPicker = client.slice(client.indexOf('function BindModal'), client.indexOf('function AccountInspector'))
-  const accountPage = client.slice(client.indexOf('function AccountInspector'), client.indexOf('const CHANNEL_RAIL_CSS'))
+  const accountPage = client.slice(client.indexOf('function AccountInspector'), client.indexOf('const CHANNEL_WORKSPACE_PREFIX'))
   assert.doesNotMatch(
     bindAndPicker + accountPage,
     /生成二维码|请选择工作区|请选择模型|请选择权限|私聊准入|绑定成功后会自动生成账号名|保存中|已保存|运行正常|当前工作区|接收消息|检查连接|重新连接|移除接入|IM助理|添加账号|处理中|在线|离线/,
@@ -475,7 +474,7 @@ test('设置导航图标走通用 mask 注入，不改宿主 svg 内容', () => 
       return node
     },
   }
-  const { applySettingsNavIcon, restoreSettingsNavIcon } = new Function('document', `${client.slice(start, end)}\nreturn { applySettingsNavIcon, restoreSettingsNavIcon };`)(document)
+  const { applySettingsNavIcon, restoreSettingsNavIcon } = new Function('document', 'settingsNavIconMask', `${client.slice(start, end)}\nreturn { applySettingsNavIcon, restoreSettingsNavIcon };`)(document, () => 'url("data:image/svg+xml,x")')
 
   const svg = { innerHTML: '<path d="host"/>' }
   const button = {
@@ -514,7 +513,7 @@ test('设置页账号行和账号设置都能填写名称备注', () => {
   assert.match(client, /"account\.remarkNote": "Shown only in settings to tell accounts apart\. Leave blank to restore the automatic name\."/)
   assert.match(client, /\["账号备注不能超过 40 个字符", "server\.remarkTooLong"\]/)
   assert.match(client, /\["账号备注不能包含换行或控制字符", "server\.remarkControl"\]/)
-  const accountPage = client.slice(client.indexOf('function AccountInspector'), client.indexOf('const CHANNEL_RAIL_CSS'))
+  const accountPage = client.slice(client.indexOf('function AccountInspector'), client.indexOf('const CHANNEL_WORKSPACE_PREFIX'))
   assert.match(accountPage, /function AccountRemarkEditor/)
   assert.match(accountPage, /t\("account\.remark"\)/)
   assert.match(accountPage, /t\("account\.rename"\)/)

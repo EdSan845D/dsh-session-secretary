@@ -147,8 +147,8 @@ test('卸载后不会执行排队的写后刷新', async () => {
 test('设置、侧栏和全局 effect 共享刷新，没有待审批项时也能刷新出新审批', async () => {
   const f = fixture(), cleanups = [], groups = [], channels = [], pending = []
   const settings = block('      useEffect(() => channelRefresh.subscribe', '      useEffect(() => {\n        ensureStyle();')
-  const railStart = source.indexOf('      const canArchiveGroup =')
-  const rail = source.slice(source.indexOf('      useEffect(() => {', railStart), source.indexOf('      useEffect(() => {\n        if (typeof document', railStart))
+  const railStart = source.indexOf('    function ChannelOfficialView')
+  const rail = source.slice(source.indexOf('      useEffect(() => {\n        ensureStyle();', railStart), source.indexOf('      useEffect(() => {\n        if (groupBy === "channel"', railStart))
   const membership = block('      ctx.effect(() => {\n        return channelRefresh.subscribe', '      ctx.effect(() => ctx.locale.register')
   const env = {
     channelRefresh: f.channelRefresh, useEffect: effect => cleanups.push(effect()),

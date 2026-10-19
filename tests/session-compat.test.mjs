@@ -9,7 +9,6 @@ const {
   probeService,
   currentSessionId,
   resolveHostSessionId,
-  isCurrentListedSession,
   openHostSession,
   pickHostDirectory,
   archiveHostSession,
@@ -17,7 +16,7 @@ const {
   activeSessionRefusal,
   forkHostSession,
   renameHostSession,
-} = new Function(`${code}; return { probeService, currentSessionId, resolveHostSessionId, isCurrentListedSession, openHostSession, pickHostDirectory, archiveHostSession, unarchiveHostSession, activeSessionRefusal, forkHostSession, renameHostSession };`)()
+} = new Function(`${code}; return { probeService, currentSessionId, resolveHostSessionId, openHostSession, pickHostDirectory, archiveHostSession, unarchiveHostSession, activeSessionRefusal, forkHostSession, renameHostSession };`)()
 
 test('当前会话先认 list.current，没有再按 retainedBy.mainView 反查', () => {
   assert.equal(currentSessionId({ current: 'legacy', ids: ['a'], byId: { a: { retainedBy: { mainView: 1 } } } }), 'legacy')
@@ -32,7 +31,7 @@ test('当前会话先认 list.current，没有再按 retainedBy.mainView 反查'
   assert.equal(currentSessionId(undefined), null)
 })
 
-test('row.id 与 map key 不一致时，打开用官方 id，高亮两边都认', () => {
+test('row.id 与 map key 不一致时，打开用官方 id', () => {
   const byId = {
     parked: { retainedBy: {} },
     main: { id: 'main-view', retainedBy: { mainView: 1 } },
@@ -40,8 +39,6 @@ test('row.id 与 map key 不一致时，打开用官方 id，高亮两边都认'
   assert.equal(currentSessionId({ ids: ['parked', 'main'], byId }), 'main-view')
   assert.equal(resolveHostSessionId('main', byId), 'main-view')
   assert.equal(resolveHostSessionId('main-view', byId), 'main-view')
-  assert.equal(isCurrentListedSession('main-view', 'main', byId), true)
-  assert.equal(isCurrentListedSession('main-view', 'other', byId), false)
   assert.equal(resolveHostSessionId('im:wecom:1', undefined), 'im:wecom:1')
 })
 
@@ -83,16 +80,13 @@ test('reflect 没有服务时改走 ctx.get，不硬读未注入的 uiWorkspace'
   assert.deepEqual(opened, ['get:s1'])
 })
 
-test('归档插件在场且宿主提供删除时才出现删除会话', () => {
+test('归档插件在场且宿主提供归档时才出现归档整组', () => {
   const helpers = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   const start = helpers.indexOf('    const ARCHIVE_MANAGER_PLUGIN')
   const end = helpers.indexOf('    const EMPTY_EXTRA_TABS')
-  const { hasArchiveManagerPlugin, canDeleteChannelSession, canArchiveChannelGroup } = new Function(`${helpers.slice(start, end)}; return { hasArchiveManagerPlugin, canDeleteChannelSession, canArchiveChannelGroup };`)()
+  const { hasArchiveManagerPlugin, canArchiveChannelGroup } = new Function(`${helpers.slice(start, end)}; return { hasArchiveManagerPlugin, canArchiveChannelGroup };`)()
   assert.equal(hasArchiveManagerPlugin({ querySelector: (sel) => sel.includes('@michengai/dsh-archive-manager') ? {} : null }), true)
   assert.equal(hasArchiveManagerPlugin({ querySelector: () => null }), false)
-  assert.equal(canDeleteChannelSession(true, () => {}), true)
-  assert.equal(canDeleteChannelSession(true, undefined), false)
-  assert.equal(canDeleteChannelSession(false, () => {}), false)
   assert.equal(canArchiveChannelGroup(true, () => {}), true)
   assert.equal(canArchiveChannelGroup(true, undefined), false)
   assert.equal(canArchiveChannelGroup(false, () => {}), false)
@@ -142,8 +136,6 @@ test('停止并归档：运行中拒绝后才带 stopActivity，分组与单会�
   assert.deepEqual(opened, [{ id: 's', title: 'A' }])
   assert.equal(openStopArchive(new Error('other'), { id: 's' }, () => opened.push('no')), false)
   assert.equal(opened.length, 1)
-  assert.match(client, /acts\.archiveSession\(sess\.sessionId\)/)
-  assert.doesNotMatch(client, /acts\.archiveSession\(sess\.sessionId,\s*\{/)
   const calls = []
   const archive = async (id, options) => { calls.push([id, options]) }
   assert.equal(await finishStopArchive({ id: 's1' }, archive), 'session')

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Align the sidebar Tasks / Channels / Scheduled tabs with Archive Manager: 32px container, 28px tabs, 6–12px adaptive horizontal padding, 13/20 typography, and matching indicator styling; the indicator width still follows the dynamic tab count and labels no longer wrap when the Mica skin narrows the sidebar.
+
 ## 1.0.8 - 2026-10-19
 
 - Let the account settings page fill the host content column by removing the 1080px cap.

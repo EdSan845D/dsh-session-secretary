@@ -1764,7 +1764,7 @@ window.__ModuleLoader__.load({
           }),
           h(CommandPermissionSettings, { value: settings.commandPermissions, onSave: commandPermissions => setSettings(current => ({ ...current, commandPermissions })), t }),
         ),
-        tab === "qr" && hasQr && (
+        tab === "qr" && hasQr && h("div", { id: "ima-bind-panel-qr", role: "tabpanel", "aria-labelledby": "ima-bind-tab-qr" },
           status === "success"
             ? h(NoticeBar, { type: "success" }, t("bind.success"))
             : status === "saving"
@@ -1785,7 +1785,7 @@ window.__ModuleLoader__.load({
                   hostModalButton(busy ? t("bind.generating") : qrStarted ? t("bind.refresh") : t("action.generateQr"), () => startQr(qrStarted), "primary", { disabled: busy || !workspaceIsListed(settings.cwd, workspaces) || !settings.provider || !settings.model || !settings.permission }),
                 )
         ),
-        tab === "manual" && hasManual && h("div", null,
+        tab === "manual" && hasManual && h("div", { id: "ima-bind-panel-manual", role: "tabpanel", "aria-labelledby": "ima-bind-tab-manual" },
           ...ch.fields.map((f) => h("label", { key: f.key, className: "ima-field" },
             fieldLabel(ch, f, t),
             h(Input, {

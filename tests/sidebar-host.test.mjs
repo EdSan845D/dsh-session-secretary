@@ -272,7 +272,7 @@ test('频道文件夹菜单打开对应频道设置页', () => {
 
 test('频道接口不因渠道已连接而返回空文件夹', () => {
   const manager = readFileSync(new URL('../src/manager.ts', import.meta.url), 'utf8')
-  assert.match(manager, /archived\.has\(item\.sessionId\)/)
+  assert.doesNotMatch(manager, /archived\.has\(item\.sessionId\)/)
   assert.match(manager, /filter\(\(group\) => group\.sessions\.length > 0\)/)
   assert.doesNotMatch(manager, /connected\.has\(group\.id\)/)
 })

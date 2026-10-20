@@ -354,28 +354,15 @@ export class ChannelManager {
   }
 
   channelSessions() {
-    const archived = this.archivedSessionIds()
     const groups = new Map(CHANNEL_ORDER.map(id => [id, {
       id,
       label: CHANNEL_META[id].label,
       sessions: [] as SessionRecord[],
     }]))
     for (const item of this.sessions.list()) {
-      if (archived.has(item.sessionId)) continue
       groups.get(this.platformOf(item.channel, this.store.channels[item.channel]))?.sessions.push(item)
     }
     return [...groups.values()].filter((group) => group.sessions.length > 0)
-  }
-
-  private archivedSessionIds(): Set<string> {
-    try {
-      const registry = this.ctx.get?.('workspaceRegistry') as { archivedSessionIds?: readonly unknown[] } | undefined
-      const ids = registry?.archivedSessionIds
-      if (!ids) return new Set()
-      return new Set([...ids].map((id) => String(id)))
-    } catch {
-      return new Set()
-    }
   }
 
   async connect(id: ChannelId, config?: Record<string, string>, settings?: Record<string, unknown>): Promise<{ ok: boolean; error?: string; accountId?: string; created?: boolean; newIdentity?: boolean }> {

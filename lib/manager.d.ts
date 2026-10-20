@@ -125,7 +125,6 @@ export declare class ChannelManager {
         label: string;
         sessions: SessionRecord[];
     }[];
-    private archivedSessionIds;
     connect(id: ChannelId, config?: Record<string, string>, settings?: Record<string, unknown>): Promise<{
         ok: boolean;
         error?: string;

@@ -16,6 +16,7 @@
 - Keep the channel group menu injector mounted across the 4-second poll, restore host menu items on teardown, and activate injected actions only from the primary button.
 - Restore the per-channel settings deep link; the header add button still opens IM settings when the settings entry is unavailable.
 - Fix the channel add button doing nothing with "could not open IM settings" when the current sidebar exposes Settings only in the official account menu: fall back to that menu entry, then select the IM Assistant section.
+- Refresh the host session list when channel membership changes, so channel sessions appear under Tasks without a page reload.
 
 ## 1.0.8 - 2026-10-19
 

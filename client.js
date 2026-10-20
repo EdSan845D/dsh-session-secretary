@@ -886,6 +886,7 @@ window.__ModuleLoader__.load({
       document.head.appendChild(styleEl);
     };
 
+    let requestHostSessionRefresh = () => {};
     let channelSessionIds = new Set();
     let channelSessionChannels = new Map();
     let channelMembershipRevision = 0;
@@ -910,6 +911,7 @@ window.__ModuleLoader__.load({
       channelSessionChannels = channels;
       channelMembershipRevision += 1;
       for (const listener of channelMembershipListeners) listener();
+      try { requestHostSessionRefresh(); } catch { /* 宿主未提供会话服务时忽略 */ }
     }
     /** 会话所属频道：优先用 /channels 的权威归属，旧数据再从 IM 会话 id 解析平台。 */
     function channelIdOfSession(sessionId) {
@@ -3518,6 +3520,16 @@ window.__ModuleLoader__.load({
 
     function apply(ctx) {
       ensureStyle();
+      ctx.effect(() => {
+        const refresh = () => {
+          const sessions = probeService(ctx, "sessions");
+          if (sessions && typeof sessions.refresh === "function") {
+            Promise.resolve(sessions.refresh()).catch(() => undefined);
+          }
+        };
+        requestHostSessionRefresh = refresh;
+        return () => { if (requestHostSessionRefresh === refresh) requestHostSessionRefresh = () => {}; };
+      }, "im-connect: host session refresh");
       ctx.effect(() => {
         return channelRefresh.subscribe((data, error) => {
           if (error) console.warn("[dsh-im-connect] 无法刷新渠道会话归属", error);

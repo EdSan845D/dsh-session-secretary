@@ -29,7 +29,7 @@ function fixture(t, options = {}) {
   engine.register(channel)
   t.after(() => { engine.dispose(); rmSync(dir, { recursive: true, force: true }) })
   const title = (name, kind = 'provider') => engine.onSessionEvent({ id: sessionId }, { type: 'session/title', data: { title: name, source: { kind } } })
-  return { engine, writes, replies, title, edit: name => edited('100:20', name), sessionId, channel }
+  return { engine, store, writes, replies, title, edit: name => edited('100:20', name), sessionId, channel }
 }
 
 test('默认 once 并发标题只写一次，后续标题不覆盖首次命名', async t => {
@@ -128,4 +128,53 @@ test('follow 按事件顺序串行更新，失败不会占用 once 命名次数'
   await retry.engine.syncTopicName(retry.sessionId, '成功标题')
   await retry.engine.syncTopicName(retry.sessionId, '不再改名')
   assert.deepEqual(retry.writes, ['被限流标题', '成功标题'])
+})
+
+test('无会话时查询和非法参数都不创建会话或调用宿主命令', async t => {
+  const f = fixture(t)
+  f.store.removeSession(f.sessionId)
+  const run = text => f.engine.chatCommands.execute(f.channel, { chatId: '100:20', text }, new AbortController().signal)
+  assert.match(await run('/topicname'), /once/)
+  await assert.rejects(run('/topicname off extra'), /用法/)
+  await assert.rejects(f.engine.chatCommands.execute(f.channel, { chatId: '100:20', text: '/topicname off', media: [{ kind: 'file' }] }, new AbortController().signal), /不接受附件/)
+  assert.deepEqual(f.store.list(), [])
+  assert.equal(f.engine.topicTitles.get('telegram:100:20'), undefined)
+})
+
+test('全局 off 下解除话题锁不会意外开启自动命名', async t => {
+  const f = fixture(t, { config: { topicNaming: 'off' } })
+  const run = text => f.engine.chatCommands.execute(f.channel, { chatId: '100:20', text }, new AbortController().signal)
+  await run('/topicname off')
+  assert.match(await run('/topicname on'), /全局.*已关闭/)
+  await f.title('仍然不应同步')
+  await tick()
+  assert.deepEqual(f.writes, [])
+  assert.equal(f.engine.topicTitles.status('telegram:100:20').frozen, false)
+})
+
+test('关闭命名后在途响应和排队标题都不能解除锁定', async t => {
+  let release
+  const f = fixture(t, { config: { topicNaming: 'follow' }, rename: () => new Promise(resolve => { release = resolve }) })
+  await f.title('已发出的请求')
+  await tick()
+  await f.title('排队标题')
+  f.engine.addAllowed('telegram', '100')
+  await f.engine.handleInbound('telegram', { chatId: '100:20', userId: '100', kind: 'dm', text: '/topicname off' })
+  release(true)
+  await tick()
+  await tick()
+  assert.deepEqual(f.writes, ['已发出的请求'])
+  assert.equal(f.engine.topicTitles.status('telegram:100:20').frozen, true)
+})
+
+test('显式改名入口按 once 去重，重命名异常后后续标题仍可恢复', async t => {
+  const f = fixture(t)
+  await f.engine.syncTopicName(f.sessionId, '首次标题')
+  await f.engine.renameTopicNow(f.sessionId, '显式改名')
+  await f.engine.renameTopicNow(f.sessionId, '显式改名')
+  assert.deepEqual(f.writes, ['首次标题', '显式改名'])
+  const retry = fixture(t, { rename: (_, name) => { if (name === '失败标题') throw new Error('模拟平台故障'); return true } })
+  await retry.engine.syncTopicName(retry.sessionId, '失败标题')
+  await retry.engine.syncTopicName(retry.sessionId, '恢复标题')
+  assert.deepEqual(retry.writes, ['失败标题', '恢复标题'])
 })

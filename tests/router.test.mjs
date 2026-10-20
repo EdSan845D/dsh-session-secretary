@@ -144,6 +144,8 @@ test('real Chat selection owns assembly and request after account initialization
   const selection = owner.selectionFor(agent)
   assert.deepEqual(selection.current, { provider: 'account', model: 'text-only', reasoningEffort: 'high' })
   const controller = Object.create(SessionController.prototype)
+  // 新宿主从 ctx.invocation 读取调用者；进程内调用也必须保留 ctx。
+  controller.ctx = host
   controller.commands = new SessionCommandController(host, owner, process.cwd())
   for (const current of [{ provider: 'chat', model: 'vision', reasoningEffort: 'low' }, { provider: 'chat', model: 'vision' }]) {
     selection.current = current

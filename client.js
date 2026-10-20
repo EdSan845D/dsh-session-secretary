@@ -483,15 +483,16 @@ window.__ModuleLoader__.load({
     }
     function pickSettingsSectionButton(buttons, labels) {
       const normalize = (value) => String(value || "").replace(/\s+/g, "").trim().toLowerCase();
+      const labelOf = (button) => normalize(button.textContent) || normalize(button.getAttribute && button.getAttribute("aria-label"));
       const targets = labels.map(normalize).filter(Boolean);
       for (const target of targets) {
-        const match = buttons.find((button) => normalize(button.textContent) === target);
+        const match = buttons.find((button) => labelOf(button) === target);
         if (match) return match;
       }
       // 宿主可能在标签旁加计数或徽标；退一步做包含匹配。
       for (const target of targets) {
         const match = buttons.find((button) => {
-          const text = normalize(button.textContent);
+          const text = labelOf(button);
           return text !== "" && (text.includes(target) || target.includes(text));
         });
         if (match) return match;
@@ -529,7 +530,7 @@ window.__ModuleLoader__.load({
       }
       const launchers = [...document.querySelectorAll('button[aria-haspopup="dialog"], button[aria-label*="设置"], button[aria-label*="Settings"], [data-dcu-settings-trigger]')];
       const namedSettingsButton = [...document.querySelectorAll("button")].find((button) => /^(设置|settings)$/i.test((button.getAttribute("aria-label") || "").trim()));
-      const launcher = pickSettingsLauncher(launchers) || namedSettingsButton;
+      const launcher = namedSettingsButton || pickSettingsLauncher(launchers);
       const pageTrigger = document.querySelector(SETTINGS_CODEX_TRIGGER_SELECTOR);
       const dialogOpen = document.querySelector('[role="dialog"]') !== null;
       const pageOpen = document.querySelector(SETTINGS_CODEX_PAGE_SELECTOR) !== null;
@@ -550,8 +551,9 @@ window.__ModuleLoader__.load({
       };
       const select = () => {
         const buttons = [
-          ...document.querySelectorAll('[role="dialog"] nav button'),
+          ...document.querySelectorAll('[role="dialog"] nav button, [role="dialog"] button'),
           ...document.querySelectorAll(SETTINGS_CODEX_PAGE_SELECTOR + " nav button"),
+          ...document.querySelectorAll("nav button, button"),
         ];
         const target = pickSettingsSectionButton(buttons, labels);
         if (!target) return false;
@@ -568,7 +570,7 @@ window.__ModuleLoader__.load({
         if (select()) return;
         cleanup();
         if (onMissing) onMissing();
-      }, 1500);
+      }, 5000);
       observer.observe(document.body, { childList: true, subtree: true });
       schedule();
     }

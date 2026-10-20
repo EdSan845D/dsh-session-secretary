@@ -2745,9 +2745,16 @@ window.__ModuleLoader__.load({
         }
         if (target.closest('[role="menu"]') === null) channelId = undefined;
       };
+      const hiddenItems = new Map();
       const hideOthers = (menu, ours) => {
         for (const item of menu.querySelectorAll('button[role="menuitem"]')) {
           if (ours.has(item)) continue;
+          if (!hiddenItems.has(item)) {
+            hiddenItems.set(item, {
+              display: item.style.display,
+              ariaHidden: item.getAttribute("aria-hidden"),
+            });
+          }
           item.style.display = "none";
           item.setAttribute("aria-hidden", "true");
         }
@@ -2795,7 +2802,9 @@ window.__ModuleLoader__.load({
             window.setTimeout(onClick, 50);
           };
           button.addEventListener("click", activate);
-          button.addEventListener("pointerup", activate);
+          button.addEventListener("pointerup", (event) => {
+            if (event.button === 0) activate(event);
+          });
           return clone;
         };
         const nodes = [];
@@ -2825,6 +2834,12 @@ window.__ModuleLoader__.load({
         observer.disconnect();
         document.removeEventListener("pointerdown", remember, true);
         document.removeEventListener("click", remember, true);
+        for (const [item, previous] of hiddenItems) {
+          item.style.display = previous.display;
+          if (previous.ariaHidden === null) item.removeAttribute("aria-hidden");
+          else item.setAttribute("aria-hidden", previous.ariaHidden);
+        }
+        hiddenItems.clear();
         for (const item of document.querySelectorAll(`[${CHANNEL_GROUP_MENU_ATTR}="true"]`)) item.parentElement?.remove();
       };
     }
@@ -2870,6 +2885,8 @@ window.__ModuleLoader__.load({
       }, [store]);
       const groupBy = useChannelStore((state) => state.groupBy);
       const [groups, setGroups] = useState([]);
+      const groupsRef = useRef(groups);
+      groupsRef.current = groups;
       const [error, setError] = useState("");
       const [channelIcons, setChannelIcons] = useState("");
       const [workspaceIcons, setWorkspaceIcons] = useState("");
@@ -2974,12 +2991,13 @@ window.__ModuleLoader__.load({
         settingsLabel: t("rail.channelSettings"),
         archiveLabel: t("rail.archiveGroup"),
         canArchive: canArchiveGroup,
-        resolve: (channelId) => groups.find((group) => group.id === channelId),
+        resolve: (channelId) => groupsRef.current.find((group) => group.id === channelId),
         onSettings: (group) => {
-          if (typeof openImSettings === "function") { openImSettings(); return; }
           if (typeof openChannelSettings === "function") {
             openChannelSettings({ channelId: group.id, name: channelLabel(group, t) });
+            return;
           }
+          openImSettings();
         },
         onArchive: (group) => {
           setArchiveGroupError(undefined);
@@ -2989,7 +3007,7 @@ window.__ModuleLoader__.load({
             sessionIds: (group.sessions || []).map((session) => session.sessionId),
           });
         },
-      }), [canArchiveGroup, groups, openChannelSettings, openImSettings, t]);
+      }), [canArchiveGroup, openChannelSettings, openImSettings, t]);
 
       const confirmArchiveGroup = () => {
         if (!archiveGroupTarget || typeof archiveSession !== "function" || archiveGroupBusy) return;
@@ -3384,7 +3402,7 @@ window.__ModuleLoader__.load({
         tab === "tasks"
           ? (officialTree || h(ChannelUnavailable, { t }))
           : extra
-            ? extra.render(Object.assign({}, props, { openSession, open: openSession }))
+            ? extra.render(Object.assign({}, props, { t: officialT, openSession, open: openSession }))
             : channelView,
       );
     }
@@ -3710,7 +3728,7 @@ window.__ModuleLoader__.load({
               }, h(ChannelOfficialView, Object.assign({}, props, {
                 officialTree: registry.officialTree,
                 hostProps: props,
-                hostT: props.t,
+                hostT: props.officialT || props.t,
                 t,
                 openChannelSettings,
                 openImSettings,

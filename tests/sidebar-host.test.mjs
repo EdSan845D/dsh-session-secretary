@@ -171,7 +171,7 @@ test('频道页头部复用官方添加按钮打开 IM 设置', () => {
   assert.match(client, /"rail\.addChannel": "添加频道"/)
   assert.match(client, /"rail\.addChannel": "Add channel"/)
   assert.match(client, /const openImSettings = \(\) =>/)
-  assert.match(client, /typeof openImSettings === "function"\) \{ openImSettings\(\); return; \}/)
+  assert.match(client, /typeof openChannelSettings === "function"\) \{\s*openChannelSettings\(/)
 })
 
 test('官方树缺失或崩溃时只显示不可用提示', () => {

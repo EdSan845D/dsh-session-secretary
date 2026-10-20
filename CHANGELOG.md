@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.9 - 2026-10-20
 
 - Share sidebar tab storage with Automation and migrate legacy values; preserve selection on the first valid session snapshot, fall back safely after contribution removal, and restore it on reattachment. Exclude session rows and title substrings from new-chat detection, with regression tests executing the real shell effects.
 

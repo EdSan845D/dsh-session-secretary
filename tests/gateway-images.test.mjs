@@ -205,6 +205,8 @@ test('real DSH Chat admission: current selection, durable refs, unknown modaliti
   const owner = new ApiSessionAgentController(host)
   owner.selectionFor(agent).current = { provider: 'session-provider', model: 'session-vision' }
   const controller = Object.create(SessionController.prototype)
+  // 控制器保留真实宿主上下文；进程内调用没有 Remote invocation。
+  controller.ctx = host
   controller.commands = new SessionCommandController(host, owner, h.dir)
   h.ctx.set('sessionController', controller)
   await h.send()

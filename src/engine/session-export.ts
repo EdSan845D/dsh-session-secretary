@@ -9,14 +9,18 @@ export async function exportSession(host: { get(name: string): unknown }, channe
   const fallback = () => replyText('会话未能导出或发送。请在网页 Chat 中打开这条会话，执行 /export 下载 ZIP。')
   try {
     signal.throwIfAborted()
-    const connection = host.get('connection') as { createSharedFetchHandler?: (channel: '/api') => { fetch(request: Request): Promise<Response> } } | undefined
+    const connection = host.get('connection') as {
+      browserPeer?: unknown
+      createSharedFetchHandler?: (channel: '/api') => { fetch(request: Request, peer?: unknown): Promise<Response> }
+    } | undefined
     if (!channel.sendFile || !connection?.createSharedFetchHandler) throw new Error('export-unavailable')
     if (!stillCurrent()) throw new Error('binding-changed')
     // 这是宿主内部已授权的路由分发；准入和命令权限由 IM 网关先检查。
     const url = new URL('http://dsh.invalid/api/session.export')
     url.searchParams.set('sessionId', sessionId)
     url.searchParams.set('includeDescendants', 'false')
-    const pending = connection.createSharedFetchHandler('/api').fetch(new Request(url, { signal }))
+    // 0.2.1 的共享路由要求真实宿主 Peer；旧宿主没有此字段且忽略额外参数。
+    const pending = connection.createSharedFetchHandler('/api').fetch(new Request(url, { signal }), connection.browserPeer)
     void pending.then(response => { if (signal.aborted) void response.body?.cancel().catch(() => {}) }, () => {})
     const response = await fileOperation(pending, signal)
     const reader = response.body?.getReader()

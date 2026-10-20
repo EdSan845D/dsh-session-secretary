@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.10 - 2026-10-20
+
+- Telegram topics now receive the first generated session title automatically, while later title changes leave the topic name stable. `/rename` also updates the topic name; ordinary chats are unaffected.
+- Add `/topicname` to check, lock, or unlock automatic naming for the current topic. The plugin configuration supports naming once (default), following title changes, or turning automatic naming off; topic locks survive restarts.
+- Preserve detected manual topic names and avoid duplicate renames when titles arrive together or a naming request is still in progress. For private topics, use `/topicname off` to protect a manually chosen name.
+- Fix `/export` failing to generate and send a session ZIP on supported DSH `0.2.1` RC hosts.
+
 ## 1.0.9 - 2026-10-20
 
 - The Channels tab now adopts the host's native tree browser: sessions default to By channel grouping with platform brand icons on group headers and rows, supporting official search, sorting, and archive filtering.

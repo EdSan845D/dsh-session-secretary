@@ -15,7 +15,7 @@
 - Fix the Channels tab using the plugin translator instead of the host translator when IM owns the sidebar, which rendered host group/sort labels as raw keys.
 - Keep the channel group menu injector mounted across the 4-second poll, restore host menu items on teardown, and activate injected actions only from the primary button.
 - Restore the per-channel settings deep link; the header add button still opens IM settings when the settings entry is unavailable.
-- Fix the channel add button doing nothing with "could not open IM settings" when Codex UI hides the standalone settings trigger: fall back to the official account menu's Settings entry, then select the IM Assistant section.
+- Fix the channel add button doing nothing with "could not open IM settings" when the current sidebar exposes Settings only in the official account menu: fall back to that menu entry, then select the IM Assistant section.
 
 ## 1.0.8 - 2026-10-19
 

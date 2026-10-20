@@ -5,7 +5,7 @@ import test from 'node:test'
 // 执行客户端实际分类和缓存逻辑，验证归属异步刷新后的结果。
 const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
 const membership = source.slice(source.indexOf('    let requestHostSessionRefresh'), source.indexOf('    const api ='))
-const create = new Function(membership + '; return { updateChannelMembership, channelIdOfSession, isChannelSession, subscribeChannelMembership, setHostSessionRefresh: (fn) => { requestHostSessionRefresh = fn } };')
+const create = new Function(membership + '; return { updateChannelMembership, channelIdOfSession, isChannelSession, subscribeChannelMembership, setHostSessionRefresh: (fn) => { requestHostSessionRefresh = changed => { if (changed !== false) fn() } } };')
 
 test('普通 Host ID 按渠道索引分类，归属变更使同一快照的缓存失效', () => {
   const f = create()
@@ -28,4 +28,53 @@ test('普通 Host ID 按渠道索引分类，归属变更使同一快照的缓�
   assert.equal(f.isChannelSession('session-adopted'), false)
   assert.equal(hostRefreshes, 2)
   stop()
+})
+
+const probe = source.slice(source.indexOf('    function probeService('), source.indexOf('    // 旧宿主读 list.current'))
+const effectStart = source.indexOf('      ctx.effect(() => {', source.indexOf('    function apply(ctx)'))
+const effect = source.slice(effectStart, source.indexOf('      ctx.effect(() => {', effectStart + 1))
+const settle = async () => { for (let i = 0; i < 20; i++) await Promise.resolve() }
+const groups = id => [{ id: 'wecom', sessions: [{ sessionId: id }] }]
+
+function refreshFixture(refresh, snapshot = () => ({ state: 'idle' })) {
+  let stop
+  const sessions = { refresh, list: { getSnapshot: snapshot } }
+  const ctx = { get: () => sessions, effect: fn => { stop = fn() } }
+  const f = new Function('ctx', `${membership}\n${probe}\n${effect}; return { updateChannelMembership };`)(ctx)
+  return { ...f, stop: () => stop() }
+}
+
+test('宿主刷新拒绝后由相同频道快照重试，成功后不重复请求', async () => {
+  let calls = 0
+  const f = refreshFixture(() => ++calls === 1 ? Promise.reject(new Error('暂时断网')) : Promise.resolve())
+  f.updateChannelMembership(groups('a'))
+  await settle()
+  f.updateChannelMembership(groups('a'))
+  await settle()
+  assert.equal(calls, 2)
+  f.updateChannelMembership(groups('a'))
+  await settle()
+  assert.equal(calls, 2)
+  f.stop()
+})
+
+test('宿主通过快照报告失败时仍重试，在途变更不丢失且卸载后不刷新', async () => {
+  let calls = 0, finish, state = 'error'
+  const f = refreshFixture(() => { calls++; return new Promise(resolve => { finish = resolve }) }, () => ({ state }))
+  f.updateChannelMembership(groups('a'))
+  await settle()
+  f.updateChannelMembership(groups('a'))
+  assert.equal(calls, 1)
+  finish(); await settle()
+  f.updateChannelMembership(groups('a')); await settle()
+  assert.equal(calls, 2)
+  state = 'idle'
+  f.updateChannelMembership(groups('b'))
+  finish(); await settle()
+  f.updateChannelMembership(groups('b')); await settle()
+  assert.equal(calls, 3)
+  f.stop()
+  finish(); await settle()
+  f.updateChannelMembership(groups('c')); await settle()
+  assert.equal(calls, 3)
 })

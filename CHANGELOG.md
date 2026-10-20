@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Share sidebar tab storage with Automation and migrate legacy values; preserve selection on the first valid session snapshot, fall back safely after contribution removal, and restore it on reattachment. Exclude session rows and title substrings from new-chat detection, with regression tests executing the real shell effects.
+
 - Align the sidebar Tasks / Channels / Scheduled tabs with Archive Manager: 32px container, 28px tabs, 6–12px adaptive horizontal padding, 13/20 typography, and matching indicator styling; the indicator width still follows the dynamic tab count and labels no longer wrap when the Mica skin narrows the sidebar.
 - Use the host `IconQueueOutline` for the Channels tab, matching the automation plugin; externally registered channel tabs also receive the same icon.
 - Unify the sidebar wrapper protocol with `__dshNativeTabWrapped`, `__dshNativeTabOriginal`, and `__dshNativeTabOwner` while keeping legacy automation flags readable; name both wrappers `DshNativeTabWorkspaceShell`.

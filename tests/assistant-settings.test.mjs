@@ -415,8 +415,6 @@ test('IM 自有界面注册双语词典并随 Host 语言刷新', () => {
   assert.match(client, /description: t\("account\.removeConfirm"\)/)
   assert.match(client, /okButtonProps: \{ danger: true \}/)
   assert.match(client, /hostModalButton\(okText \|\| "确定", handleOk, okButtonProps\?\.danger \? "danger" : "primary"/)
-  assert.doesNotMatch(client, /archiveGroup/)
-  assert.doesNotMatch(client, /stopArchiveTarget/)
   assert.doesNotMatch(client, /ima-n-danger-button/)
   assert.match(client, /function accountLabel\(account, t\)/)
   assert.match(client, /t\("error\.detailsInLog"\)/)

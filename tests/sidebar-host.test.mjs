@@ -147,8 +147,11 @@ test('频道组菜单只注入频道设置，不包含整组归档入口', () =>
   assert.match(client, /rail\.channelSettings/)
   assert.match(client, /"rail\.channelSettings": "频道设置"/)
   assert.doesNotMatch(client, /archiveGroup/)
+  assert.doesNotMatch(client, /stopArchiveTarget/)
+  assert.doesNotMatch(client, /rail\.archiveFailed/)
   assert.match(client, /channelMarkup\(h\(ChannelMenuSettingsIcon\)\)/)
   assert.doesNotMatch(client, /IconArchiveOutline20/)
+  assert.doesNotMatch(client, /hasArchiveManagerPlugin/)
   assert.match(client, /hideOthers/)
 })
 

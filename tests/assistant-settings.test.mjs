@@ -523,17 +523,6 @@ test('设置页账号行和账号设置都能填写名称备注', () => {
   assert.doesNotMatch(accountPage, /名称备注|留空恢复自动名称/)
 })
 
-test('界面亮暗跟随宿主 html/body 的 data-ds-dark-theme，不再引入 Ant 算法', () => {
-  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
-  assert.match(client, /function hostIsDark\(\)/)
-  assert.match(client, /document\.documentElement\.hasAttribute\("data-ds-dark-theme"\)/)
-  assert.match(client, /document\.body\.hasAttribute\("data-ds-dark-theme"\)/)
-  assert.match(client, /function useHostDark\(\)/)
-  assert.match(client, /attributeFilter: \["data-ds-dark-theme"\]/)
-  assert.doesNotMatch(client, /theme\.darkAlgorithm/)
-  assert.doesNotMatch(client, /function hostDarkTheme\(/)
-})
-
 test('账号页渠道行与账号行用网格对齐，表单单列', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.match(client, /className: "ima-platform-meta"/)

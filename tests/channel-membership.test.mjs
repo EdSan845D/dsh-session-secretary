@@ -4,14 +4,16 @@ import test from 'node:test'
 
 // 执行客户端实际分类和缓存逻辑，验证归属异步刷新后的结果。
 const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
-const membership = source.slice(source.indexOf('    let channelSessionIds'), source.indexOf('    const api ='))
-const create = new Function(membership + '; return { updateChannelMembership, channelIdOfSession, isChannelSession, subscribeChannelMembership };')
+const membership = source.slice(source.indexOf('    let requestHostSessionRefresh'), source.indexOf('    const api ='))
+const create = new Function(membership + '; return { updateChannelMembership, channelIdOfSession, isChannelSession, subscribeChannelMembership, setHostSessionRefresh: (fn) => { requestHostSessionRefresh = fn } };')
 
 test('普通 Host ID 按渠道索引分类，归属变更使同一快照的缓存失效', () => {
   const f = create()
   assert.equal(f.isChannelSession('im:old'), true)
   assert.equal(f.isChannelSession('session-adopted'), false)
   let changes = 0
+  let hostRefreshes = 0
+  f.setHostSessionRefresh(() => { hostRefreshes++ })
   const stop = f.subscribeChannelMembership(() => changes++)
   f.updateChannelMembership([{ id: 'wecom', sessions: [{ sessionId: 'session-adopted' }] }])
   assert.equal(f.isChannelSession('session-adopted'), true)
@@ -21,7 +23,9 @@ test('普通 Host ID 按渠道索引分类，归属变更使同一快照的缓�
   assert.equal(f.channelIdOfSession('task'), undefined)
   f.updateChannelMembership([{ id: 'wecom', sessions: [{ sessionId: 'session-adopted' }] }])
   assert.equal(changes, 1)
+  assert.equal(hostRefreshes, 1)
   f.updateChannelMembership([])
   assert.equal(f.isChannelSession('session-adopted'), false)
+  assert.equal(hostRefreshes, 2)
   stop()
 })

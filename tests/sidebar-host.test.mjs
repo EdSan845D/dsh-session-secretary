@@ -25,7 +25,8 @@ test('原生侧栏不依赖插件注册表，只认 sidebar 槽主人', () => {
 test('任务页和频道页都复用官方 WorkspaceBrowser', () => {
   assert.match(client, /officialTree/)
   assert.match(client, /DshNativeTabWorkspaceShell/)
-  assert.match(client, /applyRegistryFilters/)
+  assert.match(client, /applySessionFilters/)
+  assert.match(client, /getRevision\(\)/)
   assert.doesNotMatch(client, /function filterTaskSessions\(/)
   assert.match(client, /function ChannelOfficialView\(/)
   assert.match(client, /const channelView = h\(ChannelOfficialView, \{[\s\S]*?officialTree: Official/)
@@ -192,7 +193,7 @@ test('频道注册表页签随 Host 语言刷新且切换宿主时清理旧订�
   assert.match(client, /const stopMembership = subscribeChannelMembership\(refreshInsertedTab\)/)
   assert.match(client, /stopInsertedTabLocale = \(\) => \{ stopLocale\(\); stopMembership\(\); \}/)
   assert.match(client, /const clearInsertedTab = \(\) => \{\s*stopInsertedTabLocale\(\);[\s\S]*removeInsertedTab\(\);[\s\S]*insertedTabRegistry = null/)
-  assert.match(client, /insertedTabRegistry && insertedTabRegistry !== registry\) clearInsertedTab\(\)/)
+  assert.match(client, /if \(insertedTabRegistry !== registry\) \{\s*clearInsertedTab\(\)/)
   assert.match(client, /const unwrap = \(\) => \{\s*clearInsertedTab\(\)/)
 })
 

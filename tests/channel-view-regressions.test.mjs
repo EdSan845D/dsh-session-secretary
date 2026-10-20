@@ -51,13 +51,13 @@ function fixture() {
     channelIconCss: () => '',
     channelWorkspaceId: id => `dsh-im-channel:${id}`, channelWorkspaceIconCss: () => '',
     installChannelGroupOption: () => () => {}, installChannelGroupMenu: options => { menu = options; return () => {} },
-    ChannelTreeGuard: 'guard', ChannelUnavailable: 'unavailable', Modal: 'modal',
-    fallbackT: key => key, serverText: text => text, hostModalButton() {}, noopChannelAction() {}, channelAddFlow() {},
+    ChannelTreeGuard: 'guard', ChannelUnavailable: 'unavailable',
+    fallbackT: key => key, noopChannelAction() {}, channelAddFlow() {},
   }
   const View = new Function(...Object.keys(env), `${viewCode}; return ChannelOfficialView;`)(...Object.values(env))
   const props = {
     t: key => key, officialTree: Official, openImSettings() {},
-    hostProps: { useSessions: select => select(sessions), useWorkspaces: select => select({ items: [], archivedSessionIds: ['adopted-id'], phase: 'ready' }), archiveSession: async () => {} },
+    hostProps: { useSessions: select => select(sessions), useWorkspaces: select => select({ items: [], archivedSessionIds: ['adopted-id'], phase: 'ready' }) },
   }
   const render = () => {
     cursor = 0
@@ -123,4 +123,21 @@ test('权威 store 就绪且频道已空时允许官方树清理已移除分组'
   assert.equal(f.render().tree.props.children[0].props.children.at(-1), null)
   f.setSessions({ phase: 'ready', ids: [], byId: {} })
   assert.equal(f.render().tree.props.children[0].props.children.at(-1).type, 'guard')
+})
+
+test('旧宿主快照没有 phase 时仍按就绪挂载官方树', () => {
+  const f = fixture()
+  f.setSessions({ ids: ['im:wecom_test:dm:1:a'], byId: { 'im:wecom_test:dm:1:a': { id: 'im:wecom_test:dm:1:a' } } })
+  const body = f.render().tree.props.children[0].props.children.at(-1)
+  assert.equal(body && body.type, 'guard', 'phase 缺失不能让频道页签永久空白')
+})
+
+test('宿主会话列表失败时显示错误横幅，不渲染空白', () => {
+  const f = fixture()
+  f.setSessions({ phase: 'pending', state: 'error', ids: [], byId: {} })
+  const children = f.render().tree.props.children[0].props.children
+  assert.equal(children.at(-1), null, '首个权威快照到达前不挂载官方树')
+  const banner = children.at(-2)
+  assert.equal(banner && banner.props.className, 'ima-channel-error')
+  assert.equal(banner.props.role, 'alert')
 })

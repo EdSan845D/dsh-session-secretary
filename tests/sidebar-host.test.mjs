@@ -301,5 +301,5 @@ test('侧栏包装渲染失败时回落到宿主官方会话列表', () => {
 test('原生侧栏外壳与插入页签都接官方树', () => {
   assert.match(client, /h\(ImSidebarFallbackBoundary, \{ officialTree: tree, hostProps: innerProps \}/)
   assert.match(client, /officialTree: registry\.officialTree/)
-  assert.match(client, /h\(HostThemeProvider, null, h\(ChannelOfficialView/)
+  assert.match(client, /h\(ChannelOfficialView, Object\.assign/)
 })

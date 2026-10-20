@@ -482,7 +482,7 @@ window.__ModuleLoader__.load({
       return { channelId: channel.id, accountId: accounts.length === 1 ? accounts[0].id : undefined };
     }
     function pickSettingsSectionButton(buttons, labels) {
-      const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
+      const normalize = (value) => String(value || "").replace(/\s+/g, "").trim().toLowerCase();
       const targets = labels.map(normalize).filter(Boolean);
       for (const target of targets) {
         const match = buttons.find((button) => normalize(button.textContent) === target);
@@ -511,6 +511,13 @@ window.__ModuleLoader__.load({
       const request = new CustomEvent(SETTINGS_OPEN_SECTION_EVENT, { detail: { labels: [...labels] }, cancelable: true });
       return !trigger.dispatchEvent(request);
     }
+    function openImSettingsPage(t) {
+      openSettingsSection(
+        [t("settings.label"), IM_LOCALES.en["settings.label"], IM_LOCALES.zh["settings.label"]],
+        () => {},
+        () => console.warn("[dsh-im-connect] 无法打开 IM 助理设置页"),
+      );
+    }
     function openSettingsSection(labels, onSelected, onMissing) {
       if (typeof document === "undefined" || typeof window === "undefined") {
         if (onMissing) onMissing();
@@ -520,8 +527,9 @@ window.__ModuleLoader__.load({
         if (onSelected) onSelected();
         return;
       }
-      const launchers = [...document.querySelectorAll('button[aria-haspopup="dialog"]')];
-      const launcher = pickSettingsLauncher(launchers);
+      const launchers = [...document.querySelectorAll('button[aria-haspopup="dialog"], button[aria-label*="设置"], button[aria-label*="Settings"], [data-dcu-settings-trigger]')];
+      const namedSettingsButton = [...document.querySelectorAll("button")].find((button) => /^(设置|settings)$/i.test((button.getAttribute("aria-label") || "").trim()));
+      const launcher = pickSettingsLauncher(launchers) || namedSettingsButton;
       const pageTrigger = document.querySelector(SETTINGS_CODEX_TRIGGER_SELECTOR);
       const dialogOpen = document.querySelector('[role="dialog"]') !== null;
       const pageOpen = document.querySelector(SETTINGS_CODEX_PAGE_SELECTOR) !== null;
@@ -2873,7 +2881,7 @@ window.__ModuleLoader__.load({
       const open = props.openSession || hostProps.open || hostProps.openSession;
       const archiveSession = hostProps.archiveSession || props.archiveSession;
       const openChannelSettings = props.openChannelSettings || hostProps.openChannelSettings;
-      const openImSettings = props.openImSettings || hostProps.openImSettings;
+      const openImSettings = props.openImSettings || hostProps.openImSettings || (() => openImSettingsPage(t));
 
       useEffect(() => {
         ensureStyle();
@@ -3484,13 +3492,7 @@ window.__ModuleLoader__.load({
           () => { requestChannelSettings(next); },
         );
       };
-      const openImSettings = () => {
-        openSettingsSection(
-          [t("settings.label"), IM_LOCALES.en["settings.label"], IM_LOCALES.zh["settings.label"]],
-          () => {},
-          () => console.warn("[dsh-im-connect] 无法打开 IM 助理设置页"),
-        );
-      };
+      const openImSettings = () => openImSettingsPage(t);
       // Codex UI 只把 sidebar.channels 当作页签占用信号，频道内容由它自己的
       // ChannelBrowser 渲染；这里保留占位，避免未来宿主直接渲染时空白。
       function LocalizedChannelRail() {

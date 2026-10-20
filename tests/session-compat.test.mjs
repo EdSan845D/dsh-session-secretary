@@ -13,10 +13,9 @@ const {
   pickHostDirectory,
   archiveHostSession,
   unarchiveHostSession,
-  activeSessionRefusal,
   forkHostSession,
   renameHostSession,
-} = new Function(`${code}; return { probeService, currentSessionId, resolveHostSessionId, openHostSession, pickHostDirectory, archiveHostSession, unarchiveHostSession, activeSessionRefusal, forkHostSession, renameHostSession };`)()
+} = new Function(`${code}; return { probeService, currentSessionId, resolveHostSessionId, openHostSession, pickHostDirectory, archiveHostSession, unarchiveHostSession, forkHostSession, renameHostSession };`)()
 
 test('当前会话先认 list.current，没有再按 retainedBy.mainView 反查', () => {
   assert.equal(currentSessionId({ current: 'legacy', ids: ['a'], byId: { a: { retainedBy: { mainView: 1 } } } }), 'legacy')
@@ -80,18 +79,6 @@ test('reflect 没有服务时改走 ctx.get，不硬读未注入的 uiWorkspace'
   assert.deepEqual(opened, ['get:s1'])
 })
 
-test('归档插件在场且宿主提供归档时才出现归档整组', () => {
-  const helpers = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
-  const start = helpers.indexOf('    const ARCHIVE_MANAGER_PLUGIN')
-  const end = helpers.indexOf('    const EMPTY_EXTRA_TABS')
-  const { hasArchiveManagerPlugin, canArchiveChannelGroup } = new Function(`${helpers.slice(start, end)}; return { hasArchiveManagerPlugin, canArchiveChannelGroup };`)()
-  assert.equal(hasArchiveManagerPlugin({ querySelector: (sel) => sel.includes('@michengai/dsh-archive-manager') ? {} : null }), true)
-  assert.equal(hasArchiveManagerPlugin({ querySelector: () => null }), false)
-  assert.equal(canArchiveChannelGroup(true, () => {}), true)
-  assert.equal(canArchiveChannelGroup(true, undefined), false)
-  assert.equal(canArchiveChannelGroup(false, () => {}), false)
-})
-
 test('alpha.2 有 retain 时不把 sessions.open 当成打开成功', () => {
   const opened = []
   assert.equal(openHostSession({
@@ -127,34 +114,12 @@ test('归档优先官方导航，否则回退 workspaces.archiveSession', async 
   assert.equal(await archiveHostSession({ reflect: { get() { return undefined } } }, 's3'), undefined)
 })
 
-test('停止并归档：运行中拒绝后才带 stopActivity，分组与单会话分开', async () => {
-  const helpers = extractBlock(client, '    function probeService(ctx, name) {', '    let openImSession = (id) => {', 'IM 宿主会话双路径')
-  const stop = extractBlock(client, '    async function archiveChannelGroup', '    const CHANNEL_SETTINGS_EVENT', '停止后归档')
-  const { openStopArchive, finishStopArchive } = new Function(`${helpers}\n${stop}\nreturn { openStopArchive, finishStopArchive };`)()
-  const opened = []
-  assert.equal(openStopArchive({ reason: { name: 'WorkspaceArchiveError' } }, { id: 's', title: 'A' }, (target) => opened.push(target)), true)
-  assert.deepEqual(opened, [{ id: 's', title: 'A' }])
-  assert.equal(openStopArchive(new Error('other'), { id: 's' }, () => opened.push('no')), false)
-  assert.equal(opened.length, 1)
-  const calls = []
-  const archive = async (id, options) => { calls.push([id, options]) }
-  assert.equal(await finishStopArchive({ id: 's1' }, archive), 'session')
-  assert.deepEqual(calls, [['s1', { stopActivity: true }]])
-  calls.length = 0
-  assert.equal(await finishStopArchive({ id: 'g', sessionIds: ['a', 'b'] }, archive), 'group')
-  assert.deepEqual(calls, [['a', { stopActivity: true }], ['b', { stopActivity: true }]])
-  assert.equal(await finishStopArchive({ id: 'x' }, undefined), 'unavailable')
-})
-
 test('运行中会话归档可带 stopActivity，并识别宿主拒绝', async () => {
   const calls = []
   await archiveHostSession({
     reflect: { get(name) { return name === 'uiWorkspace' ? { archiveSession: async (id, options) => calls.push([id, options]) } : undefined } },
   }, 'run', { stopActivity: true })
   assert.deepEqual(calls, [['run', { stopActivity: true }]])
-  assert.equal(activeSessionRefusal({ reason: { name: 'WorkspaceArchiveError' } }), true)
-  assert.equal(activeSessionRefusal({ rpcError: { code: 'workspace/session-active', details: { activity: {} } } }), true)
-  assert.equal(activeSessionRefusal(new Error('other')), false)
   const restored = []
   await unarchiveHostSession({
     reflect: { get(name) { return name === 'uiWorkspace' ? { unarchiveSession: async (id) => restored.push(id) } : undefined } },

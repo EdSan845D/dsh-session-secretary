@@ -140,15 +140,15 @@ test('频道视图状态独立且不污染任务树', () => {
   assert.equal(store.getSnapshot().archivedFilter, 'only')
 })
 
-test('频道组菜单注入频道设置和归档整组', () => {
+test('频道组菜单只注入频道设置，不包含整组归档入口', () => {
   assert.match(client, /function installChannelGroupMenu\(/)
   assert.match(client, /\[data-row-key\^="workspace:\$\{CHANNEL_WORKSPACE_PREFIX\}"\]/)
   assert.match(client, /删除工作区\|Delete workspace/)
   assert.match(client, /rail\.channelSettings/)
   assert.match(client, /"rail\.channelSettings": "频道设置"/)
-  assert.match(client, /rail\.archiveGroup/)
+  assert.doesNotMatch(client, /archiveGroup/)
   assert.match(client, /channelMarkup\(h\(ChannelMenuSettingsIcon\)\)/)
-  assert.match(client, /channelMarkup\(h\(IconArchiveOutline20/)
+  assert.doesNotMatch(client, /IconArchiveOutline20/)
   assert.match(client, /hideOthers/)
 })
 
@@ -240,7 +240,7 @@ test('0.1.7 图标优先 Regular 名，缺导出时不渲染 undefined', () => {
   assert.match(client, /function pickHostIcon\(/)
   assert.match(client, /IconFolderCloseRegular/)
   assert.match(client, /IconQueueOutlineRegular/)
-  assert.match(client, /IconArchiveOutlineRegular/)
+  assert.match(client, /IconSettingsOutlineRegular/)
   const code = extractBlock(client, '    function pickHostIcon(...names) {', '    const IconFolderClose = pickHostIcon', '宿主图标')
   const factory = new Function('primitives', `${code}; return pickHostIcon;`)
   const Regular = () => 'regular'

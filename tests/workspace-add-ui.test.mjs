@@ -49,7 +49,7 @@ test('Select 组件支持 footer 与 onFooter，点击 footer 触发回调且不
 
 function loadPicker() {
   const helperStart = source.indexOf('    function parsePickedPath(value) {')
-  const helperEnd = source.indexOf('    function activeSessionRefusal', helperStart)
+  const helperEnd = source.indexOf('    function hostWorkspaceApi', helperStart)
   assert.ok(helperStart >= 0 && helperEnd > helperStart, 'client.js 中缺少 parsePickedPath 或 pickHostDirectory')
   return new Function('probeService', 'globalThis', source.slice(helperStart, helperEnd) + '\nreturn { parsePickedPath, pickHostDirectory };')
 }

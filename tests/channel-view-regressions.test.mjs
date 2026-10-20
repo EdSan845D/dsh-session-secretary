@@ -8,7 +8,6 @@ const viewCode = extractBlock(source, '    function ChannelOfficialView(props)',
 const storeCode = extractBlock(source, '    function copySessionOrders(', '    const channelSessionStateCache', '频道状态')
 const groupsCode = extractBlock(source, '    function channelGroupsFromSessionState(', '    function channelGroupCreatedAt(', '频道会话分组')
 const channelIdCode = extractBlock(source, '    function channelIdOfSession(', '    const isChannelSession', '频道 ID')
-const canArchiveCode = extractBlock(source, '    function canArchiveChannelGroup(', '    async function archiveChannelGroup(', '归档能力')
 
 // 执行真实组件函数，保留跨渲染的 hook 状态；按宿主行为检查传给官方树的数据。
 function fixture() {
@@ -49,13 +48,13 @@ function fixture() {
       return { ...state, items: groups.map(group => ({ workspaceId: `dsh-im-channel:${group.id}`, sessionIds: group.sessions.map(item => item.sessionId) })) }
     },
     channelRealWorkspaceState: state => state,
-    channelIconCss: () => '', hasArchiveManagerPlugin: () => true,
+    channelIconCss: () => '',
     channelWorkspaceId: id => `dsh-im-channel:${id}`, channelWorkspaceIconCss: () => '',
     installChannelGroupOption: () => () => {}, installChannelGroupMenu: options => { menu = options; return () => {} },
     ChannelTreeGuard: 'guard', ChannelUnavailable: 'unavailable', Modal: 'modal',
     fallbackT: key => key, serverText: text => text, hostModalButton() {}, noopChannelAction() {}, channelAddFlow() {},
   }
-  const View = new Function(...Object.keys(env), `${canArchiveCode}\n${viewCode}; return ChannelOfficialView;`)(...Object.values(env))
+  const View = new Function(...Object.keys(env), `${viewCode}; return ChannelOfficialView;`)(...Object.values(env))
   const props = {
     t: key => key, officialTree: Official, openImSettings() {},
     hostProps: { useSessions: select => select(sessions), useWorkspaces: select => select({ items: [], archivedSessionIds: ['adopted-id'], phase: 'ready' }), archiveSession: async () => {} },
@@ -73,11 +72,13 @@ function fixture() {
   }
 }
 
-test('实际频道组件在归档服务存在时向菜单开放归档整组', () => {
+test('频道分组菜单只提供频道设置，不暴露组归档回调', () => {
   const f = fixture()
   const first = f.render()
   first.effects.forEach(fn => fn())
-  assert.equal(f.menu.canArchive, true)
+  assert.equal(typeof f.menu.onSettings, 'function')
+  assert.equal('onArchive' in f.menu, false)
+  assert.equal('archiveLabel' in f.menu, false)
 })
 
 test('官方会话 store 就绪前不挂载频道树，就绪后直接从 store 分组并保留折叠和排序', () => {

@@ -15,8 +15,8 @@ export function extractBlock(source, startMarker, endMarker, label, required = [
 }
 
 const client = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
-const registryCode = extractBlock(client, '    function createNativeTabRegistry(', '    function applyRegistryFilters(', 'IM 注册表', ['function attachNativeTabRegistry(', 'function findNativeTabRegistry('])
-export const nativeTabs = new Function(registryCode + '; return { createNativeTabRegistry, attachNativeTabRegistry, findNativeTabRegistry };')()
+const registryCode = extractBlock(client, '    function openRegisteredSession(', '    function applySessionFilters(', 'IM 注册表', ['function createNativeTabRegistry(', 'function attachNativeTabRegistry(', 'function findNativeTabRegistry('])
+export const nativeTabs = new Function(registryCode + '; return { openRegisteredSession, createNativeTabRegistry, attachNativeTabRegistry, findNativeTabRegistry };')()
 
 export function createHarness(body, kind) {
   let entries = [], codex = false

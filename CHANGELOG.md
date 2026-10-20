@@ -9,6 +9,9 @@
 - Migrate the remaining UI glyphs (feedback, modal close, select chevron, loading spinner, update actions, add, feedback, platform caret, and the settings-nav mask) to host icons; only the channel brand marks and the GitHub brand mark remain custom-drawn.
 - The Channels tab now shows the channel brand icon before each channel session; single-channel workspaces use their channel logo instead of the folder icon; the group menu's Channel settings opens the IM settings page; and the header's add button becomes Add channel, opening the same settings page.
 - Channel sessions are no longer hidden from the official task tree; the Channels tab is a filtered view of the same sessions. Opening a channel session from the task tree stays on the task tree instead of jumping to Channels.
+- Remove the self-drawn task-list fallback: when the official task tree is unavailable, show a clear message instead of rendering `TaskList` / `TaskListView`; drop the `rail.noTasks` strings and `.ima-native` styles.
+- Unify official task-tree session filters: honor registry `sessionFilters` with `getRevision()`, so adding or removing a filter takes effect immediately regardless of whether automation or IM wrapped the sidebar first.
+- Unify official task-tree session opening: register `sessionOpeners` so scheduled openers run first, channel sessions still resolve/ensure, and unmatched sessions fall back to the host regardless of which plugin wrapped first.
 
 ## 1.0.8 - 2026-10-19
 

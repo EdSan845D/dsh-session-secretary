@@ -12,6 +12,9 @@
 - Remove the self-drawn task-list fallback: when the official task tree is unavailable, show a clear message instead of rendering `TaskList` / `TaskListView`; drop the `rail.noTasks` strings and `.ima-native` styles.
 - Unify official task-tree session filters: honor registry `sessionFilters` with `getRevision()`, so adding or removing a filter takes effect immediately regardless of whether automation or IM wrapped the sidebar first.
 - Unify official task-tree session opening: register `sessionOpeners` so scheduled openers run first, channel sessions still resolve/ensure, and unmatched sessions fall back to the host regardless of which plugin wrapped first.
+- Fix the Channels tab using the plugin translator instead of the host translator when IM owns the sidebar, which rendered host group/sort labels as raw keys.
+- Keep the channel group menu injector mounted across the 4-second poll, restore host menu items on teardown, and activate injected actions only from the primary button.
+- Restore the per-channel settings deep link; the header add button still opens IM settings when the settings entry is unavailable.
 
 ## 1.0.8 - 2026-10-19
 

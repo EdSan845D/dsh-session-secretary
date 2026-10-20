@@ -37,7 +37,6 @@ export declare class ImEngine {
     private readonly resolveConfig;
     private readonly resolvePrivateAccess;
     private readonly resolveCommandPermissions;
-    /** 分片发送的退避表（毫秒）；默认 {@link SEND_RETRY_DELAYS_MS}，测试可传 `[0]` 关闭等待。 */
     private readonly sendRetryDelaysMs;
     private readonly deferred;
     private deferredTimer?;
@@ -72,9 +71,14 @@ export declare class ImEngine {
     private readonly chatCommands;
     private readonly commandScopes;
     private readonly inputScopes;
-    constructor(ctx: Context, store: SessionMapStore, seen: SeenStore, config: EngineConfig, log: (line: string) => void, onUnauthorized?: ((channelId: string, msg: ImMessage) => string) | undefined, resolveConfig?: (channelId: string) => EngineConfig, resolvePrivateAccess?: (channelId: string) => 'approved' | 'all', resolveCommandPermissions?: (channelId: string) => CommandPermissions, deliveryFile?: string, 
-    /** 分片发送的退避表（毫秒）；默认 {@link SEND_RETRY_DELAYS_MS}，测试可传 `[0]` 关闭等待。 */
-    sendRetryDelaysMs?: readonly number[]);
+    /** 话题名回写状态：默认一个话题只命名一次。 */
+    private readonly topicTitles;
+    private readonly topicWrites;
+    /**
+     * @param sendRetryDelaysMs 分片发送退避表；测试可传 `[0]` 关闭等待。
+     * @param topicTitleFile 话题名状态文件；缺省只在进程内去重。
+     */
+    constructor(ctx: Context, store: SessionMapStore, seen: SeenStore, config: EngineConfig, log: (line: string) => void, onUnauthorized?: ((channelId: string, msg: ImMessage) => string) | undefined, resolveConfig?: (channelId: string) => EngineConfig, resolvePrivateAccess?: (channelId: string) => 'approved' | 'all', resolveCommandPermissions?: (channelId: string) => CommandPermissions, deliveryFile?: string, sendRetryDelaysMs?: readonly number[], topicTitleFile?: string);
     renameSession(sessionId: string, title: string): boolean;
     removeSession(sessionId: string): Promise<boolean>;
     cleanupMissingSession(sessionId: string): Promise<boolean>;
@@ -125,6 +129,23 @@ export declare class ImEngine {
     private approvalPrompt;
     private onSessionEvent;
     private processSessionEvent;
+    /**
+     * 把会话标题写成话题名。
+     *
+     * 默认策略只写一次（`once`）：新话题里第一条非 fallback 标题写进去就固定，
+     * 之后的标题变化不再跟随 —— 既避开 editForumTopic 的频控，也避免话题名频繁跳动。
+     * `/rename` 走 explicit 参数强制同步一次，这是人工换名的入口。
+     */
+    private syncTopicName;
+    private writeTopicName;
+    /** 查询或切换当前话题的锁定状态；不创建会话，也不立即发起平台改名。 */
+    private topicNameCommand;
+    /** 命名策略；默认 once。 */
+    private topicMode;
+    /** 话题被改名：自己写入的回显忽略，人工改名则锁定。私聊话题不会推送此事件。 */
+    private observeTopicEdit;
+    /** /rename 之后把新标题同步到话题名（显式操作，不受 once 限制）。 */
+    renameTopicNow(sessionId: string, title: string): Promise<void>;
     /** 正常交付保持安静；仅异常结果追加必要文字提示。 */
     private notifyCompletion;
     /** 逐片发送；返回是否至少送达过一片，供调用方决定是否标记已投递。 */

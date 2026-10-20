@@ -266,6 +266,14 @@ dsh --profile web --dump-config
 
 通过 `/workspace` 新建后，`/new` 和当前会话归档后的续聊会保留所选工作区，并使用账号配置的模型、Agent 与权限预设。`/session` 接续已有会话、`/fork` 分叉则保留原会话配置。
 
+### Telegram 话题命名
+
+Telegram 话题默认使用第一条非兜底会话标题自动命名一次，之后不会随对话频繁变化。`/rename <名称>` 会显式同步话题名；普通聊天不受影响。机器人需要拥有该话题的改名权限。
+
+- `/topicname` 查看当前话题的策略和锁定状态；`/topicname off` 锁定自动命名，`/topicname on` 解除锁定。默认策略下，解除锁定后允许下一个有效标题重新命名。
+- 插件配置 `topicNaming` 支持 `once`（默认）、`follow`（跟随有效标题）和 `off`（关闭自动命名）；`/topicname on` 不会覆盖全局 `off`。显式 `/rename` 不受自动命名开关限制。
+- 收到群组论坛的人工改名事件后自动锁定；私聊话题无法依赖该事件检测人工改名，请使用 `/topicname off`。开关与命名状态保存在状态目录的 `topic-titles.json`，重启后保留。
+
 ### Slack 接入步骤
 
 Slack 走 Socket Mode 长连接，不需要公网地址，也不用配置请求网址：

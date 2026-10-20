@@ -11,10 +11,12 @@ export declare class ChatCommands {
     private readonly pending;
     private readonly onSession;
     private readonly showChoices?;
+    private readonly onRenamed?;
+    private readonly onTopicName?;
     private readonly lifetime;
     private readonly choices;
     private readonly reasoningChoices;
-    constructor(host: CommandHost, router: SessionRouter, pending: (sessionId: string) => boolean, onSession?: (sessionId: string, msg: ImMessage) => void, showChoices?: ((channel: ChannelAdapter, msg: ImMessage, text: string, choices: Choice[], session?: string, allowNumber?: boolean) => Promise<string>) | undefined);
+    constructor(host: CommandHost, router: SessionRouter, pending: (sessionId: string) => boolean, onSession?: (sessionId: string, msg: ImMessage) => void, showChoices?: ((channel: ChannelAdapter, msg: ImMessage, text: string, choices: Choice[], session?: string, allowNumber?: boolean) => Promise<string>) | undefined, onRenamed?: ((sessionId: string, title: string) => void) | undefined, onTopicName?: ((channel: ChannelAdapter, msg: ImMessage, action?: "on" | "off") => string) | undefined);
     clear(): void;
     private service;
     private call;

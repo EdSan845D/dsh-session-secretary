@@ -34,6 +34,7 @@ export const chatControlHelp = () => [
   replyText('/workspace 序号或路径 — 直接在该工作区新建会话'),
   replyText('/history — 当前会话最近的文字记录'),
   replyText('/rename 新名称 — 给当前会话改名'),
+  replyText('/topicname [on|off] — 查询或开关当前话题的自动命名'),
   replyText('/fork — 分叉当前会话'), '',
   replyText('**模型与推理**'),
   replyText('/models — 列出可选模型并选择'),
@@ -60,7 +61,9 @@ export class ChatCommands {
   constructor(private readonly host: CommandHost, private readonly router: SessionRouter,
     private readonly pending: (sessionId: string) => boolean,
     private readonly onSession: (sessionId: string, msg: ImMessage) => void = () => { },
-    private readonly showChoices?: (channel: ChannelAdapter, msg: ImMessage, text: string, choices: Choice[], session?: string, allowNumber?: boolean) => Promise<string>) { }
+    private readonly showChoices?: (channel: ChannelAdapter, msg: ImMessage, text: string, choices: Choice[], session?: string, allowNumber?: boolean) => Promise<string>,
+    private readonly onRenamed?: (sessionId: string, title: string) => void,
+    private readonly onTopicName?: (channel: ChannelAdapter, msg: ImMessage, action?: 'on' | 'off') => string) { }
 
   clear(): void { this.choices.clear(); this.reasoningChoices.clear() }
 
@@ -303,6 +306,12 @@ export class ChatCommands {
       signal.throwIfAborted()
       if (!this.showChoices) return text + '\n' + choices.map(choice => `${choice.label}：${choice.displayValue ?? choice.value}`).join('\n')
       return this.showChoices(channel, msg, text, choices, current?.sessionId)
+    }
+    if (command === 'topicname') {
+      if (msg.media?.length) throw new Error(replyText('该控制命令不接受附件，请单独发送。'))
+      if (input && input !== 'on' && input !== 'off') throw new Error(replyText('用法：/topicname [on|off]'))
+      if (!this.onTopicName) return replyText('当前聊天不支持话题命名。')
+      return this.onTopicName(channel, msg, input === 'on' || input === 'off' ? input : undefined)
     }
     if (command === 'export') {
       const sessionId = requireCurrent()
@@ -576,6 +585,8 @@ export class ChatCommands {
       const oldTitle = before?.items?.find((row) => row.sessionId === sessionId)?.projections?.values?.title
       const result = await this.call<{ title: string }>('sessionController', 'rename', { sessionId, title: input })
       this.router.rename(sessionId, result.title)
+      // 显式改名：顺带把话题名也改掉，行为才符合直觉。
+      this.onRenamed?.(sessionId, result.title)
       if (oldTitle === result.title)
         return replyText('当前名称已是：{0}', oneLine(result.title)) +
           related(replyText('查看会话列表：/sessions'))

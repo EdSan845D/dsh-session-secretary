@@ -3,6 +3,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';
+import type { TopicMode } from './engine/topic-title.js';
 export declare const name = "dsh-im-connect";
 export declare const inject: string[];
 export interface PluginConfig {
@@ -12,6 +13,7 @@ export interface PluginConfig {
     model: string;
     agentPreset: string;
     mergeTimeoutSecs: number;
+    topicNaming: TopicMode;
 }
 export declare const Config: Schema<PluginConfig>;
 export declare function apply(ctx: Context, config: PluginConfig): void;

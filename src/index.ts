@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { ChannelManager } from './manager.js'
 import type { EngineConfig } from './engine/types.js'
+import type { TopicMode } from './engine/topic-title.js'
 import { createRotatingFileAppender } from './engine/file-log.js'
 import { registerPluginUpdater } from './plugin-updater.js'
 
@@ -29,6 +30,7 @@ export interface PluginConfig {
   model: string
   agentPreset: string
   mergeTimeoutSecs: number
+  topicNaming: TopicMode
 }
 
 export const Config: Schema<PluginConfig> = Schema.object({
@@ -38,6 +40,7 @@ export const Config: Schema<PluginConfig> = Schema.object({
   model: Schema.string().default(''),
   agentPreset: Schema.string().default('standard'),
   mergeTimeoutSecs: Schema.number().default(5),
+  topicNaming: Schema.union(['once', 'follow', 'off']).default('once'),
 })
 
 export function apply(ctx: Context, config: PluginConfig): void {
@@ -66,6 +69,7 @@ export function apply(ctx: Context, config: PluginConfig): void {
     agentPreset: config.agentPreset || 'standard',
     mergeTimeoutSecs: config.mergeTimeoutSecs || 5,
     permissionPreset: permissionPresets.defaultPreset,
+    topicNaming: config.topicNaming ?? 'once',
   }
 
   const applyStarted = Date.now()

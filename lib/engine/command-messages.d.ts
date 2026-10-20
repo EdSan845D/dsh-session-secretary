@@ -126,6 +126,13 @@ export declare const commandEnglish: {
     readonly '/workspaces \u2014 \u5217\u51FA\u5DE5\u4F5C\u533A\uFF0C\u70B9\u6309\u94AE\u6216\u56DE\u5E8F\u53F7\u5728\u5176\u4E2D\u65B0\u5EFA': "/workspaces — List workspaces; tap a button or reply with the number to start a session there";
     readonly '/workspace \u5E8F\u53F7\u6216\u8DEF\u5F84 \u2014 \u76F4\u63A5\u5728\u8BE5\u5DE5\u4F5C\u533A\u65B0\u5EFA\u4F1A\u8BDD': "/workspace number-or-path — Start a session in that workspace directly";
     readonly '/history \u2014 \u5F53\u524D\u4F1A\u8BDD\u6700\u8FD1\u7684\u6587\u5B57\u8BB0\u5F55': "/history — Recent text from the current session";
+    readonly '\u7528\u6CD5\uFF1A/topicname [on|off]': "Usage: /topicname [on|off]";
+    readonly '\u5F53\u524D\u804A\u5929\u4E0D\u652F\u6301\u8BDD\u9898\u547D\u540D\u3002': "This chat does not support topic naming.";
+    readonly '\u5F53\u524D\u8BDD\u9898\u5DF2\u9501\u5B9A\uFF0C\u4E0D\u518D\u81EA\u52A8\u547D\u540D\u3002': "This topic is locked; automatic naming is disabled.";
+    readonly '\u5F53\u524D\u8BDD\u9898\u5DF2\u89E3\u9664\u9501\u5B9A\uFF0C\u540E\u7EED\u6309 {0} \u7B56\u7565\u81EA\u52A8\u547D\u540D\u3002': "This topic is unlocked; future automatic naming uses the {0} policy.";
+    readonly '\u5168\u5C40\u8BDD\u9898\u81EA\u52A8\u547D\u540D\u5DF2\u5173\u95ED\uFF0C\u89E3\u9664\u9501\u5B9A\u4E0D\u4F1A\u5F00\u542F\u81EA\u52A8\u547D\u540D\u3002': "Automatic topic naming is disabled globally; unlocking does not enable it.";
+    readonly '\u8BDD\u9898\u547D\u540D\u7B56\u7565\uFF1A{0}\uFF1B\u5DF2\u547D\u540D\uFF1A{1}\uFF1B\u5DF2\u9501\u5B9A\uFF1A{2}': "Topic naming policy: {0}; named: {1}; locked: {2}";
+    readonly '/topicname [on|off] \u2014 \u67E5\u8BE2\u6216\u5F00\u5173\u5F53\u524D\u8BDD\u9898\u7684\u81EA\u52A8\u547D\u540D': "/topicname [on|off] — Check or toggle automatic naming for this topic";
     readonly '/rename \u65B0\u540D\u79F0 \u2014 \u7ED9\u5F53\u524D\u4F1A\u8BDD\u6539\u540D': "/rename new-name — Rename the current session";
     readonly '/fork \u2014 \u5206\u53C9\u5F53\u524D\u4F1A\u8BDD': "/fork — Fork the current session";
     readonly '**\u6A21\u578B\u4E0E\u63A8\u7406**': "**Models and reasoning**";

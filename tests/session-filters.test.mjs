@@ -58,3 +58,15 @@ test('会话打开器按 order 分发，未匹配时回退宿主', () => {
     'im:dsh-automation-session-2',
   ])
 })
+
+test('切换同 revision 的注册表时重新应用各自的过滤器', () => {
+  const left = createNativeTabRegistry(null)
+  const right = createNativeTabRegistry(null)
+  left.addSessionFilter(id => id === 'a')
+  right.addSessionFilter(id => id === 'b')
+  const state = { ids: ['a', 'b'], byId: { a: { id: 'a' }, b: { id: 'b' } } }
+  assert.equal(left.getRevision(), right.getRevision())
+  assert.deepEqual(applySessionFilters(state, left).ids, ['a'])
+  assert.deepEqual(applySessionFilters(state, right).ids, ['b'])
+  assert.deepEqual(applySessionFilters(state, left).ids, ['a'])
+})

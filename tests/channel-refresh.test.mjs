@@ -145,7 +145,7 @@ test('卸载后不会执行排队的写后刷新', async () => {
 })
 
 test('设置、侧栏和全局 effect 共享刷新，没有待审批项时也能刷新出新审批', async () => {
-  const f = fixture(), cleanups = [], groups = [], channels = [], pending = []
+  const f = fixture(), cleanups = [], groups = [], channels = [], pending = [], ready = []
   const settings = block('      useEffect(() => channelRefresh.subscribe', '      useEffect(() => {\n        ensureStyle();')
   const railStart = source.indexOf('    function ChannelOfficialView')
   const rail = source.slice(source.indexOf('      useEffect(() => {\n        ensureStyle();', railStart), source.indexOf('      useEffect(() => {\n        if (groupBy === "channel"', railStart))
@@ -154,6 +154,7 @@ test('设置、侧栏和全局 effect 共享刷新，没有待审批项时也能
     channelRefresh: f.channelRefresh, useEffect: effect => cleanups.push(effect()),
     ctx: { effect: effect => cleanups.push(effect()) }, ensureStyle() {},
     setChannels: data => channels.push(data), setGroups: data => groups.push(data),
+    setGroupsReady: value => ready.push(value),
     setPending: data => pending.push(data), setError() {}, setSelected: update => update(''), rememberAccountSelection() {},
     serverText: text => text, t: key => key,
   }
@@ -161,6 +162,7 @@ test('设置、侧栏和全局 effect 共享刷新，没有待审批项时也能
   await settle(); assert.equal(f.requests.length, 1)
   f.requests[0].resolve(payload()); await settle()
   assert.deepEqual(groups, [payload().groups])
+  assert.deepEqual(ready, [true])
   assert.deepEqual(channels, [[]])
   assert.equal(f.memberships.length, 1)
   assert.deepEqual(pending, [[]])

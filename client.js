@@ -613,7 +613,7 @@ window.__ModuleLoader__.load({
     const EMPTY_EXTRA_TABS = [];
     const inject = ["slots", "sessions", "workspaces", "locale"];
     const API_BASE = "/api/dsh-im-connect";
-    const TAB_KEY = "dsh-im-connect.sidebar-tab";
+    const TAB_KEY = "dsh-native-sidebar.tab";
     const ACCOUNT_SELECTION_KEY = "dsh-im-connect.settings.selected-account";
     const IM_LOCALE_NS = "im-connect";
     const UPDATE_ICONS = {
@@ -906,12 +906,14 @@ window.__ModuleLoader__.load({
           if (channelSessionChannels.get(id) !== channel) { changed = true; break; }
         }
       }
-      if (!changed) return;
-      channelSessionIds = next;
-      channelSessionChannels = channels;
-      channelMembershipRevision += 1;
-      for (const listener of channelMembershipListeners) listener();
-      try { requestHostSessionRefresh(); } catch { /* 宿主未提供会话服务时忽略 */ }
+      if (changed) {
+        channelSessionIds = next;
+        channelSessionChannels = channels;
+        channelMembershipRevision += 1;
+        for (const listener of channelMembershipListeners) listener();
+      }
+      // 相同快照也允许重试尚未成功的宿主同步。
+      try { requestHostSessionRefresh(changed); } catch { /* 下次频道轮询继续重试 */ }
     }
     /** 会话所属频道：优先用 /channels 的权威归属，旧数据再从 IM 会话 id 解析平台。 */
     function channelIdOfSession(sessionId) {
@@ -936,26 +938,29 @@ window.__ModuleLoader__.load({
     function sidebarTabForSession(currentId, extraTabs) {
       if (typeof currentId !== "string" || currentId === "") return null;
       const matched = (extraTabs || []).find((item) => item && item.matchSession && item.matchSession(currentId));
-      if (matched && matched.id !== "schedule") return matched.id;
+      if (matched && matched.id !== "schedule" && matched.id !== "channels") return matched.id;
       // 频道会话同时存在于任务树和频道页签，不再自动改页签。
       if (isChannelSession(currentId)) return null;
       if (matched) return null;
       return "tasks";
     }
 
-    function followSidebarTab(state, currentId, extraTabs, currentTab) {
+    function followSidebarTab(state, currentId, extraTabs) {
       const ready = !!(state && state.ready);
       const next = sidebarTabForSession(currentId, extraTabs);
-      if (!ready) return { ready: true, previousId: currentId, tab: next === "channels" && currentTab === "tasks" ? null : next };
+      // 首个有效主会话只建立基线，不覆盖用户恢复的页签；空快照继续等待。
+      if (!ready) return { ready: typeof currentId === "string" && currentId !== "", previousId: currentId, tab: null };
       if (typeof currentId !== "string" || currentId === "") return { ready: true, previousId: currentId, tab: null };
-      if (currentId === state.previousId && !isChannelSession(currentId)) return { ready: true, previousId: currentId, tab: null };
-      // 频道会话现在也出现在任务树里；从任务页签打开时不要强制跳回频道页签。
-      if (next === "channels" && currentTab === "tasks") return { ready: true, previousId: currentId, tab: null };
+      if (currentId === state.previousId) return { ready: true, previousId: currentId, tab: null };
       return { ready: true, previousId: currentId, tab: next };
     }
 
+    function resolveSidebarTab(tab, extraTabs) {
+      return tab === "tasks" || tab === "channels" || extraTabs.some((item) => item.id === tab) ? tab : "tasks";
+    }
+
     function isHostNewSessionControl(label) {
-      return /新会话|新建任务|New chat|New session/i.test(String(label || ""));
+      return /^(新会话|新建任务|New chat|New session)(?:\s+(?:Ctrl|Alt|Shift|Meta)(?:\+[^\s+]+)*)?$/i.test(String(label || "").trim());
     }
 
     const api = (path, opts) => {
@@ -2923,6 +2928,7 @@ window.__ModuleLoader__.load({
       }, [store]);
       const groupBy = useChannelStore((state) => state.groupBy);
       const [groups, setGroups] = useState([]);
+      const [groupsReady, setGroupsReady] = useState(false);
       const groupsRef = useRef(groups);
       groupsRef.current = groups;
       const [error, setError] = useState("");
@@ -2944,7 +2950,7 @@ window.__ModuleLoader__.load({
         ensureStyle();
         return channelRefresh.subscribe((data, failure) => {
           if (failure) { setError(t("error.connection")); return; }
-          if (data && data.ok) { setGroups(data.groups || []); setError(""); }
+          if (data && data.ok) { setGroups(data.groups || []); setGroupsReady(true); setError(""); }
           else if (data) setError(serverText(data.error, t) || t("error.load"));
         });
       }, [t]);
@@ -3024,7 +3030,7 @@ window.__ModuleLoader__.load({
         onSelect: () => store.actions.setGroupBy("channel"),
       }), [groupBy, store, t, text]);
 
-      const canArchiveGroup = canArchiveChannelGroup(archiveManagerInstalled, typeof archiveSession === "function");
+      const canArchiveGroup = canArchiveChannelGroup(archiveManagerInstalled, archiveSession);
       useEffect(() => installChannelGroupMenu({
         settingsLabel: t("rail.channelSettings"),
         archiveLabel: t("rail.archiveGroup"),
@@ -3135,7 +3141,8 @@ window.__ModuleLoader__.load({
 
       const renderable = Official !== undefined && Official !== null
         && typeof rawUseSessions === "function" && typeof rawUseWorkspaces === "function";
-      const body = renderable
+      // 官方树会清理不存在的分组，首个权威快照到达前不能传入空列表。
+      const body = !groupsReady ? null : renderable
         ? h(ChannelTreeGuard, { t }, h(Official, officialProps))
         : h(ChannelUnavailable, { t });
 
@@ -3276,11 +3283,11 @@ window.__ModuleLoader__.load({
       const revision = registry && typeof registry.getRevision === "function" ? registry.getRevision() : null;
       if (revision !== null && src && typeof src === "object") {
         const hit = registryFilterCache.get(src);
-        if (hit && hit.revision === revision) return hit.result;
+        if (hit && hit.registry === registry && hit.revision === revision) return hit.result;
       }
       const ids = (src.ids || []).filter((id) => filters.every((fn) => fn(String(id))));
       const result = cacheFilteredSessions(src, ids);
-      if (revision !== null && src && typeof src === "object") registryFilterCache.set(src, { revision, result });
+      if (revision !== null && src && typeof src === "object") registryFilterCache.set(src, { registry, revision, result });
       return result;
     }
 
@@ -3302,10 +3309,12 @@ window.__ModuleLoader__.load({
         () => 0,
       );
       const [tab, setTab] = useState(() => {
-        try { return localStorage.getItem(TAB_KEY) || "tasks"; } catch { return "tasks"; }
+        try {
+          return localStorage.getItem(TAB_KEY)
+            || localStorage.getItem("dsh-im-connect.sidebar-tab")
+            || localStorage.getItem("dsh-automation.sidebar-tab") || "tasks";
+        } catch { return "tasks"; }
       });
-      const tabRef = useRef(tab);
-      tabRef.current = tab;
       const sessionSnap = typeof rawUseSessions === "function"
         ? rawUseSessions((state) => state)
         : undefined;
@@ -3324,7 +3333,8 @@ window.__ModuleLoader__.load({
         const onClick = (event) => {
           const target = event.target && event.target.closest ? event.target.closest("button") : null;
           if (!target) return;
-          const label = (target.innerText || "") + " " + (target.getAttribute("aria-label") || "");
+          if (target.closest("[data-row-key]")) return;
+          const label = target.getAttribute("aria-label") || target.innerText || target.textContent || "";
           if (isHostNewSessionControl(label)) setTab("tasks");
         };
         document.addEventListener("click", onClick, true);
@@ -3337,7 +3347,6 @@ window.__ModuleLoader__.load({
           { ready: tabFollowReady.current, previousId: previousCurrentId.current },
           currentId,
           extraTabs,
-          tabRef.current,
         );
         tabFollowReady.current = followed.ready;
         previousCurrentId.current = followed.previousId;
@@ -3370,7 +3379,8 @@ window.__ModuleLoader__.load({
       const officialTree = Official
         ? h("div", { className: "ima-official-tree" }, h(Official, officialProps))
         : null;
-      const extra = extraTabs.find((item) => item.id === tab);
+      const visibleTab = resolveSidebarTab(tab, extraTabs);
+      const extra = extraTabs.find((item) => item.id === visibleTab);
       const hasChannelTab = extraTabs.some((item) => item.id === "channels");
       const imTabItems = [
         {
@@ -3420,24 +3430,24 @@ window.__ModuleLoader__.load({
               h(HostSegmentedTabs, {
                 className: "ima-segmented-tabs",
                 label: t("rail.tabsAria"),
-                value: tab,
+                value: visibleTab,
                 onChange: (next) => setTab(next),
                 items: imTabItems,
               }),
             )
           : h("div", { className: "ima-tabs", role: "tablist", "aria-label": t("rail.tabsAria") },
-              h("button", { type: "button", role: "tab", "aria-selected": tab === "tasks", className: tab === "tasks" ? "ima-tab on" : "ima-tab", onClick: () => setTab("tasks") }, t("rail.tasks")),
-              !hasChannelTab && h("button", { type: "button", role: "tab", "aria-selected": tab === "channels", className: tab === "channels" ? "ima-tab on" : "ima-tab", onClick: () => setTab("channels") }, t("rail.channels")),
+              h("button", { type: "button", role: "tab", "aria-selected": visibleTab === "tasks", className: visibleTab === "tasks" ? "ima-tab on" : "ima-tab", onClick: () => setTab("tasks") }, t("rail.tasks")),
+              !hasChannelTab && h("button", { type: "button", role: "tab", "aria-selected": visibleTab === "channels", className: visibleTab === "channels" ? "ima-tab on" : "ima-tab", onClick: () => setTab("channels") }, t("rail.channels")),
               ...extraTabs.map((item) => h("button", {
                 key: item.id,
                 type: "button",
                 role: "tab",
-                "aria-selected": tab === item.id,
-                className: tab === item.id ? "ima-tab on" : "ima-tab",
+                "aria-selected": visibleTab === item.id,
+                className: visibleTab === item.id ? "ima-tab on" : "ima-tab",
                 onClick: () => setTab(item.id),
               }, item.label)),
             ),
-        tab === "tasks"
+        visibleTab === "tasks"
           ? (officialTree || h(ChannelUnavailable, { t }))
           : extra
             ? extra.render(Object.assign({}, props, { t: officialT, openSession, open: openSession }))
@@ -3521,14 +3531,30 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       ensureStyle();
       ctx.effect(() => {
-        const refresh = () => {
+        let pending = channelSessionIds.size > 0, flight = null, disposed = false;
+        const refresh = (changed) => {
+          pending = pending || changed;
+          if (disposed || !pending || flight) return;
           const sessions = probeService(ctx, "sessions");
-          if (sessions && typeof sessions.refresh === "function") {
-            Promise.resolve(sessions.refresh()).catch(() => undefined);
-          }
+          if (!sessions || typeof sessions.refresh !== "function") return;
+          const revision = channelMembershipRevision;
+          flight = Promise.resolve().then(() => {
+            if (disposed) return;
+            return sessions.refresh();
+          }).then(() => {
+            if (disposed) return;
+            // Host 的网络错误可能只写入列表快照，而不拒绝 refresh Promise。
+            const snapshot = sessions.list && typeof sessions.list.getSnapshot === "function" ? sessions.list.getSnapshot() : undefined;
+            if (snapshot && snapshot.state === "error") return;
+            if (revision === channelMembershipRevision) pending = false;
+          }).catch(() => { /* 保留 pending，由下次频道轮询重试 */ })
+            .finally(() => { flight = null; });
         };
         requestHostSessionRefresh = refresh;
-        return () => { if (requestHostSessionRefresh === refresh) requestHostSessionRefresh = () => {}; };
+        return () => {
+          disposed = true;
+          if (requestHostSessionRefresh === refresh) requestHostSessionRefresh = () => {};
+        };
       }, "im-connect: host session refresh");
       ctx.effect(() => {
         return channelRefresh.subscribe((data, error) => {

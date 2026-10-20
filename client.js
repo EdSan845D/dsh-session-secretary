@@ -506,6 +506,20 @@ window.__ModuleLoader__.load({
       });
       return named || (buttons.length === 1 ? buttons[0] : undefined);
     }
+    function findAccountMenuTrigger() {
+      const exact = [
+        'button[aria-label="账号菜单"]',
+        'button[aria-label="Account menu"]',
+      ];
+      for (const selector of exact) {
+        const found = document.querySelector(selector);
+        if (found) return found;
+      }
+      return [...document.querySelectorAll('button[aria-haspopup="menu"]')].find((button) => {
+        const label = `${typeof button.getAttribute === "function" ? button.getAttribute("aria-label") || "" : ""} ${button.textContent || ""}`.trim();
+        return /账号|account/i.test(label);
+      });
+    }
     function requestCodexSettingsSection(labels) {
       const trigger = typeof document !== "undefined" && document.querySelector(SETTINGS_CODEX_TRIGGER_SELECTOR);
       if (!trigger) return false;
@@ -534,13 +548,21 @@ window.__ModuleLoader__.load({
       const pageTrigger = document.querySelector(SETTINGS_CODEX_TRIGGER_SELECTOR);
       const dialogOpen = document.querySelector('[role="dialog"]') !== null;
       const pageOpen = document.querySelector(SETTINGS_CODEX_PAGE_SELECTOR) !== null;
+      let menuTrigger;
       if (!dialogOpen && !pageOpen && !launcher && !pageTrigger) {
-        if (onMissing) onMissing();
-        return;
+        menuTrigger = findAccountMenuTrigger();
+        if (!menuTrigger) {
+          if (onMissing) onMissing();
+          return;
+        }
+        menuTrigger.click();
+      } else if (!dialogOpen && !pageOpen) {
+        (pageTrigger || launcher).click();
       }
-      if (!dialogOpen && !pageOpen) (pageTrigger || launcher).click();
       let frame;
       let finished = false;
+      let menuActivated = false;
+      let timeout;
       const observer = new MutationObserver(() => { schedule(); });
       const cleanup = () => {
         if (finished) return;
@@ -549,7 +571,25 @@ window.__ModuleLoader__.load({
         window.clearTimeout(timeout);
         if (frame !== undefined) window.cancelAnimationFrame(frame);
       };
+      const wait = () => {
+        timeout = window.setTimeout(() => {
+          if (select()) return;
+          cleanup();
+          if (onMissing) onMissing();
+        }, 5000);
+      };
       const select = () => {
+        if (menuTrigger !== undefined && !menuActivated) {
+          const items = [...document.querySelectorAll('[role="menuitem"], [role="menu"] button')];
+          const entry = pickSettingsSectionButton(items, ["设置", "Settings"]);
+          if (!entry) return false;
+          menuActivated = true;
+          window.clearTimeout(timeout);
+          wait();
+          entry.click();
+          schedule();
+          return true;
+        }
         const buttons = [
           ...document.querySelectorAll('[role="dialog"] nav button, [role="dialog"] button'),
           ...document.querySelectorAll(SETTINGS_CODEX_PAGE_SELECTOR + " nav button"),
@@ -566,11 +606,7 @@ window.__ModuleLoader__.load({
         if (finished || frame !== undefined) return;
         frame = window.requestAnimationFrame(() => { frame = undefined; select(); });
       };
-      const timeout = window.setTimeout(() => {
-        if (select()) return;
-        cleanup();
-        if (onMissing) onMissing();
-      }, 5000);
+      wait();
       observer.observe(document.body, { childList: true, subtree: true });
       schedule();
     }

@@ -2,24 +2,12 @@
 
 ## 1.0.9 - 2026-10-20
 
-- Share sidebar tab storage with Automation and migrate legacy values; preserve selection on the first valid session snapshot, fall back safely after contribution removal, and restore it on reattachment. Exclude session rows and title substrings from new-chat detection, with regression tests executing the real shell effects.
-
-- Drop the channel group menu's Archive all action and its stop-then-archive follow-up: the injected menu now only offers Channel settings, and the archive/stop modals, their state, and their dictionaries are gone. Render the official tree when the Host session snapshot carries no `phase` (older Hosts report baselines differently), and show the load error banner instead of an empty tab when the Host session list fails.
-- Align the sidebar Tasks / Channels / Scheduled tabs with Archive Manager: 32px container, 28px tabs, 6–12px adaptive horizontal padding, 13/20 typography, and matching indicator styling; the indicator width still follows the dynamic tab count and labels no longer wrap when the Mica skin narrows the sidebar.
-- Use the host `IconQueueOutline` for the Channels tab, matching the automation plugin; externally registered channel tabs also receive the same icon.
-- Unify the sidebar wrapper protocol with `__dshNativeTabWrapped`, `__dshNativeTabOriginal`, and `__dshNativeTabOwner` while keeping legacy automation flags readable; name both wrappers `DshNativeTabWorkspaceShell`.
-- Replace the sidebar Channels list with the host WorkspaceBrowser: it defaults to By channel grouping with channel brand icons on group headers, supports the official search, sort, and archive filters, and injects Channel settings into the channel group menu. Remove the self-drawn channel rail, its styles, and its tests; when the official tree is unavailable the tab shows a clear message instead of falling back.
-- Migrate the remaining UI glyphs (feedback, modal close, select chevron, loading spinner, update actions, add, feedback, platform caret, and the settings-nav mask) to host icons; only the channel brand marks and the GitHub brand mark remain custom-drawn.
-- The Channels tab now shows the channel brand icon before each channel session; single-channel workspaces use their channel logo instead of the folder icon; the group menu's Channel settings opens the IM settings page; and the header's add button becomes Add channel, opening the same settings page.
-- Channel sessions are no longer hidden from the official task tree; the Channels tab is a filtered view of the same sessions. Opening a channel session from the task tree stays on the task tree instead of jumping to Channels.
-- Remove the self-drawn task-list fallback: when the official task tree is unavailable, show a clear message instead of rendering `TaskList` / `TaskListView`; drop the `rail.noTasks` strings and `.ima-native` styles.
-- Unify official task-tree session filters: honor registry `sessionFilters` with `getRevision()`, so adding or removing a filter takes effect immediately regardless of whether automation or IM wrapped the sidebar first.
-- Unify official task-tree session opening: register `sessionOpeners` so scheduled openers run first, channel sessions still resolve/ensure, and unmatched sessions fall back to the host regardless of which plugin wrapped first.
-- Fix the Channels tab using the plugin translator instead of the host translator when IM owns the sidebar, which rendered host group/sort labels as raw keys.
-- Keep the channel group menu injector mounted across the 4-second poll, restore host menu items on teardown, and activate injected actions only from the primary button.
-- Restore the per-channel settings deep link; the header add button still opens IM settings when the settings entry is unavailable.
-- Fix the channel add button doing nothing with "could not open IM settings" when the current sidebar exposes Settings only in the official account menu: fall back to that menu entry, then select the IM Assistant section.
-- Refresh the host session list when channel membership changes, so channel sessions appear under Tasks without a page reload.
+- The Channels tab now adopts the host's native tree browser: sessions default to By channel grouping with platform brand icons on group headers and rows, supporting official search, sorting, and archive filtering.
+- Improved channel shortcuts: single-channel workspaces show their platform brand icon instead of the folder icon, channel group menus offer a direct shortcut to Channel settings, and the header add button now opens IM settings.
+- Seamless sidebar tab coordination: Tasks, Channels, and Scheduled tabs match the host segmented tab styling with adaptive padding that prevents label wrapping. Tab selection is shared and preserved alongside the automation plugin across reloads and host changes.
+- Integrated channel and task sessions: channel sessions now appear in the official task tree and open without unexpectedly switching the active tab; newly created channel sessions display immediately without requiring a page reload.
+- Fix the Add channel button failing to open IM settings when the sidebar only provides the Settings trigger within the official account menu.
+- UI glyphs now align with the host icon system to ensure visual consistency across themes.
 
 ## 1.0.8 - 2026-10-19
 

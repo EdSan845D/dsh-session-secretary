@@ -32,7 +32,7 @@ test('普通 Host ID 按渠道索引分类，归属变更使同一快照的缓�
 
 const probe = source.slice(source.indexOf('    function probeService('), source.indexOf('    // 旧宿主读 list.current'))
 const effectStart = source.indexOf('      ctx.effect(() => {', source.indexOf('    function apply(ctx)'))
-const effect = source.slice(effectStart, source.indexOf('      ctx.effect(() => {', effectStart + 1))
+const effect = source.slice(effectStart, source.indexOf('      ctx.effect(() => channelRefresh.subscribe', effectStart))
 const settle = async () => { for (let i = 0; i < 20; i++) await Promise.resolve() }
 const groups = id => [{ id: 'wecom', sessions: [{ sessionId: id }] }]
 

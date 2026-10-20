@@ -144,25 +144,20 @@ test('卸载后不会执行排队的写后刷新', async () => {
   assert.equal(f.timers.size, 0)
 })
 
-test('设置、侧栏和全局 effect 共享刷新，没有待审批项时也能刷新出新审批', async () => {
-  const f = fixture(), cleanups = [], groups = [], channels = [], pending = [], ready = []
+test('设置页和全局 effect 共享刷新，没有待审批项时也能刷新出新审批', async () => {
+  const f = fixture(), cleanups = [], channels = [], pending = []
   const settings = block('      useEffect(() => channelRefresh.subscribe', '      useEffect(() => {\n        ensureStyle();')
-  const railStart = source.indexOf('    function ChannelOfficialView')
-  const rail = source.slice(source.indexOf('      useEffect(() => {\n        ensureStyle();', railStart), source.indexOf('      useEffect(() => {\n        if (groupBy === "channel"', railStart))
-  const membership = block('      ctx.effect(() => {\n        return channelRefresh.subscribe', '      ctx.effect(() => ctx.locale.register')
+  const membership = block('      ctx.effect(() => channelRefresh.subscribe', '      ctx.effect(() => ctx.locale.register')
   const env = {
     channelRefresh: f.channelRefresh, useEffect: effect => cleanups.push(effect()),
     ctx: { effect: effect => cleanups.push(effect()) }, ensureStyle() {},
-    setChannels: data => channels.push(data), setGroups: data => groups.push(data),
-    setGroupsReady: value => ready.push(value),
+    setChannels: data => channels.push(data),
     setPending: data => pending.push(data), setError() {}, setSelected: update => update(''), rememberAccountSelection() {},
     serverText: text => text, t: key => key,
   }
-  new Function(...Object.keys(env), settings + rail + membership)(...Object.values(env))
+  new Function(...Object.keys(env), settings + membership)(...Object.values(env))
   await settle(); assert.equal(f.requests.length, 1)
   f.requests[0].resolve(payload()); await settle()
-  assert.deepEqual(groups, [payload().groups])
-  assert.deepEqual(ready, [true])
   assert.deepEqual(channels, [[]])
   assert.equal(f.memberships.length, 1)
   assert.deepEqual(pending, [[]])
@@ -170,7 +165,6 @@ test('设置、侧栏和全局 effect 共享刷新，没有待审批项时也能
   const approvals = [{ userId: 'new-user' }]
   f.requests[1].resolve({ ...payload(), pending: approvals }); await settle()
   assert.deepEqual(pending, [[], approvals])
-  assert.equal(groups.length, 2)
   for (const cleanup of cleanups) cleanup()
   assert.equal(f.timers.size, 0)
 })

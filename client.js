@@ -912,10 +912,9 @@ window.__ModuleLoader__.load({
         channelMembershipRevision += 1;
         for (const listener of channelMembershipListeners) listener();
       }
-      // 相同快照也允许重试尚未成功的宿主同步。
       try { requestHostSessionRefresh(changed); } catch { /* 下次频道轮询继续重试 */ }
     }
-    /** 会话所属频道：优先用 /channels 的权威归属，旧数据再从 IM 会话 id 解析平台。 */
+    /** IM 会话 ID 包含账号实例；接口映射兼容沿用普通 ID 的已接入会话。 */
     function channelIdOfSession(sessionId) {
       const value = String(sessionId || "");
       const mapped = channelSessionChannels.get(value);
@@ -2543,6 +2542,21 @@ window.__ModuleLoader__.load({
       return result;
     }
 
+    function channelGroupsFromSessionState(state, t) {
+      const groups = new Map(CHANNEL_GROUP_IDS.map((id) => [id, {
+        id,
+        label: channelLabel({ id }, t),
+        sessions: [],
+      }]));
+      const src = state || EMPTY_SESSION_STATE;
+      for (const id of src.ids || []) {
+        const group = groups.get(channelIdOfSession(id));
+        const session = src.byId && src.byId[id];
+        if (group && session) group.sessions.push({ sessionId: id, updatedAt: session.updatedAt });
+      }
+      return [...groups.values()].filter((group) => group.sessions.length > 0);
+    }
+
     function channelGroupCreatedAt(group) {
       let earliest = Infinity;
       for (const session of group.sessions || []) {
@@ -2927,11 +2941,13 @@ window.__ModuleLoader__.load({
         return select(snapshot);
       }, [store]);
       const groupBy = useChannelStore((state) => state.groupBy);
-      const [groups, setGroups] = useState([]);
-      const [groupsReady, setGroupsReady] = useState(false);
+      const sessionSource = typeof rawUseSessions === "function"
+        ? rawUseSessions((state) => state)
+        : EMPTY_SESSION_STATE;
+      const groupsReady = sessionSource.phase === "ready";
+      const groups = useMemo(() => channelGroupsFromSessionState(sessionSource, t), [membershipRevision, sessionSource, t]);
       const groupsRef = useRef(groups);
       groupsRef.current = groups;
-      const [error, setError] = useState("");
       const [channelIcons, setChannelIcons] = useState("");
       const [workspaceIcons, setWorkspaceIcons] = useState("");
       const [archiveManagerInstalled, setArchiveManagerInstalled] = useState(() => typeof document !== "undefined" && hasArchiveManagerPlugin(document));
@@ -2946,14 +2962,7 @@ window.__ModuleLoader__.load({
       const openChannelSettings = props.openChannelSettings || hostProps.openChannelSettings;
       const openImSettings = props.openImSettings || hostProps.openImSettings || (() => openImSettingsPage(t));
 
-      useEffect(() => {
-        ensureStyle();
-        return channelRefresh.subscribe((data, failure) => {
-          if (failure) { setError(t("error.connection")); return; }
-          if (data && data.ok) { setGroups(data.groups || []); setGroupsReady(true); setError(""); }
-          else if (data) setError(serverText(data.error, t) || t("error.load"));
-        });
-      }, [t]);
+      useEffect(() => { ensureStyle(); }, []);
 
       useEffect(() => {
         if (groupBy === "channel" && channelIcons === "") setChannelIcons(channelIconCss());
@@ -3059,7 +3068,6 @@ window.__ModuleLoader__.load({
         setArchiveGroupBusy(true);
         setArchiveGroupError(undefined);
         archiveChannelGroup(target.sessionIds, archiveSession)
-          .then(() => channelRefresh.invalidate().catch(() => undefined))
           .then(() => { setArchiveGroupTarget(undefined); })
           .catch((caught) => {
             if (openStopArchive(caught, { id: target.id, title: target.name, sessionIds: target.sessionIds, group: true }, (next) => {
@@ -3078,10 +3086,6 @@ window.__ModuleLoader__.load({
         setStopArchiveBusy(true);
         setStopArchiveError(undefined);
         finishStopArchive(target, archiveSession)
-          .then((kind) => {
-            if (kind === "group") return channelRefresh.invalidate().catch(() => undefined);
-            return undefined;
-          })
           .then(() => { setStopArchiveTarget(undefined); })
           .catch((caught) => { setStopArchiveError(caught instanceof Error ? caught.message : t("error.action")); })
           .finally(() => { setStopArchiveBusy(false); });
@@ -3150,7 +3154,6 @@ window.__ModuleLoader__.load({
         h("div", { className: "ima-channel-official", "data-mode": groupBy },
           groupBy === "channel" && channelIcons !== "" && h("style", null, channelIcons),
           groupBy !== "channel" && workspaceIcons !== "" && h("style", null, workspaceIcons),
-          error && h("div", { className: "ima-channel-error", role: "alert" }, error),
           body,
         ),
         h(Modal, {
@@ -3543,11 +3546,10 @@ window.__ModuleLoader__.load({
             return sessions.refresh();
           }).then(() => {
             if (disposed) return;
-            // Host 的网络错误可能只写入列表快照，而不拒绝 refresh Promise。
             const snapshot = sessions.list && typeof sessions.list.getSnapshot === "function" ? sessions.list.getSnapshot() : undefined;
             if (snapshot && snapshot.state === "error") return;
             if (revision === channelMembershipRevision) pending = false;
-          }).catch(() => { /* 保留 pending，由下次频道轮询重试 */ })
+          }).catch(() => { /* 保留待处理状态，由下次渠道刷新重试 */ })
             .finally(() => { flight = null; });
         };
         requestHostSessionRefresh = refresh;
@@ -3556,11 +3558,9 @@ window.__ModuleLoader__.load({
           if (requestHostSessionRefresh === refresh) requestHostSessionRefresh = () => {};
         };
       }, "im-connect: host session refresh");
-      ctx.effect(() => {
-        return channelRefresh.subscribe((data, error) => {
-          if (error) console.warn("[dsh-im-connect] 无法刷新渠道会话归属", error);
-        });
-      }, "im-connect: channel membership");
+      ctx.effect(() => channelRefresh.subscribe((data, error) => {
+        if (error) console.warn("[dsh-im-connect] 无法刷新渠道会话归属", error);
+      }), "im-connect: channel membership");
       ctx.effect(() => ctx.locale.register(IM_LOCALE_NS, IM_LOCALES), "im-connect: dictionaries");
       const t = ctx.locale.bind(IM_LOCALE_NS);
       ctx.effect(() => observePluginUpdate({

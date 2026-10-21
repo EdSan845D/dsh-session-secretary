@@ -41,6 +41,17 @@ function throttledResponse(error: unknown): boolean {
   return response?.status === 429 || isThrottleCode(response?.data?.code)
 }
 
+/** 诊断只保留受限长度的数字状态码，禁止输出响应正文、请求配置或凭据。 */
+function httpFailureSummary(error: unknown): string {
+  const response = (error as { response?: { status?: unknown; data?: { code?: unknown } } } | undefined)?.response
+  const status = response?.status
+  const code = response?.data?.code
+  const safeStatus = typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599 ? status : 'unknown'
+  const safeCode = typeof code === 'number' && Number.isSafeInteger(code) && code >= 0 && code <= 999_999_999
+    ? code : typeof code === 'string' && /^\d{1,9}$/.test(code) ? code : 'unknown'
+  return `http=${safeStatus} code=${safeCode}`
+}
+
 // 沿用 SDK 允许缺省业务码的响应，同时兼容数字和字符串零码。
 function isRejectedCode(code: unknown): boolean {
   return code !== undefined && code !== 0 && code !== '0'
@@ -273,6 +284,7 @@ export function createFeishuChannel(id: 'feishu' | 'lark', config: FeishuConfig,
             const response = (error as { response?: { status?: number } } | undefined)?.response
             // 旧接口也可能用 HTTP 400 返回限流，必须优先保留上层退避语义。
             if (response?.status !== 400 || throttledResponse(error)) throw error
+            log(`[${id}] 卡片发送被拒，回退纯文本 ${httpFailureSummary(error)}`)
             return { code: 'http-400' }
           }) as { code?: number | string } | undefined
           if (!isRejectedCode(card?.code)) { delivered = true; continue }
@@ -283,6 +295,9 @@ export function createFeishuChannel(id: 'feishu' | 'lark', config: FeishuConfig,
           const plain = await sender.im.message.create({
             params: { receive_id_type: 'chat_id' },
             data: { receive_id: chatId, msg_type: 'text', content: JSON.stringify({ text: part }) },
+          }).catch((error: unknown) => {
+            log(`[${id}] 纯文本回退发送失败 ${httpFailureSummary(error)}`)
+            throw error
           }) as { code?: number | string } | undefined
           if (isThrottleCode(plain?.code)) throw new DeliveryRejected(`${id}: text-send-throttled code=${plain?.code}`)
           if (isRejectedCode(plain?.code)) throw new Error(`${id}: text-send-rejected code=${plain?.code} card=${String(rejected)}`)

@@ -20,9 +20,8 @@ test('一期绑定方式：微信仅扫码，企微钉钉飞书Lark和QQ扫码�
   assert.equal(kinds.qq, 'qr-or-credentials')
 })
 
-test('Slack 需要机器人令牌与 Socket Mode 的 App Token，且支持设置页代理地址，均为密文处理', () => {
+test('Slack 需要机器人令牌与 Socket Mode 的 App Token，且两项都按密文处理', () => {
   const slack = listChannelMeta().find((item) => item.id === 'slack')
-  assert.deepEqual(slack.fields.map((field) => [field.key, field.secret]), [['token', true], ['appToken', true], ['proxyUrl', true]])
-  assert.equal(slack.fields.find(field => field.key === 'proxyUrl')?.settingsOnly, true)
+  assert.deepEqual(slack.fields.map((field) => [field.key, field.secret]), [['token', true], ['appToken', true]])
 })
 

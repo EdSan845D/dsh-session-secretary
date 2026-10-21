@@ -7,10 +7,7 @@ export declare function channelImageFailureReason(error: unknown): string;
 export declare function channelImageDownloadHost(raw?: string): string;
 /** Infer MIME from bytes, not an attacker-controlled filename or Content-Type. */
 export declare function imageMedia(data: Buffer, maxBytes?: number): ImMedia;
-/** HTTPS only; resolve inside the connection lookup, so DNS cannot rebind after validation.
- * No ambient proxy/credentials. Same-host redirects are opt-in. IPv4-only intentionally fails closed on IPv6-only hosts.
- */
-export declare function requestChannelBytes(rawUrl: string, options?: {
+export interface ChannelByteRequestOptions {
     method?: 'GET' | 'POST';
     headers?: Record<string, string>;
     body?: string;
@@ -20,7 +17,13 @@ export declare function requestChannelBytes(rawUrl: string, options?: {
     additionalTrustedHosts?: readonly string[];
     /** 只跟随同一主机的 HTTPS 跳转，令牌不会被带到别的域名。默认不跟随。 */
     sameHostRedirects?: number;
-}): Promise<Buffer>;
+    /** 自定义 fetcher（用于账号级代理分流，挂载 ProxyAgent） */
+    fetcher?: typeof fetch;
+}
+/** HTTPS only; resolve inside the connection lookup, so DNS cannot rebind after validation.
+ * No ambient proxy/credentials. Same-host redirects are opt-in. IPv4-only intentionally fails closed on IPv6-only hosts.
+ */
+export declare function requestChannelBytes(rawUrl: string, options?: ChannelByteRequestOptions): Promise<Buffer>;
 /** 通用文件不套用图片魔数验证，文件类型和格式由 Chat 接收策略判断。 */
 export declare function fileMedia(data: Buffer, name?: string, maxBytes?: number): ImMedia;
 //# sourceMappingURL=channel-image-download.d.ts.map

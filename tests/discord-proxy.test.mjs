@@ -284,6 +284,87 @@ test('MockAgent 真实拦截请求证明 Discord fetchImpl 支持 dispatcher 注
   await mockAgent.close()
 })
 
+test('Discord 入站接收图片和附件时走 ProxyAgent 下载', async t => {
+  t.after(() => mock.restoreAll())
+  const capturedFetches = []
+  const pngHeader = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
+  mock.method(globalThis, 'fetch', async (url, init = {}) => {
+    capturedFetches.push({ url: String(url), init })
+    if (String(url).endsWith('/users/@me')) return Response.json({ id: '12345', bot: true })
+    if (String(url).endsWith('/gateway/bot')) return Response.json({ url: 'wss://gateway.discord.gg' })
+    if (String(url).includes('cdn.discordapp.com')) {
+      return new Response(pngHeader, {
+        status: 200,
+        headers: { 'content-type': 'image/png', 'content-length': String(pngHeader.length) },
+      })
+    }
+    return Response.json({ ok: true })
+  })
+
+  let socketListener = null
+  class MockWebSocket {
+    constructor(url, options) {}
+    addEventListener(type, cb) {
+      if (type === 'message') {
+        socketListener = cb
+        setTimeout(() => {
+          cb({ data: JSON.stringify({ op: 10, d: { heartbeat_interval: 60000 } }) })
+          cb({ data: JSON.stringify({ op: 0, t: 'READY', s: 1, d: { session_id: 'sess', resume_gateway_url: 'wss://gateway.discord.gg' } }) })
+        }, 5)
+      }
+    }
+    send() {}
+    close() {}
+  }
+  const originalWs = globalThis.WebSocket
+  globalThis.WebSocket = MockWebSocket
+  t.after(() => { globalThis.WebSocket = originalWs })
+
+  let receivedMessage = null
+  const channel = createDiscordChannel({
+    token: 'discord-token-123',
+    proxyMode: 'custom',
+    proxyUrl: 'http://127.0.0.1:7897',
+    connectTimeoutMs: 200,
+  }, () => {})
+  channel.setMessageHandler(msg => { receivedMessage = msg })
+
+  await channel.start()
+
+  // 模拟 Discord 网关推送一条带图片附件的消息
+  socketListener({
+    data: JSON.stringify({
+      op: 0,
+      t: 'MESSAGE_CREATE',
+      d: {
+        id: '200000000000000001',
+        channel_id: '300000000000000001',
+        author: { id: 'user-1' },
+        content: '这是图片消息',
+        attachments: [{
+          id: 'att-1',
+          filename: 'test.png',
+          content_type: 'image/png',
+          url: 'https://cdn.discordapp.com/attachments/300000000000000001/att-1/test.png',
+        }],
+      },
+    }),
+  })
+
+  // 等待异步下载与投递
+  await new Promise(resolve => setTimeout(resolve, 50))
+
+  assert.ok(receivedMessage, '消息应成功送达 handler')
+  assert.equal(receivedMessage.media?.length, 1)
+  assert.equal(receivedMessage.media[0].kind, 'image')
+
+  const downloadFetch = capturedFetches.find(f => f.url.includes('cdn.discordapp.com'))
+  assert.ok(downloadFetch, '应发起 cdn.discordapp.com 下载')
+  assert.ok(downloadFetch.init.dispatcher instanceof ProxyAgent, '下载必须携带 ProxyAgent')
+
+  await channel.stop()
+})
+
 test('Discord direct 与 inherit 代理模式的 Dispatcher 构造与 stop 释放', async () => {
   const capturedDirect = []
   const directChannel = createDiscordChannel({

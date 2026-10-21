@@ -6,6 +6,7 @@ export interface DiscordConfig {
         get(name: string): unknown;
     };
     fetchImpl?: typeof fetch;
+    /** 自定义 WebSocket 工厂；若指定此项，代理分流由外部工厂负责处理。 */
     createWebSocket?: (url: string) => GatewaySocket;
     connectTimeoutMs?: number;
     proxyMode?: 'inherit' | 'direct' | 'custom';

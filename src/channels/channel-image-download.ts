@@ -86,22 +86,94 @@ function sameHostRedirect(current: URL, location: string | string[] | undefined)
   return next.href
 }
 
-/** HTTPS only; resolve inside the connection lookup, so DNS cannot rebind after validation.
- * No ambient proxy/credentials. Same-host redirects are opt-in. IPv4-only intentionally fails closed on IPv6-only hosts.
- */
-export async function requestChannelBytes(rawUrl: string, options: {
+export interface ChannelByteRequestOptions {
   method?: 'GET' | 'POST'; headers?: Record<string, string>; body?: string
   maxBytes?: number; timeoutMs?: number; signal?: AbortSignal
   additionalTrustedHosts?: readonly string[]
   /** 只跟随同一主机的 HTTPS 跳转，令牌不会被带到别的域名。默认不跟随。 */
   sameHostRedirects?: number
-} = {}): Promise<Buffer> {
+  /** 自定义 fetcher（用于账号级代理分流，挂载 ProxyAgent） */
+  fetcher?: typeof fetch
+}
+
+async function requestChannelBytesViaFetcher(
+  url: URL,
+  options: ChannelByteRequestOptions,
+  fetcher: typeof fetch,
+): Promise<Buffer> {
+  const signal = options.timeoutMs
+    ? AbortSignal.any([AbortSignal.timeout(options.timeoutMs), ...(options.signal ? [options.signal] : [])])
+    : options.signal ?? AbortSignal.timeout(30_000)
+  signal.throwIfAborted()
+
+  const response = await fetcher(url.href, {
+    method: options.method ?? 'GET',
+    headers: options.headers,
+    body: options.body,
+    signal,
+    redirect: 'manual',
+  })
+
+  const status = response.status
+  const redirects = options.sameHostRedirects ?? 0
+  if (redirects > 0 && [301, 302, 307, 308].includes(status)) {
+    const location = response.headers.get('location')
+    await response.body?.cancel().catch(() => undefined)
+    const next = sameHostRedirect(url, location ?? undefined)
+    if (!next) throw new Error('图片地址不符合安全要求')
+    return requestChannelBytes(next, { ...options, sameHostRedirects: redirects - 1, fetcher })
+  }
+
+  if (status !== 200) {
+    await response.body?.cancel().catch(() => undefined)
+    throw new Error(`图片下载 HTTP ${status}`)
+  }
+
+  const contentType = String(response.headers.get('content-type') ?? '')
+  if (/text\/html/i.test(contentType)) {
+    await response.body?.cancel().catch(() => undefined)
+    throw new Error('图片地址不符合安全要求')
+  }
+
+  const maxBytes = options.maxBytes ?? MAX_CHANNEL_IMAGE_BYTES + 32
+  const contentLength = Number(response.headers.get('content-length'))
+  if (contentLength > maxBytes) {
+    await response.body?.cancel().catch(() => undefined)
+    throw new Error('图片超过大小限制')
+  }
+
+  if (!response.body) return Buffer.alloc(0)
+  const reader = response.body.getReader()
+  const chunks: Buffer[] = []
+  let size = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.length
+      if (size > maxBytes) throw new Error('图片超过大小限制')
+      chunks.push(Buffer.from(value))
+    }
+    return Buffer.concat(chunks)
+  } finally {
+    await reader.cancel().catch(() => undefined)
+    reader.releaseLock()
+  }
+}
+
+/** HTTPS only; resolve inside the connection lookup, so DNS cannot rebind after validation.
+ * No ambient proxy/credentials. Same-host redirects are opt-in. IPv4-only intentionally fails closed on IPv6-only hosts.
+ */
+export async function requestChannelBytes(rawUrl: string, options: ChannelByteRequestOptions = {}): Promise<Buffer> {
   const additionalHosts = new Set(validateAdditionalImageHosts(options.additionalTrustedHosts))
   options.signal?.throwIfAborted()
   const url = new URL(rawUrl)
   if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')
     || isIP(url.hostname) || url.hostname.includes(':') || url.hostname.endsWith('.')) {
     throw new Error('图片地址不符合安全要求')
+  }
+  if (options.fetcher) {
+    return requestChannelBytesViaFetcher(url, options, options.fetcher)
   }
   return new Promise((resolve, reject) => {
     let settled = false

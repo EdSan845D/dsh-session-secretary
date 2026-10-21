@@ -1997,7 +1997,7 @@ window.__ModuleLoader__.load({
           agentPreset: next.agentPreset,
           commandPermissions: next.commandPermissions,
         };
-        if (account.platform === "telegram") {
+        if (account.platform === "telegram" || account.platform === "discord") {
           const hasProxyPatch = Object.prototype.hasOwnProperty.call(patch, "proxyMode") || Object.prototype.hasOwnProperty.call(patch, "proxyUrl");
           if (hasProxyPatch) {
             payload.proxyMode = next.proxyMode || proxyModeDraft;
@@ -2056,7 +2056,7 @@ window.__ModuleLoader__.load({
             workspaceLabel: t("account.currentWorkspace"),
             t,
           }),
-          account.platform === "telegram" && h("div", { className: "ima-proxy-settings" },
+          (account.platform === "telegram" || account.platform === "discord") && h("div", { className: "ima-proxy-settings" },
             h("label", { className: "ima-picker-field" },
               h("span", { className: "ima-picker-label" }, t("account.proxyMode")),
               h(Select, {

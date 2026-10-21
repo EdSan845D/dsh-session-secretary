@@ -6,7 +6,7 @@ import type { ChannelId, SessionRecord } from './engine/session-id.js';
 import { type AssistantModel, type PermissionPreset } from './engine/assistant-settings.js';
 import type { EngineConfig, SendMode } from './engine/types.js';
 export declare const API_CLIENT_HEADER = "x-dsh-im-connect-client";
-type TelegramProxyMode = 'inherit' | 'direct' | 'custom';
+type ChannelProxyMode = 'inherit' | 'direct' | 'custom';
 interface ApiBodyReadResult {
     body: Record<string, unknown>;
     oversized: boolean;
@@ -55,7 +55,7 @@ export interface AccountView {
     commandPermissions: CommandPermissions;
     privateAccess: 'approved' | 'all';
     sendMode: SendMode;
-    proxyMode: TelegramProxyMode;
+    proxyMode: ChannelProxyMode;
     proxyConfigured: boolean;
     proxyUrl?: string;
     lastCheckedAt?: string;

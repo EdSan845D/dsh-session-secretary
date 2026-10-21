@@ -34,6 +34,7 @@ function normalizeTelegramProxyUrl(input: unknown): string | undefined {
   try {
     const url = new URL(input.trim())
     if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.port && Number(url.port) > 65535
+      || url.username || url.password
       || url.pathname !== '/' || url.search || url.hash) return undefined
     return url.toString()
   } catch { return undefined }
@@ -335,6 +336,13 @@ export class ChannelManager {
       return
     }
     const config = state.config ?? {}
+    if (config.proxyMode !== 'custom') {
+      this.proxyUrlCache.delete(accountId)
+      return
+    }
+    if (this.proxyUrlCache.has(accountId)) {
+      return
+    }
     let proxyUrl = config.proxyUrl
     if (!proxyUrl && config.proxyUrlRef) {
       try { proxyUrl = await this.vault.resolve(config.proxyUrlRef) }
@@ -835,7 +843,7 @@ export class ChannelManager {
       if (platform === 'telegram' && requestedProxyMode === 'custom') {
         if (typeof input.proxyUrl === 'string' && input.proxyUrl.trim()) {
           nextProxyUrl = normalizeTelegramProxyUrl(input.proxyUrl)
-          if (!nextProxyUrl) return { ok: false, error: '代理地址无效：仅支持不含路径、查询参数或片段的 HTTP(S) 代理地址。' }
+          if (!nextProxyUrl) return { ok: false, error: '代理地址无效：仅支持不含路径、查询参数、片段或认证信息的 HTTP(S) 代理地址。' }
         } else if (!state.config?.proxyUrlRef && !state.config?.proxyUrl) {
           return { ok: false, error: '手动配置代理时必须填写代理地址' }
         }
@@ -864,18 +872,25 @@ export class ChannelManager {
       state.privateAccess = normalized.settings.privateAccess
       // 发送方式按注入时机读取，不需要重载会话。
       state.sendMode = normalized.settings.sendMode
-      const proxyChanged = platform === 'telegram' && hasProxySettings
-        && (requestedProxyMode !== previousProxyMode || nextProxyUrl !== undefined)
+      if (platform === 'telegram' && !this.proxyUrlCache.has(accountId)) {
+        await this.hydrateProxyUrl(accountId, state)
+      }
+      const previousProxyUrl = this.proxyUrlCache.get(accountId)
+      const proxyModeChanged = requestedProxyMode !== previousProxyMode
+      const proxyUrlChanged = requestedProxyMode === 'custom'
+        && nextProxyUrl !== undefined
+        && nextProxyUrl !== previousProxyUrl
+      const proxyChanged = platform === 'telegram' && hasProxySettings && (proxyModeChanged || proxyUrlChanged)
       if (platform === 'telegram' && hasProxySettings) {
         const config = { ...(state.config ?? {}) }
         if (requestedProxyMode === 'custom') {
-          if (nextProxyUrl) {
+          if (proxyUrlChanged && nextProxyUrl) {
             config.proxyUrl = nextProxyUrl
             state.config = await this.persistSecrets('telegram', accountId, config)
+            this.proxyUrlCache.set(accountId, nextProxyUrl)
           }
           state.config = { ...(state.config ?? config), proxyMode: 'custom' }
-          await this.hydrateProxyUrl(accountId, state)
-        } else {
+        } else if (proxyModeChanged) {
           const ref = config.proxyUrlRef || credentialRef(accountId, 'proxyUrl')
           await this.vault.unset(ref)
           delete config.proxyUrl

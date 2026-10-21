@@ -3,7 +3,7 @@ import test, { mock } from 'node:test'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProxyAgent } from 'undici'
+import { MockAgent, ProxyAgent } from 'undici'
 import { ChannelManager } from '../lib/manager.js'
 import { createTelegramChannel } from '../lib/channels/telegram.js'
 
@@ -62,6 +62,7 @@ test('非法代理模式或 URL 被拒绝，原有配置保持不变', async t =
     ['unknown', 'http://127.0.0.1:7897'],
     ['custom', 'socks5://127.0.0.1:7897'],
     ['custom', 'http://127.0.0.1:7897/path'],
+    ['custom', 'http://alice:secret@127.0.0.1:7897'],
     ['custom', 'not a URL'],
   ]) {
     const result = await manager.updateAccount(created.accountId, { proxyMode, proxyUrl })
@@ -167,4 +168,82 @@ test('Telegram API、文件上传和诊断共用手动代理且停止时释放 d
   assert.equal(captured.length, 4)
   for (const request of captured) assert.ok(request.init.dispatcher instanceof ProxyAgent, request.url)
   await channel.stop()
+})
+
+test('代理配置未变时不重复重启通道，真正变更或切回 inherit 时才重启', async t => {
+  const manager = makeManager(t)
+  const created = await createAccount(manager)
+  assert.equal(created.ok, true)
+
+  const proxyUrl = 'http://127.0.0.1:7897/'
+  const first = await manager.updateAccount(created.accountId, {
+    proxyMode: 'custom',
+    proxyUrl: 'http://127.0.0.1:7897',
+  })
+  assert.equal(first.ok, true)
+  assert.equal(first.account.proxyUrl, proxyUrl)
+
+  // 模拟通道正在运行
+  manager.running.set(created.accountId, { stop: async () => {}, status: () => '已连接' })
+
+  let restartCount = 0
+  manager.startOne = async () => { restartCount++ }
+
+  // 1. 仅改备注且带相同 proxyUrl：不应重启
+  const remarkSave = await manager.updateAccount(created.accountId, {
+    name: '新备注名称',
+    proxyMode: 'custom',
+    proxyUrl: 'http://127.0.0.1:7897',
+  })
+  assert.equal(remarkSave.ok, true)
+  assert.equal(restartCount, 0, '代理未变化时不应重启通道')
+
+  // 2. 留空代理地址保存：保持现有代理，不应重启
+  const emptyUrlSave = await manager.updateAccount(created.accountId, {
+    proxyMode: 'custom',
+  })
+  assert.equal(emptyUrlSave.ok, true)
+  assert.equal(emptyUrlSave.account.proxyUrl, proxyUrl)
+  assert.equal(restartCount, 0, '留空保存现有代理时不应重启通道')
+
+  // 3. 修改代理地址为新端口：应触发 1 次重启
+  const changedUrlSave = await manager.updateAccount(created.accountId, {
+    proxyMode: 'custom',
+    proxyUrl: 'http://127.0.0.1:7898',
+  })
+  assert.equal(changedUrlSave.ok, true)
+  assert.equal(changedUrlSave.account.proxyUrl, 'http://127.0.0.1:7898/')
+  assert.equal(restartCount, 1, '代理地址真正变更时应重启通道')
+
+  // 4. 从 custom 切回 inherit：应清理凭据、回显并重启通道
+  const inheritSave = await manager.updateAccount(created.accountId, {
+    proxyMode: 'inherit',
+  })
+  assert.equal(inheritSave.ok, true)
+  assert.equal(inheritSave.account.proxyMode, 'inherit')
+  assert.equal(inheritSave.account.proxyConfigured, false)
+  assert.equal(inheritSave.account.proxyUrl, undefined)
+  assert.equal(restartCount, 2, '切回 inherit 时应重启通道')
+
+  const listed = manager.list().flatMap(c => c.accounts).find(a => a.id === created.accountId)
+  assert.equal(listed.proxyUrl, undefined)
+  assert.equal(listed.proxyConfigured, false)
+})
+
+test('MockAgent 真实拦截请求证明 Node 内置 fetch 支持 dispatcher 注入', async t => {
+  const mockAgent = new MockAgent()
+  mockAgent.disableNetConnect()
+  const pool = mockAgent.get('https://api.telegram.org')
+  pool.intercept({ path: '/botmock-token/getMe', method: 'GET' }).reply(200, {
+    ok: true,
+    result: { id: 12345, is_bot: true, first_name: 'MockBot', username: 'mock_bot' },
+  })
+
+  // 不 mock globalThis.fetch，直接调用 Node 内置原生 fetch 验证 dispatcher 消费
+  const res = await fetch('https://api.telegram.org/botmock-token/getMe', { dispatcher: mockAgent })
+  assert.equal(res.status, 200)
+  const data = await res.json()
+  assert.equal(data.ok, true)
+  assert.equal(data.result.id, 12345)
+  await mockAgent.close()
 })

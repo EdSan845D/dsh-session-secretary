@@ -13,6 +13,7 @@ function httpError(status, code) {
 // 保留真实 SDK 的请求构造与异常传播，仅替换 HTTP 传输和长连接，避免访问真实账号。
 async function channelWithTransport(t, id, respond) {
   const calls = []
+  const logs = []
   const transport = { request: async opts => {
     if (opts.url.includes('auth/v3')) return { code: 0, tenant_access_token: 'test', app_access_token: 'test', expire: 7200 }
     if (opts.url.includes('/bot/v3/info')) return { bot: { open_id: 'test' } }
@@ -24,10 +25,10 @@ async function channelWithTransport(t, id, respond) {
   transport.post = (url, data) => transport.request({ url, data })
   const sdk = { ...realSdk, defaultHttpInstance: transport,
     EventDispatcher: class { register() { return this } }, WSClient: class { async start() {} close() {} } }
-  const channel = createFeishuChannel(id, { appId: `card-fallback-${id}`, appSecret: 'test' }, () => {}, async () => sdk)
+  const channel = createFeishuChannel(id, { appId: `card-fallback-${id}`, appSecret: 'test' }, line => logs.push(line), async () => sdk)
   t.after(() => channel.stop())
   await channel.start()
-  return { channel, calls }
+  return { channel, calls, logs }
 }
 
 for (const id of ['feishu', 'lark']) test(`${id} 卡片 HTTP 400 后只回退一次纯文本并保留图片路径与完整正文`, async t => {
@@ -46,6 +47,18 @@ for (const id of ['feishu', 'lark']) test(`${id} 卡片 HTTP 400 后只回退一
 })
 
 for (const id of ['feishu', 'lark']) {
+  for (const code of [230099, '230099', 0, '0', undefined]) {
+    test(`${id} 卡片 HTTP 400 安全记录业务码 ${String(code)} 且不把零码当作送达`, async t => {
+      const { channel, calls, logs } = await channelWithTransport(t, id, data => {
+        if (data.msg_type === 'interactive') throw httpError(400, code)
+        return { code: 0 }
+      })
+      await channel.send('chat', '正文')
+      assert.deepEqual(calls.map(data => data.msg_type), ['interactive', 'text'])
+      assert.ok(logs.includes(`[${id}] 卡片发送被拒，回退纯文本 http=400 code=${code ?? 'unknown'}`))
+    })
+  }
+
   for (const [status, code] of [[429, undefined], [400, 230020], [400, 11232], [400, 99991400], [400, '99991400']]) {
     test(`${id} HTTP ${status} 限流码 ${code} 不回退纯文本`, async t => {
       const { channel, calls } = await channelWithTransport(t, id, () => { throw httpError(status, code) })
@@ -62,6 +75,35 @@ for (const id of ['feishu', 'lark']) {
       assert.deepEqual(calls.map(data => data.msg_type), ['interactive'])
     })
   }
+
+  test(`${id} 纯文本回退失败记录阶段与业务码且保留原异常`, async t => {
+    const error = httpError(400, 230001)
+    const { channel, calls, logs } = await channelWithTransport(t, id, data => {
+      if (data.msg_type === 'interactive') throw httpError(400, 230099)
+      throw error
+    })
+    await assert.rejects(channel.send('chat', '正文'), actual => actual === error)
+    assert.deepEqual(calls.map(data => data.msg_type), ['interactive', 'text'])
+    assert.ok(logs.includes(`[${id}] 卡片发送被拒，回退纯文本 http=400 code=230099`))
+    assert.ok(logs.includes(`[${id}] 纯文本回退发送失败 http=400 code=230001`))
+  })
+
+  test(`${id} 回退诊断不输出异常消息、响应正文、请求配置或非数字业务码`, async t => {
+    const privateText = 'private-content-must-not-appear'
+    for (const code of [privateText, `230099\n${privateText}`, { detail: privateText }, '12345678901', 12345678901, -1, 1.5, Infinity, null]) {
+      const error = httpError(400, code)
+      error.message = privateText
+      error.config = { headers: { Authorization: privateText } }
+      error.response.data.detail = privateText
+      const { channel, calls, logs } = await channelWithTransport(t, id, () => { throw error })
+      await assert.rejects(channel.send('chat', privateText), actual => actual === error)
+      assert.deepEqual(calls.map(data => data.msg_type), ['interactive', 'text'])
+      assert.ok(logs.includes(`[${id}] 卡片发送被拒，回退纯文本 http=400 code=unknown`))
+      assert.ok(logs.includes(`[${id}] 纯文本回退发送失败 http=400 code=unknown`))
+      assert.ok(!logs.join('\n').includes(privateText))
+      assert.ok(!logs.join('\n').includes('12345678901'))
+    }
+  })
 
   for (const mode of ['http-400', 'http-429', 'business', 'business-throttle']) {
     test(`${id} 卡片 HTTP 400 后纯文本失败继续向上报告：${mode}`, async t => {

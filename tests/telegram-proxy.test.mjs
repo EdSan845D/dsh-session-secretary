@@ -51,6 +51,15 @@ test('Telegram 代理地址可在账号设置快照中反显，且仍存放在�
   await restarted.initEnabled()
   const restored = restarted.list().flatMap(channel => channel.accounts).find(item => item.id === created.accountId)
   assert.equal(restored.proxyUrl, proxyUrl)
+
+  // 模拟凭据库记录意外丢失，proxyConfigured 降级为 false 引导重新填写
+  await restarted.vault.unset(`im_connect_${created.accountId}_proxyUrl`)
+  const missingVault = makeManager(t, stateDir)
+  await missingVault.initEnabled()
+  const broken = missingVault.list().flatMap(channel => channel.accounts).find(item => item.id === created.accountId)
+  assert.equal(broken.proxyMode, 'custom')
+  assert.equal(broken.proxyConfigured, false)
+  assert.equal(broken.proxyUrl, undefined)
 })
 
 test('非法代理模式或 URL 被拒绝，原有配置保持不变', async t => {
@@ -99,7 +108,7 @@ test('Telegram 代理配置仅显示在该渠道设置页，不出现在新增�
   assert.match(meta, /telegram:[\s\S]*proxyUrl/)
 })
 
-test('Telegram 代理地址草稿不会被账号状态刷新清空', () => {
+test('Telegram 代理地址草稿不会被账号状态刷新清空', async () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   const component = client.slice(client.indexOf('function AccountInspector'), client.indexOf('function AccountRemarkEditor'))
   const slots = [], effects = []
@@ -147,6 +156,13 @@ test('Telegram 代理地址草稿不会被账号状态刷新清空', () => {
   assert.equal(refreshed.props.value, 'http://127.0.0.1:9000')
   const switched = find(render({ ...account, id: 'another-telegram-account', proxyUrl: 'http://127.0.0.1:7898' }), node => node.props['aria-label'] === 'account.proxyUrl')
   assert.equal(switched.props.value, 'http://127.0.0.1:7898')
+
+  // 留空失焦后回填原有地址
+  switched.props.onChange({ target: { value: '   ' } })
+  switched.props.onBlur({ target: { value: '   ' } })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  const reverted = find(render({ ...account, id: 'another-telegram-account', proxyUrl: 'http://127.0.0.1:7898' }), node => node.props['aria-label'] === 'account.proxyUrl')
+  assert.equal(reverted.props.value, 'http://127.0.0.1:7898')
 })
 
 test('Telegram API、文件上传和诊断共用手动代理且停止时释放 dispatcher', async t =>

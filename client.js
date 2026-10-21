@@ -2083,7 +2083,12 @@ window.__ModuleLoader__.load({
                 placeholder: t(account.proxyConfigured ? "account.proxySaved" : "http://127.0.0.1:7897"),
                 "aria-label": t("account.proxyUrl"),
                 onChange: (event) => { setProxyUrlDraft(event.target.value); setDraft({ ...draft, proxyMode: "custom" }); },
-                onBlur: (event) => save({ proxyMode: "custom", proxyUrl: event.target.value }),
+                onBlur: (event) => {
+                  const value = event.target.value.trim();
+                  save({ proxyMode: "custom", proxyUrl: value }).then((ok) => {
+                    if (ok && !value) setProxyUrlDraft(account.proxyUrl || "");
+                  });
+                },
               }),
             ),
             h("div", { className: "ima-picker-note" }, t("account.proxyNote")),

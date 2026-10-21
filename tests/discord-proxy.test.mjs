@@ -384,6 +384,56 @@ test('Discord direct 与 inherit 代理模式的 Dispatcher 构造与 stop 释�
   await inheritChannel.stop() // 安全释放
 })
 
+test('Discord 同一实例多次连续 start -> stop -> start 保持 Dispatcher 存活且正常连接', async t => {
+  t.after(() => mock.restoreAll())
+  const capturedFetches = []
+  mock.method(globalThis, 'fetch', async (url, init = {}) => {
+    capturedFetches.push({ url: String(url), init })
+    if (String(url).endsWith('/users/@me')) return Response.json({ id: '12345', bot: true })
+    if (String(url).endsWith('/gateway/bot')) return Response.json({ url: 'wss://gateway.discord.gg' })
+    return Response.json({ ok: true })
+  })
+
+  class MockWebSocket {
+    constructor(url, options) {}
+    addEventListener(type, cb) {
+      if (type === 'message') {
+        setTimeout(() => {
+          cb({ data: JSON.stringify({ op: 10, d: { heartbeat_interval: 60000 } }) })
+          cb({ data: JSON.stringify({ op: 0, t: 'READY', s: 1, d: { session_id: 'sess', resume_gateway_url: 'wss://gateway.discord.gg' } }) })
+        }, 5)
+      }
+    }
+    send() {}
+    close() {}
+  }
+  const originalWs = globalThis.WebSocket
+  globalThis.WebSocket = MockWebSocket
+  t.after(() => { globalThis.WebSocket = originalWs })
+
+  const channel = createDiscordChannel({
+    token: 'discord-token-123',
+    proxyMode: 'custom',
+    proxyUrl: 'http://127.0.0.1:7897',
+    connectTimeoutMs: 200,
+  }, () => {})
+  assert.ok(channel)
+
+  // 第一次启动
+  await channel.start()
+  assert.equal(channel.status(), '长连接已建立')
+
+  // 停止（关闭连接池）
+  await channel.stop()
+  assert.equal(channel.status(), '已停止')
+
+  // 第二次重连启动（必须能自动重建 live dispatcher，不抛 ClientDestroyedError）
+  await channel.start()
+  assert.equal(channel.status(), '长连接已建立')
+
+  await channel.stop()
+})
+
 test('Discord 代理配置仅显示在该渠道设置页，不出现在新增账号凭据表单', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   const meta = readFileSync(new URL('../src/channels/meta.ts', import.meta.url), 'utf8')

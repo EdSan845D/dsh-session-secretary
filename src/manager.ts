@@ -964,7 +964,8 @@ export class ChannelManager {
         state.receiveEnabled = true
         await this.startOne(accountId)
         return { ok: true }
-      } catch {
+      } catch (error) {
+        this.log(`[manager] 重新连接 ${accountId} 失败: ${error instanceof Error ? error.message : String(error)}`)
         return { ok: false, error: '重新连接失败，请查看本机日志' }
       }
     })
@@ -1176,6 +1177,7 @@ export class ChannelManager {
       this.running.delete(id)
       await Promise.resolve(adapter.stop()).catch(() => undefined)
       const message = error instanceof Error ? error.message : String(error)
+      this.log(`[manager] 启动 ${id} 失败: ${message}`)
       if (state) {
         state.lastError = '连接失败，请查看本机日志'
         this.flush()

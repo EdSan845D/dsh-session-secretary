@@ -382,18 +382,34 @@ export function createDiscordChannel(config: DiscordConfig, log: (line: string) 
   const token = config.token?.trim()
   if (!token) return undefined
   const proxyMode = config.proxyMode ?? 'inherit'
-  let dispatcher: Dispatcher | undefined
-  if (proxyMode === 'direct') dispatcher = new Agent()
-  else if (proxyMode === 'custom') {
+  let parsedProxyUrl: string | undefined
+  if (proxyMode === 'custom') {
     let proxyUrl: URL
     try { proxyUrl = new URL(config.proxyUrl ?? '') } catch { throw new Error('Discord 代理地址无效') }
     if (!['http:', 'https:'].includes(proxyUrl.protocol) || !proxyUrl.hostname || proxyUrl.pathname !== '/' || proxyUrl.search || proxyUrl.hash) {
       throw new Error('Discord 代理地址无效')
     }
-    dispatcher = new ProxyAgent(proxyUrl.toString())
-  } else if (proxyMode !== 'inherit') throw new Error('Discord 代理模式无效')
-  const fetchImpl: typeof fetch = config.fetchImpl ?? ((input, init) => fetch(input, dispatcher ? { ...init, dispatcher } as RequestInit : init))
-  const createSocket = config.createWebSocket ?? ((url: string) => new WebSocket(url, dispatcher ? ({ dispatcher } as any) : undefined))
+    parsedProxyUrl = proxyUrl.toString()
+  } else if (proxyMode !== 'inherit' && proxyMode !== 'direct') throw new Error('Discord 代理模式无效')
+
+  let dispatcher: Dispatcher | undefined
+  function getDispatcher(): Dispatcher | undefined {
+    if (proxyMode === 'inherit') return undefined
+    const isAlive = (d: any) => Boolean(d && !d.closed && !d.destroyed)
+    if (dispatcher && isAlive(dispatcher)) return dispatcher
+    if (proxyMode === 'direct') dispatcher = new Agent()
+    else if (proxyMode === 'custom' && parsedProxyUrl) dispatcher = new ProxyAgent(parsedProxyUrl)
+    return dispatcher
+  }
+
+  const fetchImpl: typeof fetch = config.fetchImpl ?? ((input, init) => {
+    const disp = getDispatcher()
+    return fetch(input, disp ? { ...init, dispatcher: disp } as RequestInit : init)
+  })
+  const createSocket = config.createWebSocket ?? ((url: string) => {
+    const disp = getDispatcher()
+    return new WebSocket(url, disp ? ({ dispatcher: disp } as any) : undefined)
+  })
   const cursorFile = new JsonStateFile<GatewayCursor>(config.stateDir ? `${config.stateDir.replace(/[\\/]$/, '')}/discord-gateway.json` : '', EMPTY_CURSOR)
   const persist = Boolean(config.stateDir)
   let handler: ((msg: ImMessage) => void | Promise<void>) | undefined
@@ -789,12 +805,17 @@ export function createDiscordChannel(config: DiscordConfig, log: (line: string) 
     choiceLimits: { maxButtons: 25, maxTextLength: 1800 },
     typingIntervalMs: 8_000,
     async start() {
-      await this.stop()
       stopped = false
       starting = true
       readyOnce = false
       statusText = '连接中'
+      clearTimeout(reconnectTimer)
+      clearHeartbeat()
+      generation += 1
+      lifecycle.abort()
       lifecycle = new AbortController()
+      socket?.close(1000, 'restarting')
+      socket = undefined
       const saved = persist ? cursorFile.read() : EMPTY_CURSOR
       sessionId = saved.sessionId || ''
       resumeUrl = saved.resumeUrl || ''
@@ -817,6 +838,7 @@ export function createDiscordChannel(config: DiscordConfig, log: (line: string) 
         starting = false
         log('[discord] Gateway 已连接')
       } catch (error) {
+        log(`[discord] 启动失败: ${error instanceof Error ? error.message : String(error)}`)
         // 4000/1006 只是这次握手失败。停掉适配器后管理器不会再拉起，重启就会一直停在连接异常。
         if (!recoverableGateway(error)) {
           statusText = '连接失败，请查看本机日志'
@@ -842,7 +864,9 @@ export function createDiscordChannel(config: DiscordConfig, log: (line: string) 
       socket?.close(1000, 'stopped')
       socket = undefined
       saveCursor()
-      await Promise.resolve(dispatcher?.close()).catch(() => undefined)
+      const currentDispatcher = dispatcher
+      dispatcher = undefined
+      if (currentDispatcher) await Promise.resolve(currentDispatcher.close()).catch(() => (currentDispatcher as any)?.destroy?.())
     },
     canDeliverDeferred() { return !stopped && statusText === '长连接已建立' },
     async send(chatId, text) {

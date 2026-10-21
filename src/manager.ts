@@ -27,6 +27,18 @@ export const API_CLIENT_HEADER = 'x-dsh-im-connect-client'
 const MAX_API_BODY_BYTES = 1024 * 1024
 const ACCOUNT_REMARK_LIMIT = 40
 
+type TelegramProxyMode = 'inherit' | 'direct' | 'custom'
+
+function normalizeTelegramProxyUrl(input: unknown): string | undefined {
+  if (typeof input !== 'string' || !input.trim()) return undefined
+  try {
+    const url = new URL(input.trim())
+    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.port && Number(url.port) > 65535
+      || url.pathname !== '/' || url.search || url.hash) return undefined
+    return url.toString()
+  } catch { return undefined }
+}
+
 /** 消息发送方式只有排队与插话两档；缺失或未知值一律回到排队，保持旧配置语义。 */
 function normalizeSendMode(input: unknown): SendMode {
   return input === 'steer' ? 'steer' : 'queue'
@@ -174,6 +186,9 @@ export interface AccountView {
   commandPermissions: CommandPermissions
   privateAccess: 'approved' | 'all'
   sendMode: SendMode
+  proxyMode: TelegramProxyMode
+  proxyConfigured: boolean
+  proxyUrl?: string
   lastCheckedAt?: string
 }
 
@@ -189,7 +204,7 @@ export interface ChannelView {
   label: string
   description: string
   kind: string
-  fields: Array<{ key: string; label: string; secret?: boolean }>
+  fields: Array<{ key: string; label: string; secret?: boolean; settingsOnly?: boolean }>
   connected: boolean
   receiveEnabled: boolean
   configuredKeys: string[]
@@ -242,6 +257,7 @@ export class ChannelManager {
   private readonly engineConfig: EngineConfig
   private store: Persisted = { channels: {}, allowlist: {}, pending: {} }
   private readonly running = new Map<string, ChannelAdapter>()
+  private readonly proxyUrlCache = new Map<string, string>()
   private readonly diagnosticJobs = new Map<string, Promise<AccountDiagnosticResult>>()
   private readonly diagnosticAbort = new AbortController()
   private readonly channelOperations = new KeyedSerialQueue()
@@ -313,6 +329,25 @@ export class ChannelManager {
     })
   }
 
+  private async hydrateProxyUrl(accountId: string, state: ChannelState): Promise<void> {
+    if (this.platformOf(accountId, state) !== 'telegram') {
+      this.proxyUrlCache.delete(accountId)
+      return
+    }
+    const config = state.config ?? {}
+    let proxyUrl = config.proxyUrl
+    if (!proxyUrl && config.proxyUrlRef) {
+      try { proxyUrl = await this.vault.resolve(config.proxyUrlRef) }
+      catch { this.log('[manager] Telegram 代理地址读取失败') }
+    }
+    if (proxyUrl) this.proxyUrlCache.set(accountId, proxyUrl)
+    else this.proxyUrlCache.delete(accountId)
+  }
+
+  private async hydrateProxyUrls(): Promise<void> {
+    await Promise.all(Object.entries(this.store.channels).map(([accountId, state]) => this.hydrateProxyUrl(accountId, state)))
+  }
+
   private accountView(accountId: string, state: ChannelState): AccountView {
     const platform = this.platformOf(accountId, state)
     const config = state.config ?? {}
@@ -349,6 +384,9 @@ export class ChannelManager {
       commandPermissions: normalizeCommandPermissions(state.commandPermissions),
       privateAccess: state.privateAccess === 'all' ? 'all' : 'approved',
       sendMode: normalizeSendMode(state.sendMode),
+      proxyMode: platform === 'telegram' && (config.proxyMode === 'direct' || config.proxyMode === 'custom') ? config.proxyMode : 'inherit',
+      proxyConfigured: platform === 'telegram' && Boolean(config.proxyUrlRef || config.proxyUrl),
+      ...(platform === 'telegram' && this.proxyUrlCache.has(accountId) ? { proxyUrl: this.proxyUrlCache.get(accountId)! } : {}),
       lastCheckedAt: state.lastCheckedAt,
     }
   }
@@ -477,6 +515,7 @@ export class ChannelManager {
       await this.vault.unset(ref)
     }
     delete this.store.channels[id]
+    this.proxyUrlCache.delete(id)
     delete this.store.allowlist[id]
     delete this.store.pending[id]
     this.engine.clearAllowed(id)
@@ -490,6 +529,7 @@ export class ChannelManager {
 
   async initEnabled(): Promise<void> {
     if (this.disposed) return
+    await this.hydrateProxyUrls()
     const started = Date.now()
     await this.migrateLegacyWeixinToken().catch((error) => {
       this.log(`[manager] 迁移旧版微信 token 失败，已保留原文件: ${error instanceof Error ? error.message : String(error)}`)
@@ -536,13 +576,16 @@ export class ChannelManager {
       readBody: () => Promise<Record<string, unknown>>,
       send: (status: number, body: unknown) => void,
     ): Promise<void> => {
-      const payload = () => ({
-        ok: true,
-        channels: this.list(),
-        groups: this.channelSessions(),
-        pending: this.pendingRequests(),
-        assistant: this.currentAssistant(),
-      })
+      const payload = async () => {
+        await this.hydrateProxyUrls()
+        return {
+          ok: true,
+          channels: this.list(),
+          groups: this.channelSessions(),
+          pending: this.pendingRequests(),
+          assistant: this.currentAssistant(),
+        }
+      }
       try {
         // 路由段统一从插件前缀之后开始，身份认证只由下方入口负责。
         const parts = ('/dsh-im-connect/api' + path).split('/').filter(Boolean)
@@ -600,7 +643,7 @@ export class ChannelManager {
           return
         }
         if (parts[2] === 'channels' && parts.length === 3 && method === 'GET') {
-          send(200, payload())
+          send(200, await payload())
           return
         }
         if (parts[2] === 'channels' && parts.length === 6 && parts[4] === 'qr') {
@@ -783,6 +826,20 @@ export class ChannelManager {
       const state = this.store.channels[accountId]
       if (!state) return { ok: false, error: '账号不存在' }
       const platform = this.platformOf(accountId, state)
+      const hasProxySettings = Object.hasOwn(input, 'proxyMode') || Object.hasOwn(input, 'proxyUrl')
+      if (hasProxySettings && platform !== 'telegram') return { ok: false, error: '仅 Telegram 支持账号级代理' }
+      const previousProxyMode = state.config?.proxyMode === 'direct' || state.config?.proxyMode === 'custom' ? state.config.proxyMode : 'inherit'
+      const requestedProxyMode = input.proxyMode === undefined ? previousProxyMode : input.proxyMode
+      if (hasProxySettings && !['inherit', 'direct', 'custom'].includes(String(requestedProxyMode))) return { ok: false, error: '代理模式无效' }
+      let nextProxyUrl: string | undefined
+      if (platform === 'telegram' && requestedProxyMode === 'custom') {
+        if (typeof input.proxyUrl === 'string' && input.proxyUrl.trim()) {
+          nextProxyUrl = normalizeTelegramProxyUrl(input.proxyUrl)
+          if (!nextProxyUrl) return { ok: false, error: '代理地址无效：仅支持不含路径、查询参数或片段的 HTTP(S) 代理地址。' }
+        } else if (!state.config?.proxyUrlRef && !state.config?.proxyUrl) {
+          return { ok: false, error: '手动配置代理时必须填写代理地址' }
+        }
+      }
       const normalized = await this.normalizeAccountSettings(platform, input, state)
       if (!normalized.ok) return normalized
       const previousCwd = normalizeWorkspacePath(state.cwd) ?? this.currentWorkspace()
@@ -807,8 +864,29 @@ export class ChannelManager {
       state.privateAccess = normalized.settings.privateAccess
       // 发送方式按注入时机读取，不需要重载会话。
       state.sendMode = normalized.settings.sendMode
+      const proxyChanged = platform === 'telegram' && hasProxySettings
+        && (requestedProxyMode !== previousProxyMode || nextProxyUrl !== undefined)
+      if (platform === 'telegram' && hasProxySettings) {
+        const config = { ...(state.config ?? {}) }
+        if (requestedProxyMode === 'custom') {
+          if (nextProxyUrl) {
+            config.proxyUrl = nextProxyUrl
+            state.config = await this.persistSecrets('telegram', accountId, config)
+          }
+          state.config = { ...(state.config ?? config), proxyMode: 'custom' }
+          await this.hydrateProxyUrl(accountId, state)
+        } else {
+          const ref = config.proxyUrlRef || credentialRef(accountId, 'proxyUrl')
+          await this.vault.unset(ref)
+          delete config.proxyUrl
+          delete config.proxyUrlRef
+          state.config = { ...config, proxyMode: requestedProxyMode as TelegramProxyMode }
+          this.proxyUrlCache.delete(accountId)
+        }
+      }
       this.flush()
       if (reloadSessions) await this.engine.reloadChannel(accountId, { resetSessions })
+      if (proxyChanged && this.running.has(accountId)) await this.startOne(accountId)
       return { ok: true, account: this.accountView(accountId, state) }
     })
   }

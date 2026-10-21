@@ -11,8 +11,8 @@ export function fileForm(file: OutgoingFile, field: string): FormData {
 }
 
 /** 上传响应只提取协议状态，避免令牌或临时 URL 进入错误日志。 */
-export async function fileRequest(url: string, init: RequestInit): Promise<any> {
-  const response = await fetch(url, { ...init, redirect: 'error', signal: init.signal ?? AbortSignal.timeout(120_000) })
+export async function fileRequest(url: string, init: RequestInit, fetcher: typeof fetch = fetch): Promise<any> {
+  const response = await fetcher(url, { ...init, redirect: 'error', signal: init.signal ?? AbortSignal.timeout(120_000) })
   if (!response.ok) throw new Error(`file-transfer-http-${response.status}`)
   const data = await response.json() as any
   const rejected = (code: unknown) => code !== undefined && code !== 0 && code !== '0'

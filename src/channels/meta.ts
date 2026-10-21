@@ -6,6 +6,8 @@ export interface ChannelField {
   key: string
   label: string
   secret?: boolean
+  /** 仅用于已绑定账号的设置，不放进新增账号凭据表单。 */
+  settingsOnly?: boolean
 }
 
 export interface ChannelMeta {
@@ -95,6 +97,7 @@ export const CHANNEL_META: Record<ChannelId, ChannelMeta> = {
     kind: 'credentials',
     fields: [
       { key: 'token', label: 'Bot Token', secret: true },
+      { key: 'proxyUrl', label: '代理地址', secret: true, settingsOnly: true },
     ],
   },
   discord: {

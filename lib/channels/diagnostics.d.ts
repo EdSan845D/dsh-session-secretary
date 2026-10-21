@@ -16,7 +16,7 @@ export declare class DiagnosticError extends Error {
 }
 export declare function probe(id: DiagnosticCheck['id'], signal: AbortSignal, run: () => Promise<void>): Promise<DiagnosticCheck>;
 /** 新请求、不跟随重定向、限制回包大小；调用方负责平台业务码与必要字段校验。 */
-export declare function diagnosticJson(url: string, signal: AbortSignal, body?: unknown, headers?: Record<string, string>): Promise<Record<string, unknown>>;
+export declare function diagnosticJson(url: string, signal: AbortSignal, body?: unknown, headers?: Record<string, string>, fetcher?: typeof fetch): Promise<Record<string, unknown>>;
 export declare function requireDiagnostic(value: unknown): asserts value;
 export declare function platformResult(code: unknown, authCodes?: number[]): void;
 //# sourceMappingURL=diagnostics.d.ts.map

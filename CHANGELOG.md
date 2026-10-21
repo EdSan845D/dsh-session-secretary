@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.11 - 2026-10-21
+
+- Fix Feishu and Lark replies failing to fall back to plain text when a card is rejected with HTTP 400, such as a reply containing a local inline image. The fallback preserves the full text, image description, and path; it does not upload or render the local image.
+- Add safe HTTP status and platform error-code diagnostics to distinguish a rejected card from a failed plain-text fallback. Rate limits still use the existing retry mechanism, and uncertain network outcomes are not automatically resent.
+
 ## 1.0.10 - 2026-10-20
 
 - Telegram topics now receive the first generated session title automatically, while later title changes leave the topic name stable. `/rename` also updates the topic name; ordinary chats are unaffected.

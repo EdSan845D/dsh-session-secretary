@@ -1139,27 +1139,28 @@ export class ChannelManager {
     const resolved = await this.resolveSecrets(platform, id, state.config ?? {})
     if (this.disposed) return
     const accountDir = this.accountStateDir(id, platform)
-    const adapter = createChannelAdapter(platform, resolved, this.log, accountDir, {
-      accountId: id,
-      accountLabel: state.name || `${CHANNEL_META[platform].label}账号`,
-      host: this.ctx,
-      onWeixinBotToken: async (token) => {
-        const ref = credentialRef(id, 'botToken')
-        if (token) await this.vault.set(ref, token)
-        else await this.vault.unset(ref)
-      },
-    })
-    if (!adapter) throw new Error('凭据不足，无法启动渠道')
-    if (platform === 'weixin') {
-      this.seedAllowedUser(id, readWeixinAllowedUserId(accountDir) || resolved.allowedUserId)
-    }
-    this.seedAllowedUser(id, resolved.ownerOpenId || resolved.allowedUserId)
-    this.engine.register(adapter)
-    this.running.set(id, adapter)
+    let adapter: ChannelAdapter | undefined
     // 渠道网络异常时 start 可能永久挂起，超时按启动失败处理（catch 会顺带 stop）
     const START_TIMEOUT_MS = 30_000
     let startTimer: ReturnType<typeof setTimeout> | undefined
     try {
+      adapter = createChannelAdapter(platform, resolved, this.log, accountDir, {
+        accountId: id,
+        accountLabel: state.name || `${CHANNEL_META[platform].label}账号`,
+        host: this.ctx,
+        onWeixinBotToken: async (token) => {
+          const ref = credentialRef(id, 'botToken')
+          if (token) await this.vault.set(ref, token)
+          else await this.vault.unset(ref)
+        },
+      })
+      if (!adapter) throw new Error('凭据不足，无法启动渠道')
+      if (platform === 'weixin') {
+        this.seedAllowedUser(id, readWeixinAllowedUserId(accountDir) || resolved.allowedUserId)
+      }
+      this.seedAllowedUser(id, resolved.ownerOpenId || resolved.allowedUserId)
+      this.engine.register(adapter)
+      this.running.set(id, adapter)
       await Promise.race([
         adapter.start(),
         new Promise<never>((_, reject) => {
@@ -1173,9 +1174,11 @@ export class ChannelManager {
         return
       }
     } catch (error) {
-      this.engine.unregister(id)
-      this.running.delete(id)
-      await Promise.resolve(adapter.stop()).catch(() => undefined)
+      if (adapter) {
+        this.engine.unregister(id)
+        this.running.delete(id)
+        await Promise.resolve(adapter.stop()).catch(() => undefined)
+      }
       const message = error instanceof Error ? error.message : String(error)
       this.log(`[manager] 启动 ${id} 失败: ${message}`)
       if (state) {

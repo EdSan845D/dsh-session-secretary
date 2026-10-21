@@ -443,6 +443,7 @@ test('Discord 旧 Session 失效（收到 op 9）能自动清空游标并顺利 
   })
 
   let attempt = 0
+  const sentOpcodes = []
   class MockWebSocket {
     constructor(url) {
       this.attempt = ++attempt
@@ -461,6 +462,7 @@ test('Discord 旧 Session 失效（收到 op 9）能自动清空游标并顺利 
     }
     send(data) {
       const pkt = JSON.parse(data)
+      if (typeof pkt.op === 'number') sentOpcodes.push(pkt.op)
       if (pkt.op === 6) {
         // 第一次发的是 Resume，返回 op 9 Invalid Session 并断开
         setTimeout(() => {
@@ -496,6 +498,7 @@ test('Discord 旧 Session 失效（收到 op 9）能自动清空游标并顺利 
   const tmpDir = tmpdir()
   const accountDir = join(tmpDir, `dsh-discord-test-cursor-${Date.now()}`)
   mkdirSync(accountDir, { recursive: true })
+  t.after(() => rmSync(accountDir, { recursive: true, force: true }))
   writeFileSync(join(accountDir, 'discord-gateway.json'), JSON.stringify({
     sessionId: 'expired-session-123',
     resumeUrl: 'wss://gateway.discord.gg',
@@ -515,6 +518,7 @@ test('Discord 旧 Session 失效（收到 op 9）能自动清空游标并顺利 
   await channel.start()
   assert.equal(channel.status(), '长连接已建立')
   assert.ok(attempt >= 2, '应该经历至少两次 WebSocket 连接尝试')
+  assert.deepEqual(sentOpcodes, [6, 2], '必须依次发送 Opcode 6 (Resume) 失败后发送 Opcode 2 (Identify)')
 
   await channel.stop()
 })

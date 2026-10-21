@@ -20,8 +20,8 @@ export interface ChannelByteRequestOptions {
     /** 自定义 fetcher（用于账号级代理分流，挂载 ProxyAgent） */
     fetcher?: typeof fetch;
 }
-/** HTTPS only; resolve inside the connection lookup, so DNS cannot rebind after validation.
- * No ambient proxy/credentials. Same-host redirects are opt-in. IPv4-only intentionally fails closed on IPv6-only hosts.
+/** HTTPS only; 未注入 fetcher 时走本地原生连接查找与 DNS rebinding 防护（直连无环境代理）；
+ * 传入 fetcher 时通过账号级代理分流。仅限同主机重定向。IPv4-only 模式在纯 IPv6 主机上明确快速失败。
  */
 export declare function requestChannelBytes(rawUrl: string, options?: ChannelByteRequestOptions): Promise<Buffer>;
 /** 通用文件不套用图片魔数验证，文件类型和格式由 Chat 接收策略判断。 */

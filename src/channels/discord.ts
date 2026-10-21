@@ -7,6 +7,7 @@ import { sleepWithSignal, timeoutSignal } from '../engine/abort.js'
 import { splitText } from '../engine/split.js'
 import { diagnosticJson, probe, requireDiagnostic } from './diagnostics.js'
 import { fileMedia, imageMedia, requestChannelBytes } from './channel-image-download.js'
+import { Agent, type Dispatcher, ProxyAgent } from 'undici'
 
 export interface DiscordConfig {
   token?: string
@@ -15,6 +16,8 @@ export interface DiscordConfig {
   fetchImpl?: typeof fetch
   createWebSocket?: (url: string) => GatewaySocket
   connectTimeoutMs?: number
+  proxyMode?: 'inherit' | 'direct' | 'custom'
+  proxyUrl?: string
 }
 
 export interface GatewaySocketEvent { data?: unknown; code?: number }
@@ -377,8 +380,19 @@ export async function resolveDiscordRoute(
 export function createDiscordChannel(config: DiscordConfig, log: (line: string) => void): ChannelAdapter | undefined {
   const token = config.token?.trim()
   if (!token) return undefined
-  const fetchImpl = config.fetchImpl ?? fetch
-  const createSocket = config.createWebSocket ?? ((url: string) => new WebSocket(url))
+  const proxyMode = config.proxyMode ?? 'inherit'
+  let dispatcher: Dispatcher | undefined
+  if (proxyMode === 'direct') dispatcher = new Agent()
+  else if (proxyMode === 'custom') {
+    let proxyUrl: URL
+    try { proxyUrl = new URL(config.proxyUrl ?? '') } catch { throw new Error('Discord 代理地址无效') }
+    if (!['http:', 'https:'].includes(proxyUrl.protocol) || !proxyUrl.hostname || proxyUrl.pathname !== '/' || proxyUrl.search || proxyUrl.hash) {
+      throw new Error('Discord 代理地址无效')
+    }
+    dispatcher = new ProxyAgent(proxyUrl.toString())
+  } else if (proxyMode !== 'inherit') throw new Error('Discord 代理模式无效')
+  const fetchImpl: typeof fetch = config.fetchImpl ?? ((input, init) => fetch(input, dispatcher ? { ...init, dispatcher } as RequestInit : init))
+  const createSocket = config.createWebSocket ?? ((url: string) => new WebSocket(url, dispatcher ? ({ dispatcher } as any) : undefined))
   const cursorFile = new JsonStateFile<GatewayCursor>(config.stateDir ? `${config.stateDir.replace(/[\\/]$/, '')}/discord-gateway.json` : '', EMPTY_CURSOR)
   const persist = Boolean(config.stateDir)
   let handler: ((msg: ImMessage) => void | Promise<void>) | undefined
@@ -826,6 +840,7 @@ export function createDiscordChannel(config: DiscordConfig, log: (line: string) 
       socket?.close(1000, 'stopped')
       socket = undefined
       saveCursor()
+      await Promise.resolve(dispatcher?.close()).catch(() => undefined)
     },
     canDeliverDeferred() { return !stopped && statusText === '长连接已建立' },
     async send(chatId, text) {
@@ -937,12 +952,12 @@ export function createDiscordChannel(config: DiscordConfig, log: (line: string) 
     setMessageHandler(next) { handler = next },
     async diagnose(signal) {
       const identity = await probe('bot', signal, async () => {
-        const bot = await diagnosticJson(new URL('users/@me', API).href, signal, undefined, headers)
+        const bot = await diagnosticJson(new URL('users/@me', API).href, signal, undefined, headers, fetchImpl)
         requireDiagnostic(bot.id && bot.bot === true)
       })
       if (identity.status !== 'passed') return [identity]
       return [identity, await probe('gateway', signal, async () => {
-        const gateway = await diagnosticJson(new URL('gateway/bot', API).href, signal, undefined, headers)
+        const gateway = await diagnosticJson(new URL('gateway/bot', API).href, signal, undefined, headers, fetchImpl)
         requireDiagnostic(typeof gateway.url === 'string')
         gatewayUrl(gateway.url)
       })]

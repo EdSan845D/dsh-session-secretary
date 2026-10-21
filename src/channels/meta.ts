@@ -107,6 +107,7 @@ export const CHANNEL_META: Record<ChannelId, ChannelMeta> = {
     kind: 'credentials',
     fields: [
       { key: 'token', label: 'Bot Token', secret: true },
+      { key: 'proxyUrl', label: '代理地址', secret: true, settingsOnly: true },
     ],
   },
   slack: {

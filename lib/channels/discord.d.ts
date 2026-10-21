@@ -8,6 +8,8 @@ export interface DiscordConfig {
     fetchImpl?: typeof fetch;
     createWebSocket?: (url: string) => GatewaySocket;
     connectTimeoutMs?: number;
+    proxyMode?: 'inherit' | 'direct' | 'custom';
+    proxyUrl?: string;
 }
 export interface GatewaySocketEvent {
     data?: unknown;

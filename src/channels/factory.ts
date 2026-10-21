@@ -24,7 +24,13 @@ export function createChannelAdapter(
     case 'telegram':
       adapter = createTelegramChannel({ token: config.token, stateDir, host: options?.host, proxyMode: config.proxyMode as 'inherit' | 'direct' | 'custom' | undefined, proxyUrl: config.proxyUrl }, log); break
     case 'discord':
-      adapter = createDiscordChannel({ token: config.token, stateDir, host: options?.host }, log); break
+      adapter = createDiscordChannel({
+        token: config.token,
+        stateDir,
+        host: options?.host,
+        proxyMode: config.proxyMode as 'inherit' | 'direct' | 'custom' | undefined,
+        proxyUrl: config.proxyUrl,
+      }, log); break
     case 'feishu':
       adapter = createFeishuChannel('feishu', { appId: config.appId, appSecret: config.appSecret, host: options?.host }, log); break
     case 'lark':

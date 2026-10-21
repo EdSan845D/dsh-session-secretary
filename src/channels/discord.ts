@@ -828,10 +828,11 @@ export function createDiscordChannel(config: DiscordConfig, log: (line: string) 
         if (!bot?.id || bot.bot !== true) throw new Error('Discord token does not belong to a bot')
         runtimeBotId = String(bot.id)
         gatewayBase = String(gateway?.url ?? '')
+        const hadCursor = Boolean(sessionId && resumeUrl)
         try {
-          await connectOnce(Boolean(sessionId && resumeUrl))
+          await connectOnce(hadCursor)
         } catch (error) {
-          if (fatalGateway(error) || !sessionId) throw error
+          if (fatalGateway(error) || !hadCursor) throw error
           clearCursor()
           await connectOnce(false)
         }

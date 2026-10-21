@@ -1985,7 +1985,7 @@ window.__ModuleLoader__.load({
         setDraft(next);
         if (next.proxyMode) setProxyModeDraft(next.proxyMode);
         setNote("status.saving");
-        return onSave(account.id, {
+        const payload = {
           name: next.name,
           cwd: next.cwd,
           provider: next.assistant.provider,
@@ -1994,10 +1994,17 @@ window.__ModuleLoader__.load({
           permission: next.permission,
           privateAccess: next.privateAccess,
           sendMode: next.sendMode,
-          ...(account.platform === "telegram" ? { proxyMode: next.proxyMode || proxyModeDraft, proxyUrl: next.proxyUrl || "" } : {}),
           agentPreset: next.agentPreset,
           commandPermissions: next.commandPermissions,
-        }).then((ok) => {
+        };
+        if (account.platform === "telegram") {
+          const hasProxyPatch = Object.prototype.hasOwnProperty.call(patch, "proxyMode") || Object.prototype.hasOwnProperty.call(patch, "proxyUrl");
+          if (hasProxyPatch) {
+            payload.proxyMode = next.proxyMode || proxyModeDraft;
+            payload.proxyUrl = Object.prototype.hasOwnProperty.call(patch, "proxyUrl") ? patch.proxyUrl : proxyUrlDraft;
+          }
+        }
+        return onSave(account.id, payload).then((ok) => {
           if (seq === saveSeq.current) setNote(ok ? "status.saved" : "error.save");
           return ok;
         });

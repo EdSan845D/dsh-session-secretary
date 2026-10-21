@@ -27,9 +27,14 @@ export const API_CLIENT_HEADER = 'x-dsh-im-connect-client'
 const MAX_API_BODY_BYTES = 1024 * 1024
 const ACCOUNT_REMARK_LIMIT = 40
 
-type TelegramProxyMode = 'inherit' | 'direct' | 'custom'
+type ChannelProxyMode = 'inherit' | 'direct' | 'custom'
 
-function normalizeTelegramProxyUrl(input: unknown): string | undefined {
+const PROXY_SUPPORTED_PLATFORMS = new Set<ChannelId>(['telegram', 'slack'])
+function supportsProxy(platform: ChannelId): boolean {
+  return PROXY_SUPPORTED_PLATFORMS.has(platform)
+}
+
+function normalizeProxyUrl(input: unknown): string | undefined {
   if (typeof input !== 'string' || !input.trim()) return undefined
   try {
     const url = new URL(input.trim())
@@ -187,7 +192,7 @@ export interface AccountView {
   commandPermissions: CommandPermissions
   privateAccess: 'approved' | 'all'
   sendMode: SendMode
-  proxyMode: TelegramProxyMode
+  proxyMode: ChannelProxyMode
   proxyConfigured: boolean
   proxyUrl?: string
   lastCheckedAt?: string
@@ -331,7 +336,8 @@ export class ChannelManager {
   }
 
   private async hydrateProxyUrl(accountId: string, state: ChannelState): Promise<void> {
-    if (this.platformOf(accountId, state) !== 'telegram') {
+    const platform = this.platformOf(accountId, state)
+    if (!supportsProxy(platform)) {
       this.proxyUrlCache.delete(accountId)
       return
     }
@@ -346,7 +352,7 @@ export class ChannelManager {
     let proxyUrl = config.proxyUrl
     if (!proxyUrl && config.proxyUrlRef) {
       try { proxyUrl = await this.vault.resolve(config.proxyUrlRef) }
-      catch { this.log('[manager] Telegram 代理地址读取失败') }
+      catch { this.log(`[manager] ${CHANNEL_META[platform]?.label ?? platform} 代理地址读取失败`) }
     }
     if (proxyUrl) this.proxyUrlCache.set(accountId, proxyUrl)
     else this.proxyUrlCache.delete(accountId)
@@ -392,11 +398,11 @@ export class ChannelManager {
       commandPermissions: normalizeCommandPermissions(state.commandPermissions),
       privateAccess: state.privateAccess === 'all' ? 'all' : 'approved',
       sendMode: normalizeSendMode(state.sendMode),
-      proxyMode: platform === 'telegram' && (config.proxyMode === 'direct' || config.proxyMode === 'custom') ? config.proxyMode : 'inherit',
-      proxyConfigured: platform === 'telegram' && config.proxyMode === 'custom'
+      proxyMode: supportsProxy(platform) && (config.proxyMode === 'direct' || config.proxyMode === 'custom') ? config.proxyMode : 'inherit',
+      proxyConfigured: supportsProxy(platform) && config.proxyMode === 'custom'
         ? this.proxyUrlCache.has(accountId)
-        : platform === 'telegram' && Boolean(config.proxyUrlRef || config.proxyUrl),
-      ...(platform === 'telegram' && this.proxyUrlCache.has(accountId) ? { proxyUrl: this.proxyUrlCache.get(accountId)! } : {}),
+        : supportsProxy(platform) && Boolean(config.proxyUrlRef || config.proxyUrl),
+      ...(supportsProxy(platform) && this.proxyUrlCache.has(accountId) ? { proxyUrl: this.proxyUrlCache.get(accountId)! } : {}),
       lastCheckedAt: state.lastCheckedAt,
     }
   }
@@ -837,14 +843,14 @@ export class ChannelManager {
       if (!state) return { ok: false, error: '账号不存在' }
       const platform = this.platformOf(accountId, state)
       const hasProxySettings = Object.hasOwn(input, 'proxyMode') || Object.hasOwn(input, 'proxyUrl')
-      if (hasProxySettings && platform !== 'telegram') return { ok: false, error: '仅 Telegram 支持账号级代理' }
+      if (hasProxySettings && !supportsProxy(platform)) return { ok: false, error: '当前渠道不支持账号级代理' }
       const previousProxyMode = state.config?.proxyMode === 'direct' || state.config?.proxyMode === 'custom' ? state.config.proxyMode : 'inherit'
       const requestedProxyMode = input.proxyMode === undefined ? previousProxyMode : input.proxyMode
       if (hasProxySettings && !['inherit', 'direct', 'custom'].includes(String(requestedProxyMode))) return { ok: false, error: '代理模式无效' }
       let nextProxyUrl: string | undefined
-      if (platform === 'telegram' && requestedProxyMode === 'custom') {
+      if (supportsProxy(platform) && requestedProxyMode === 'custom') {
         if (typeof input.proxyUrl === 'string' && input.proxyUrl.trim()) {
-          nextProxyUrl = normalizeTelegramProxyUrl(input.proxyUrl)
+          nextProxyUrl = normalizeProxyUrl(input.proxyUrl)
           if (!nextProxyUrl) return { ok: false, error: '代理地址无效：仅支持不含路径、查询参数、片段或认证信息的 HTTP(S) 代理地址。' }
         } else if (!state.config?.proxyUrlRef && !state.config?.proxyUrl) {
           return { ok: false, error: '手动配置代理时必须填写代理地址' }
@@ -874,7 +880,7 @@ export class ChannelManager {
       state.privateAccess = normalized.settings.privateAccess
       // 发送方式按注入时机读取，不需要重载会话。
       state.sendMode = normalized.settings.sendMode
-      if (platform === 'telegram' && !this.proxyUrlCache.has(accountId)) {
+      if (supportsProxy(platform) && !this.proxyUrlCache.has(accountId)) {
         await this.hydrateProxyUrl(accountId, state)
       }
       const previousProxyUrl = this.proxyUrlCache.get(accountId)
@@ -882,13 +888,13 @@ export class ChannelManager {
       const proxyUrlChanged = requestedProxyMode === 'custom'
         && nextProxyUrl !== undefined
         && nextProxyUrl !== previousProxyUrl
-      const proxyChanged = platform === 'telegram' && hasProxySettings && (proxyModeChanged || proxyUrlChanged)
-      if (platform === 'telegram' && hasProxySettings) {
+      const proxyChanged = supportsProxy(platform) && hasProxySettings && (proxyModeChanged || proxyUrlChanged)
+      if (supportsProxy(platform) && hasProxySettings) {
         const config = { ...(state.config ?? {}) }
         if (requestedProxyMode === 'custom') {
           if (proxyUrlChanged && nextProxyUrl) {
             config.proxyUrl = nextProxyUrl
-            state.config = await this.persistSecrets('telegram', accountId, config)
+            state.config = await this.persistSecrets(platform, accountId, config)
             this.proxyUrlCache.set(accountId, nextProxyUrl)
           }
           state.config = { ...(state.config ?? config), proxyMode: 'custom' }
@@ -897,7 +903,7 @@ export class ChannelManager {
           await this.vault.unset(ref)
           delete config.proxyUrl
           delete config.proxyUrlRef
-          state.config = { ...config, proxyMode: requestedProxyMode as TelegramProxyMode }
+          state.config = { ...config, proxyMode: requestedProxyMode as ChannelProxyMode }
           this.proxyUrlCache.delete(accountId)
         }
       }

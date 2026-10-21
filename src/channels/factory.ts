@@ -38,7 +38,14 @@ export function createChannelAdapter(
     case 'qq':
       adapter = createQqChannel({ appId: config.appId, appSecret: config.appSecret, ...imageOptions, host: options?.host }, log); break
     case 'slack':
-      adapter = createSlackChannel({ token: config.token, appToken: config.appToken, stateDir, host: options?.host }, log); break
+      adapter = createSlackChannel({
+        token: config.token,
+        appToken: config.appToken,
+        stateDir,
+        host: options?.host,
+        proxyMode: config.proxyMode as 'inherit' | 'direct' | 'custom' | undefined,
+        proxyUrl: config.proxyUrl,
+      }, log); break
     default:
       return undefined
   }

@@ -21,6 +21,8 @@ export interface SlackConfig {
     createWebSocket?: (url: string) => SlackSocket;
     apiBase?: string;
     connectTimeoutMs?: number;
+    proxyMode?: 'inherit' | 'direct' | 'custom';
+    proxyUrl?: string;
 }
 interface SlackFile {
     id?: string;

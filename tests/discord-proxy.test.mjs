@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test, { mock } from 'node:test'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MockAgent, ProxyAgent } from 'undici'
@@ -430,6 +430,91 @@ test('Discord 同一实例多次连续 start -> stop -> start 保持 Dispatcher 
   // 第二次重连启动（必须能自动重建 live dispatcher，不抛 ClientDestroyedError）
   await channel.start()
   assert.equal(channel.status(), '长连接已建立')
+
+  await channel.stop()
+})
+
+test('Discord 旧 Session 失效（收到 op 9）能自动清空游标并顺利 Identify 重连成功', async t => {
+  t.after(() => mock.restoreAll())
+  mock.method(globalThis, 'fetch', async (url) => {
+    if (String(url).endsWith('/users/@me')) return Response.json({ id: '12345', bot: true })
+    if (String(url).endsWith('/gateway/bot')) return Response.json({ url: 'wss://gateway.discord.gg' })
+    return Response.json({ ok: true })
+  })
+
+  let attempt = 0
+  class MockWebSocket {
+    constructor(url) {
+      this.attempt = ++attempt
+      this.closed = false
+    }
+    addEventListener(type, cb) {
+      if (type === 'message') {
+        setTimeout(() => {
+          if (this.closed) return
+          cb({ data: JSON.stringify({ op: 10, d: { heartbeat_interval: 60000 } }) })
+        }, 5)
+      }
+      if (type === 'close') {
+        this.onClose = cb
+      }
+    }
+    send(data) {
+      const pkt = JSON.parse(data)
+      if (pkt.op === 6) {
+        // 第一次发的是 Resume，返回 op 9 Invalid Session 并断开
+        setTimeout(() => {
+          if (this.onClose) this.onClose({ code: 4000 })
+        }, 5)
+      } else if (pkt.op === 2) {
+        // 第二次发起 Identify，返回 READY
+        setTimeout(() => {
+          if (this.onMessage) {
+            this.onMessage({ data: JSON.stringify({ op: 0, t: 'READY', s: 1, d: { session_id: 'new-sess', resume_gateway_url: 'wss://gateway.discord.gg' } }) })
+          }
+        }, 5)
+      }
+    }
+    close(code, reason) {
+      this.closed = true
+      if (this.onClose) this.onClose({ code: code || 1000 })
+    }
+  }
+
+  // 包装 MockWebSocket 以便触发 message 回调
+  class WrappedMockWebSocket extends MockWebSocket {
+    addEventListener(type, cb) {
+      super.addEventListener(type, cb)
+      if (type === 'message') this.onMessage = cb
+    }
+  }
+
+  const originalWs = globalThis.WebSocket
+  globalThis.WebSocket = WrappedMockWebSocket
+  t.after(() => { globalThis.WebSocket = originalWs })
+
+  const tmpDir = tmpdir()
+  const accountDir = join(tmpDir, `dsh-discord-test-cursor-${Date.now()}`)
+  mkdirSync(accountDir, { recursive: true })
+  writeFileSync(join(accountDir, 'discord-gateway.json'), JSON.stringify({
+    sessionId: 'expired-session-123',
+    resumeUrl: 'wss://gateway.discord.gg',
+    sequence: 42,
+  }))
+
+  const channel = createDiscordChannel({
+    token: 'discord-token-123',
+    proxyMode: 'custom',
+    proxyUrl: 'http://127.0.0.1:7897',
+    stateDir: accountDir,
+    connectTimeoutMs: 500,
+  }, () => {})
+  assert.ok(channel)
+
+  // 启动：第一次 Resume 会失败(op 9)，但必须自动回退到全新 Identify(op 2) 成功，状态为长连接已建立
+  await channel.start()
+  assert.equal(channel.status(), '长连接已建立')
+  assert.ok(attempt >= 2, '应该经历至少两次 WebSocket 连接尝试')
 
   await channel.stop()
 })

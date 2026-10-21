@@ -6,6 +6,7 @@ import type { ChannelId, SessionRecord } from './engine/session-id.js';
 import { type AssistantModel, type PermissionPreset } from './engine/assistant-settings.js';
 import type { EngineConfig, SendMode } from './engine/types.js';
 export declare const API_CLIENT_HEADER = "x-dsh-im-connect-client";
+type TelegramProxyMode = 'inherit' | 'direct' | 'custom';
 interface ApiBodyReadResult {
     body: Record<string, unknown>;
     oversized: boolean;
@@ -54,6 +55,9 @@ export interface AccountView {
     commandPermissions: CommandPermissions;
     privateAccess: 'approved' | 'all';
     sendMode: SendMode;
+    proxyMode: TelegramProxyMode;
+    proxyConfigured: boolean;
+    proxyUrl?: string;
     lastCheckedAt?: string;
 }
 interface AccountDiagnosticResult {
@@ -75,6 +79,7 @@ export interface ChannelView {
         key: string;
         label: string;
         secret?: boolean;
+        settingsOnly?: boolean;
     }>;
     connected: boolean;
     receiveEnabled: boolean;
@@ -107,6 +112,7 @@ export declare class ChannelManager {
     private readonly engineConfig;
     private store;
     private readonly running;
+    private readonly proxyUrlCache;
     private readonly diagnosticJobs;
     private readonly diagnosticAbort;
     private readonly channelOperations;
@@ -119,6 +125,8 @@ export declare class ChannelManager {
         engineConfig: EngineConfig;
     });
     list(): ChannelView[];
+    private hydrateProxyUrl;
+    private hydrateProxyUrls;
     private accountView;
     channelSessions(): {
         id: ChannelId;

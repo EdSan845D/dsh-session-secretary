@@ -5,6 +5,8 @@ export interface TelegramConfig {
     host?: {
         get(name: string): unknown;
     };
+    proxyMode?: 'inherit' | 'direct' | 'custom';
+    proxyUrl?: string;
 }
 /**
  * 编码 Telegram 会话键：

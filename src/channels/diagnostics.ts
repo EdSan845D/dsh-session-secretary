@@ -28,8 +28,8 @@ export async function probe(id: DiagnosticCheck['id'], signal: AbortSignal, run:
 }
 
 /** 新请求、不跟随重定向、限制回包大小；调用方负责平台业务码与必要字段校验。 */
-export async function diagnosticJson(url: string, signal: AbortSignal, body?: unknown, headers?: Record<string, string>): Promise<Record<string, unknown>> {
-  const response = await fetch(url, { method: body === undefined ? 'GET' : 'POST', headers: { 'content-type': 'application/json', ...headers }, body: body === undefined ? undefined : JSON.stringify(body), signal, redirect: 'error' })
+export async function diagnosticJson(url: string, signal: AbortSignal, body?: unknown, headers?: Record<string, string>, fetcher: typeof fetch = fetch): Promise<Record<string, unknown>> {
+  const response = await fetcher(url, { method: body === undefined ? 'GET' : 'POST', headers: { 'content-type': 'application/json', ...headers }, body: body === undefined ? undefined : JSON.stringify(body), signal, redirect: 'error' })
   if (!response.ok) {
     await response.body?.cancel()
     const status = response.status

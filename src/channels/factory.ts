@@ -22,7 +22,7 @@ export function createChannelAdapter(
     ? { additionalImageHosts: parseAdditionalImageHosts(config.additionalImageHosts) } : {}
   switch (id) {
     case 'telegram':
-      adapter = createTelegramChannel({ token: config.token, stateDir, host: options?.host }, log); break
+      adapter = createTelegramChannel({ token: config.token, stateDir, host: options?.host, proxyMode: config.proxyMode as 'inherit' | 'direct' | 'custom' | undefined, proxyUrl: config.proxyUrl }, log); break
     case 'discord':
       adapter = createDiscordChannel({ token: config.token, stateDir, host: options?.host }, log); break
     case 'feishu':

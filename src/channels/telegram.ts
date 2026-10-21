@@ -1,4 +1,5 @@
 import { choiceSendError } from '../engine/choice-delivery.js'
+import { Agent, ProxyAgent, type Dispatcher } from 'undici'
 import { DeliveryRejected } from '../engine/deferred-delivery.js'
 import { notice } from '../engine/command-locale.js'
 import { diagnosticJson, DiagnosticError, probe, requireDiagnostic } from './diagnostics.js'
@@ -12,6 +13,8 @@ export interface TelegramConfig {
   token?: string
   stateDir?: string
   host?: { get(name: string): unknown }
+  proxyMode?: 'inherit' | 'direct' | 'custom'
+  proxyUrl?: string
 }
 
 interface TgUpdate {
@@ -119,6 +122,18 @@ export function toTelegramRichMarkdown(value: string): string | undefined {
 export function createTelegramChannel(config: TelegramConfig, log: (line: string) => void): ChannelAdapter | undefined {
   const token = config.token?.trim()
   if (!token) return undefined
+  const proxyMode = config.proxyMode ?? 'inherit'
+  let dispatcher: Dispatcher | undefined
+  if (proxyMode === 'direct') dispatcher = new Agent()
+  else if (proxyMode === 'custom') {
+    let proxyUrl: URL
+    try { proxyUrl = new URL(config.proxyUrl ?? '') } catch { throw new Error('Telegram 代理地址无效') }
+    if (!['http:', 'https:'].includes(proxyUrl.protocol) || !proxyUrl.hostname || proxyUrl.pathname !== '/' || proxyUrl.search || proxyUrl.hash) {
+      throw new Error('Telegram 代理地址无效')
+    }
+    dispatcher = new ProxyAgent(proxyUrl.toString())
+  } else if (proxyMode !== 'inherit') throw new Error('Telegram 代理模式无效')
+  const fetchTelegram: typeof fetch = (input, init) => fetch(input, dispatcher ? { ...init, dispatcher } as RequestInit : init)
   const cursorFile = new JsonStateFile(config.stateDir ? `${config.stateDir.replace(/[\\/]$/, '')}/cursor.json` : '', { offset: 0 })
   const persist = Boolean(config.stateDir)
 
@@ -165,7 +180,7 @@ export function createTelegramChannel(config: TelegramConfig, log: (line: string
   }
 
   async function api<T>(method: string, body: Record<string, unknown>, timeoutMs = 30_000): Promise<T> {
-    const res = await fetch(`${API}/bot${token}/${method}`, {
+    const res = await fetchTelegram(`${API}/bot${token}/${method}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -203,7 +218,7 @@ export function createTelegramChannel(config: TelegramConfig, log: (line: string
       || file.file_path.split('/').some(part => !part || part === '.' || part === '..')
       || (file.file_size ?? 0) > MAX_CHANNEL_IMAGE_BYTES) throw new Error('图片文件无效或超过大小限制')
     // The bot token must never follow a redirect or a caller-provided download URL.
-    const response = await fetch(`${API}/file/bot${token}/${file.file_path}`, {
+    const response = await fetchTelegram(`${API}/file/bot${token}/${file.file_path}`, {
       redirect: 'error', signal: timeoutSignal(30_000, lifecycle?.signal),
     })
     if (!response.ok || !response.body) throw new Error('图片下载失败')
@@ -360,6 +375,7 @@ export function createTelegramChannel(config: TelegramConfig, log: (line: string
       await pollTask?.catch(() => undefined)
       pollTask = undefined
       lifecycle = undefined
+      if (dispatcher) await dispatcher.close().catch(() => dispatcher?.destroy())
       if (persist) cursorFile.write({ offset })
     },
     canDeliverDeferred() { return !stopped },
@@ -373,7 +389,7 @@ export function createTelegramChannel(config: TelegramConfig, log: (line: string
       if (route.threadId !== undefined) {
         form.append('message_thread_id', String(route.threadId))
       }
-      await fileRequest(`${API}/bot${token}/sendDocument`, { method: 'POST', body: form, signal: timeoutSignal(120_000, AbortSignal.any([...(signal ? [signal] : []), ...(lifecycle ? [lifecycle.signal] : [])])) })
+      await fileRequest(`${API}/bot${token}/sendDocument`, { method: 'POST', body: form, signal: timeoutSignal(120_000, AbortSignal.any([...(signal ? [signal] : []), ...(lifecycle ? [lifecycle.signal] : [])])) }, fetchTelegram)
     },
     /**
      * 把会话标题写成话题名。只有论坛话题（话题群 / 私聊话题）有这一层级；
@@ -424,7 +440,7 @@ export function createTelegramChannel(config: TelegramConfig, log: (line: string
       await fileRequest(`${API}/bot${token}/setMessageReaction`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, signal,
         body: JSON.stringify({ chat_id: route.chatId, message_id: Number(message.messageId), reaction: [{ type: 'emoji', emoji }] }),
-      })
+      }, fetchTelegram)
       return emoji
     },
     async removeStatusReaction(message, _reaction, signal) {
@@ -432,7 +448,7 @@ export function createTelegramChannel(config: TelegramConfig, log: (line: string
       await fileRequest(`${API}/bot${token}/setMessageReaction`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, signal,
         body: JSON.stringify({ chat_id: route.chatId, message_id: Number(message.messageId), reaction: [] }),
-      })
+      }, fetchTelegram)
     },
     async sendAction(chatId) {
       const route = parseTelegramChatId(chatId)
@@ -513,7 +529,7 @@ export function createTelegramChannel(config: TelegramConfig, log: (line: string
     setTopicEditHandler(h) { onTopicEdited = h },
     async diagnose(signal) {
       const query = async (method: string) => {
-        const data = await diagnosticJson(`${API}/bot${token}/${method}`, signal, {})
+        const data = await diagnosticJson(`${API}/bot${token}/${method}`, signal, {}, undefined, fetchTelegram)
         if (data.ok === false) throw new DiagnosticError(data.error_code === 401 ? 'auth' : 'rejected', undefined, typeof data.error_code === 'number' ? data.error_code : undefined)
         requireDiagnostic(data.ok === true && data.result && typeof data.result === 'object')
         return data.result as Record<string, unknown>

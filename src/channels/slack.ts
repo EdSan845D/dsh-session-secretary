@@ -16,6 +16,7 @@ import { prepareSlackText, slackInboundText, slackMentionsBot } from './slack-ma
 import { fileForm } from './file-send.js'
 import { JsonStateFile } from '../engine/json-state.js'
 import { join } from 'node:path'
+import { Agent, type Dispatcher, ProxyAgent } from 'undici'
 
 export interface SlackSocketEvent { data?: unknown; code?: number; reason?: string }
 export interface SlackSocket {
@@ -34,6 +35,8 @@ export interface SlackConfig {
   createWebSocket?: (url: string) => SlackSocket
   apiBase?: string
   connectTimeoutMs?: number
+  proxyMode?: 'inherit' | 'direct' | 'custom'
+  proxyUrl?: string
 }
 
 interface SlackFile {
@@ -295,9 +298,20 @@ export function createSlackChannel(config: SlackConfig, log: (line: string) => v
   const token = config.token?.trim()
   const appToken = config.appToken?.trim()
   if (!token || !appToken) return undefined
-  const fetchImpl = config.fetchImpl ?? fetch
+  const proxyMode = config.proxyMode ?? 'inherit'
+  let dispatcher: Dispatcher | undefined
+  if (proxyMode === 'direct') dispatcher = new Agent()
+  else if (proxyMode === 'custom') {
+    let proxyUrl: URL
+    try { proxyUrl = new URL(config.proxyUrl ?? '') } catch { throw new Error('Slack 代理地址无效') }
+    if (!['http:', 'https:'].includes(proxyUrl.protocol) || !proxyUrl.hostname || proxyUrl.pathname !== '/' || proxyUrl.search || proxyUrl.hash) {
+      throw new Error('Slack 代理地址无效')
+    }
+    dispatcher = new ProxyAgent(proxyUrl.toString())
+  } else if (proxyMode !== 'inherit') throw new Error('Slack 代理模式无效')
+  const fetchImpl: typeof fetch = config.fetchImpl ?? ((input, init) => fetch(input, dispatcher ? { ...init, dispatcher } as RequestInit : init))
   const apiBase = `${(config.apiBase ?? API).replace(/\/+$/, '')}/`
-  const createSocket = config.createWebSocket ?? ((url: string) => new WebSocket(url))
+  const createSocket = config.createWebSocket ?? ((url: string) => new WebSocket(url, dispatcher ? ({ dispatcher } as any) : undefined))
 
   let handler: ((msg: ImMessage) => void | Promise<void>) | undefined
   let stopped = true
@@ -687,6 +701,7 @@ export function createSlackChannel(config: SlackConfig, log: (line: string) => v
       lifecycle.abort()
       try { socket?.close(1000, 'stopped') } catch { /* 已经断开 */ }
       socket = undefined
+      await Promise.resolve(dispatcher?.close()).catch(() => undefined)
     },
     canDeliverDeferred() { return !stopped && statusText === '长连接已建立' },
     async send(chatId, text) {
@@ -818,7 +833,7 @@ export function createSlackChannel(config: SlackConfig, log: (line: string) => v
     setMessageHandler(next) { handler = next },
     async diagnose(signal) {
       const identity = await probe('bot', signal, async () => {
-        const data = await diagnosticJson(`${apiBase}auth.test`, signal, {}, { authorization: `Bearer ${token}` })
+        const data = await diagnosticJson(`${apiBase}auth.test`, signal, {}, { authorization: `Bearer ${token}` }, fetchImpl)
         if (data.ok === false) throw new DiagnosticError(AUTH_ERRORS.has(String(data.error)) ? 'auth' : 'rejected')
         requireDiagnostic(data.ok === true && typeof data.user_id === 'string' && data.user_id)
       })

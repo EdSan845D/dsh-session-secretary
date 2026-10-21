@@ -117,7 +117,6 @@ export const CHANNEL_META: Record<ChannelId, ChannelMeta> = {
     fields: [
       { key: 'token', label: 'Bot Token（xoxb- 开头）', secret: true },
       { key: 'appToken', label: 'App Token（xapp- 开头）', secret: true },
-      { key: 'proxyUrl', label: '代理地址', secret: true, settingsOnly: true },
     ],
   },
 }

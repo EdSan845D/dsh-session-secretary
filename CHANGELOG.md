@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.12 - 2026-10-21
+
+- Support per-account outbound proxy configuration for Telegram and Discord: choose between following host proxy (default), connecting directly, or configuring custom HTTP/HTTPS proxies.
+- Route all Telegram and Discord outbound traffic through the configured proxy, including REST APIs, Telegram long polling, Discord Gateway WebSocket connections, file transfers, connection diagnostics, and inbound media/attachment downloads.
+- Display proxy addresses as standard text fields with reflection and draft retention while keeping credentials securely stored in the local vault, and avoid unnecessary channel restarts when editing unrelated account settings.
+- Improve Discord Gateway reconnection resilience: dynamically recreate closed dispatchers on reconnect, and automatically clear expired session cursors to fall back to a fresh Identify immediately when receiving Opcode 9 (`Invalid Session`).
+
 ## 1.0.11 - 2026-10-21
 
 - Fix Feishu and Lark replies failing to fall back to plain text when a card is rejected with HTTP 400, such as a reply containing a local inline image. The fallback preserves the full text, image description, and path; it does not upload or render the local image.

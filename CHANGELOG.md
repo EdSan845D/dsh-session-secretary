@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Deliver outbound images on Feishu / Lark as real image messages: upload through `im/v1/images` with `image_type=message`, then send with `msg_type=image` so pictures render inline instead of arriving as file attachments.
+- Route by extension and size: only PNG/JPG/JPEG/WEBP/GIF/BMP/ICO/TIFF/HEIC up to 10 MB use image messages; larger files and non-images keep the existing file path.
+- Fall back to a file message when the image upload or send is rejected by the platform so the picture is never lost; an explicit cancellation or timeout still aborts instead of silently re-sending.
+
 ## 1.0.12 - 2026-10-21
 
 - Support per-account outbound proxy configuration for Telegram and Discord: choose between following host proxy (default), connecting directly, or configuring custom HTTP/HTTPS proxies.

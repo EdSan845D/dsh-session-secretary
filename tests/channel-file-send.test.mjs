@@ -52,6 +52,67 @@ for (const id of ['feishu', 'lark']) test(`${id} 真实 SDK 文件上传与消�
   assert.deepEqual(sent.data, { receive_id: 'chat', msg_type: 'file', content: '{"file_key":"uploaded"}' })
   assert.equal(sent.params.receive_id_type, 'chat_id')
 })
+/** 用真实 SDK + 假传输层跑飞书出站，返回捕获到的请求。 */
+async function feishuOutgoing(t, respond) {
+  const real = await import('@larksuiteoapi/node-sdk')
+  const requests = []
+  const transport = { request: async opts => {
+    requests.push(opts)
+    if (opts.url.includes('auth/v3')) return { code: 0, tenant_access_token: 'token', app_access_token: 'token', expire: 7200 }
+    if (opts.url.includes('/bot/v3/info')) return { bot: { open_id: 'bot' } }
+    return respond(opts)
+  } }
+  transport.post = (url, data) => transport.request({ url, data })
+  const sdk = { ...real, defaultHttpInstance: transport, EventDispatcher: class { register() { return this } }, WSClient: class { async start() {} close() {} } }
+  const channel = createFeishuChannel('feishu', { appId: 'image-feishu', appSecret: 'test' }, () => {}, async () => sdk)
+  t.after(() => channel.stop())
+  await channel.start()
+  return { channel, requests }
+}
+
+test('飞书图片先上传为图片消息，聊天里内联预览', async t => {
+  const { channel, requests } = await feishuOutgoing(t, opts => {
+    if (opts.url.endsWith('/images')) return { code: 0, data: { image_key: 'img_key' } }
+    if (opts.url.endsWith('/messages')) return { code: 0, data: { message_id: 'sent' } }
+    throw new Error('Unexpected request')
+  })
+  await channel.sendFile('chat', { name: '截图.PNG', data: Buffer.from('png-bytes') })
+  const upload = requests.find(r => r.url.endsWith('/images'))
+  assert.ok(upload, '图片应走 im/v1/images')
+  assert.equal(upload.data.image_type, 'message')
+  assert.equal(Buffer.compare(Buffer.from(upload.data.image), Buffer.from('png-bytes')), 0)
+  assert.equal(requests.some(r => r.url.endsWith('/files')), false)
+  const sent = requests.find(r => r.url.endsWith('/messages'))
+  assert.deepEqual(sent.data, { receive_id: 'chat', msg_type: 'image', content: '{"image_key":"img_key"}' })
+})
+
+test('飞书图片上传被拒时回落为文件消息，交付不中断', async t => {
+  const { channel, requests } = await feishuOutgoing(t, opts => {
+    if (opts.url.endsWith('/images')) return { code: 234001, msg: 'invalid image' }
+    if (opts.url.endsWith('/files')) return { code: 0, data: { file_key: 'uploaded' } }
+    if (opts.url.endsWith('/messages')) return { code: 0, data: { message_id: 'sent' } }
+    throw new Error('Unexpected request')
+  })
+  await channel.sendFile('chat', { name: 'photo.jpg', data: Buffer.from('jpg-bytes') })
+  assert.ok(requests.find(r => r.url.endsWith('/images')))
+  const sent = requests.find(r => r.url.endsWith('/messages'))
+  assert.deepEqual(sent.data, { receive_id: 'chat', msg_type: 'file', content: '{"file_key":"uploaded"}' })
+})
+
+test('超过 10 MB 的图片与普通文件都直接走文件消息', async t => {
+  const { channel, requests } = await feishuOutgoing(t, opts => {
+    if (opts.url.endsWith('/files')) return { code: 0, data: { file_key: 'uploaded' } }
+    if (opts.url.endsWith('/messages')) return { code: 0, data: { message_id: 'sent' } }
+    throw new Error('Unexpected request')
+  })
+  await channel.sendFile('chat', { name: 'big.png', data: Buffer.alloc(10 * 1024 * 1024 + 1) })
+  await channel.sendFile('chat', { name: '报告.pdf', data: Buffer.from('pdf-content') })
+  assert.equal(requests.some(r => r.url.endsWith('/images')), false)
+  const sent = requests.filter(r => r.url.endsWith('/messages'))
+  assert.equal(sent.length, 2)
+  assert.ok(sent.every(r => r.data.msg_type === 'file'))
+})
+
 for (const group of [false, true]) test(`QQ ${group ? '群聊' : '私聊'} 文件先上传后用 msg_type 7 发送`, async t => {
   t.after(() => mock.restoreAll())
   const requests = []
@@ -126,8 +187,7 @@ test('微信文件执行加密上传并带文件名投递', async t => {
   assert.equal(message.item_list[0].file_item.file_name, file.name)
   assert.equal(message.item_list[0].file_item.len, String(file.data.length))
 })
-test('临时文件成功和失败都清理，并拒绝文件名穿越', async () => {
-  for (const fail of [false, true]) {
+test('临时文件成功和失败都清理，并拒绝文件名穿越', async () => {  for (const fail of [false, true]) {
     let path
     const work = withOutgoingPath(file, async p => { path = p; assert.deepEqual(await readFile(p), file.data); if (fail) throw new Error('upload failed') })
     if (fail) await assert.rejects(work)

@@ -3300,19 +3300,38 @@ window.__ModuleLoader__.load({
         }
         openListed(id);
       };
+      const rawExpandSidebar = typeof props.expandSidebar === "function" ? props.expandSidebar : undefined;
+      const allowExpandSidebarRef = useRef(false);
+      const previousWide = useRef(props.wide);
+      useEffect(() => {
+        if (previousWide.current !== props.wide) {
+          previousWide.current = props.wide;
+          allowExpandSidebarRef.current = false;
+        }
+        const timer = setTimeout(() => {
+          allowExpandSidebarRef.current = true;
+        }, 120);
+        return () => clearTimeout(timer);
+      }, [props.wide]);
+      const safeExpandSidebar = useCallback(() => {
+        if (props.wide === false && !allowExpandSidebarRef.current) return;
+        if (typeof rawExpandSidebar === "function") rawExpandSidebar();
+      }, [rawExpandSidebar, props.wide]);
+      const guardedHostProps = Object.assign({}, props, rawExpandSidebar ? { expandSidebar: safeExpandSidebar } : {});
       const officialProps = Object.assign({}, props, { useSessions: useTaskSessions, t: officialT, openSession, open: openSession });
+      const guardedOfficialProps = Object.assign({}, officialProps, rawExpandSidebar ? { expandSidebar: safeExpandSidebar } : {});
       const channelView = h(ChannelOfficialView, {
         officialTree: Official,
-        hostProps: props,
+        hostProps: guardedHostProps,
         hostT: officialT,
         t,
         openSession,
         openChannelSettings: props.openChannelSettings,
         openImSettings: props.openImSettings,
       });
-      if (props.wide === false) return Official ? h(Official, officialProps) : null;
+      if (props.wide === false) return Official ? h(Official, guardedOfficialProps) : null;
       const officialTree = Official
-        ? h("div", { className: "ima-official-tree" }, h(Official, officialProps))
+        ? h("div", { className: "ima-official-tree" }, h(Official, guardedOfficialProps))
         : null;
       const visibleTab = resolveSidebarTab(tab, extraTabs);
       const extra = extraTabs.find((item) => item.id === visibleTab);

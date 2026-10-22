@@ -3300,26 +3300,21 @@ window.__ModuleLoader__.load({
         }
         openListed(id);
       };
-      const rawExpandSidebar = typeof props.expandSidebar === "function" ? props.expandSidebar : undefined;
-      const allowExpandSidebarRef = useRef(false);
-      const previousWide = useRef(props.wide);
-      useEffect(() => {
-        if (previousWide.current !== props.wide) {
-          previousWide.current = props.wide;
-          allowExpandSidebarRef.current = false;
-        }
-        const timer = setTimeout(() => {
-          allowExpandSidebarRef.current = true;
-        }, 120);
-        return () => clearTimeout(timer);
-      }, [props.wide]);
-      const safeExpandSidebar = useCallback(() => {
-        if (props.wide === false && !allowExpandSidebarRef.current) return;
-        if (typeof rawExpandSidebar === "function") rawExpandSidebar();
-      }, [rawExpandSidebar, props.wide]);
-      const guardedHostProps = Object.assign({}, props, rawExpandSidebar ? { expandSidebar: safeExpandSidebar } : {});
+      const safeExpandSidebar = useCallback(() => {}, []);
+      const rawUseWorkspaceShortcuts = typeof props.useWorkspaceShortcuts === "function" ? props.useWorkspaceShortcuts : undefined;
+      const useIsolatedWorkspaceShortcuts = useCallback((select, equals) => {
+        if (typeof rawUseWorkspaceShortcuts !== "function") return select({ searchRequest: 0, addRequested: false, directoryBusy: false, renameTarget: null });
+        return rawUseWorkspaceShortcuts((state) => select(Object.assign({}, state, { searchRequest: 0 })), equals);
+      }, [rawUseWorkspaceShortcuts]);
+      const guardedHostProps = Object.assign({}, props, {
+        expandSidebar: safeExpandSidebar,
+        useWorkspaceShortcuts: useIsolatedWorkspaceShortcuts,
+      });
       const officialProps = Object.assign({}, props, { useSessions: useTaskSessions, t: officialT, openSession, open: openSession });
-      const guardedOfficialProps = Object.assign({}, officialProps, rawExpandSidebar ? { expandSidebar: safeExpandSidebar } : {});
+      const guardedOfficialProps = Object.assign({}, officialProps, {
+        expandSidebar: safeExpandSidebar,
+        useWorkspaceShortcuts: useIsolatedWorkspaceShortcuts,
+      });
       const channelView = h(ChannelOfficialView, {
         officialTree: Official,
         hostProps: guardedHostProps,

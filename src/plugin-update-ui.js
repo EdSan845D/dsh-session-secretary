@@ -1,3 +1,5 @@
+import { resolveApiUrl } from "../lib/api-base.js";
+
 const UPDATE_HEADER = "x-michengai-plugin-update";
 const STYLE_ID = "michengai-plugin-update-ui";
 const updatePrimitives = (typeof require === "function" ? (function () { try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; } })() : {});
@@ -147,37 +149,6 @@ function ensureStyle() {
   style.textContent = CSS;
   style.setAttribute("data-plugin", "@michengai/dsh-im-connect");
   (document.head ?? document.documentElement).append(style);
-}
-/** 页面基准地址；末尾补斜杠，避免 /app/dsh 这类无斜杠页面把前缀解析掉一级。 */
-function pageBaseHref() {
-  if (typeof document === "undefined") return undefined;
-  const raw = document.baseURI;
-  if (typeof raw !== "string" || raw === "") return undefined;
-  try {
-    const url = new URL(raw);
-    if (!url.pathname.endsWith("/")) url.pathname += "/";
-    return url.href;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * 解析插件端点 URL。
- *
- * @param {string} path 端点路径，通常是 "/api/..." 这类根绝对路径。
- * @returns {string} 基于页面 base 的绝对 URL；相对路径、完整 URL、协议相对 URL、无 document
- *          或 base 非法时原样返回，保证非浏览器环境与测试夹具行为不变。
- */
-function resolveApiUrl(path) {
-  if (typeof path !== "string" || path.charAt(0) !== "/" || path.charAt(1) === "/") return path;
-  const base = pageBaseHref();
-  if (base === undefined) return path;
-  try {
-    return new URL(path.slice(1), base).href;
-  } catch {
-    return path;
-  }
 }
 
 function validPayload(value) {
@@ -365,7 +336,10 @@ function observePluginUpdate(options) {
     frame = window.requestAnimationFrame(() => { frame = undefined; applyControls(); });
   });
   observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["lang"] });
-  const onToggle = () => applyControls();
+  const onToggle = () => {
+    applyControls();
+    if (!options.isEnabled || options.isEnabled()) void load().catch(() => {});
+  };
   if (typeof window !== "undefined") window.addEventListener("ima-update-toggle", onToggle);
   applyControls();
   void load().catch(() => {});

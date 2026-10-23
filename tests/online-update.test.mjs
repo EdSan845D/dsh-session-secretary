@@ -101,6 +101,7 @@ test('在线更新开关：管理器方法、持久化、HTTP API 与更新器�
       const getData = await getRes.json()
       assert.equal(getData.ok, true)
       assert.equal(getData.enabled, true, 'HTTP GET 默认 enabled 为 true')
+      assert.equal(getData.locked, false, '默认未被宿主配置锁定')
 
       // 在线更新开启时，访问 update 路由正常响应 200
       const updateRes1 = await fetch(updateUrl)
@@ -193,6 +194,7 @@ test('在线更新开关：管理器方法、持久化、HTTP API 与更新器�
       const getRes = await fetch(lockedBaseUrl)
       const getData = await getRes.json()
       assert.equal(getData.enabled, false)
+      assert.equal(getData.locked, true, '宿主锁定更新时 GET 返回 locked: true')
 
       const postRes = await fetch(lockedBaseUrl, {
         method: 'POST',

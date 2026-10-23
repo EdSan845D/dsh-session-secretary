@@ -59,6 +59,8 @@ test('IM 客户端与 Host 绑定自身更新入口', async () => {
   assert.doesNotMatch(updateUi, /zIndex:\s*1200/)
   assert.match(updateUi, /ReactDOM\.createRoot/)
   assert.doesNotMatch(updateUi, /require\("react-dom\/client"\)/)
+  assert.match(updateUi, /if \(heading !== null\) \{\s*const version = heading\.querySelector\(`\.mpi-version\[data-package="\$\{options\.packageName\}"\]`\);\s*if \(version !== null\) \{\s*version\.remove\(\);/)
+  assert.doesNotMatch(updateUi, /cleanup\.refresh/)
   const packed = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
   assert.doesNotMatch(packed, /^\{\s*handlePluginUpdateEscape,/m)
   assert.ok(

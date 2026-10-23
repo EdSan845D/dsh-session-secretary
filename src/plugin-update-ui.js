@@ -308,6 +308,26 @@ function observePluginUpdate(options) {
     const row = document.querySelector(options.titleRowSelector);
     if (row === null) return;
     const heading = row.querySelector("h1,h2");
+    const links = row.querySelector(options.linksSelector);
+
+    if (options.isEnabled && !options.isEnabled()) {
+      if (dialogHost !== undefined) closeDialog();
+      if (links !== null) {
+        const existing = links.querySelector(`[data-mpi-check="${options.packageName}"]`);
+        if (existing !== null) {
+          unmountCheck();
+          existing.remove();
+        }
+      }
+      if (heading !== null) {
+        const version = heading.querySelector(`.mpi-version[data-package="${options.packageName}"]`);
+        if (version !== null) {
+          version.remove();
+        }
+      }
+      return;
+    }
+
     if (heading !== null && payload !== undefined) {
       let version = heading.querySelector(`.mpi-version[data-package="${options.packageName}"]`);
       if (version === null) {
@@ -320,17 +340,8 @@ function observePluginUpdate(options) {
       if (version.textContent !== versionLabel) version.textContent = versionLabel;
     }
     if (buttonHost !== undefined && !buttonHost.isConnected) unmountCheck();
-    const links = row.querySelector(options.linksSelector);
     if (links === null) return;
     const existing = links.querySelector(`[data-mpi-check="${options.packageName}"]`);
-    if (options.isEnabled && !options.isEnabled()) {
-      if (dialogHost !== undefined) closeDialog();
-      if (existing !== null) {
-        unmountCheck();
-        existing.remove();
-      }
-      return;
-    }
     if (existing !== null) {
       const label = existing.querySelector("[data-mpi-label]");
       if (label === null || label.textContent !== pluginUpdateCopy(document.documentElement.lang).check) renderCheck();
@@ -367,7 +378,6 @@ function observePluginUpdate(options) {
     if (frame !== undefined) window.cancelAnimationFrame(frame);
     document.querySelectorAll(`[data-mpi-check="${options.packageName}"],.mpi-version[data-package="${options.packageName}"]`).forEach((node) => node.remove());
   };
-  cleanup.refresh = () => applyControls();
   return cleanup;
 }
 export {

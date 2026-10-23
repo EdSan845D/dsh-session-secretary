@@ -16,7 +16,7 @@ type DesktopPnpmHandle = { done: Promise<{ exitCode: number | null; signal: Node
 type DesktopPnpm = { runPlugin(args: readonly string[], invokingDir: string, signal?: AbortSignal): DesktopPnpmHandle }
 type UpdateContext = Context & { webServer: WebServer; get?(name: string): unknown }
 
-export type PluginUpdaterOptions = { readonly endpoint: string; readonly packageName: string; readonly manifestUrl: URL }
+export type PluginUpdaterOptions = { readonly endpoint: string; readonly packageName: string; readonly manifestUrl: URL; readonly isEnabled?: () => Promise<boolean> | boolean }
 
 type PackageManagerLaunch = { command: string; args: readonly string[]; env?: NodeJS.ProcessEnv }
 type PluginManagerInstall = { installBundle(spec: string): Promise<{ application?: string; error?: { message?: string }; packageResult?: { output?: string } }> }
@@ -492,6 +492,13 @@ export function registerPluginUpdater(ctx: Context, options: PluginUpdaterOption
     kind: 'exact', path: options.endpoint,
     handler: async (request, response) => {
       try {
+        if (options.isEnabled) {
+          const allowed = await options.isEnabled()
+          if (!allowed) {
+            json(response, 403, { ok: false, error: '在线更新已被禁用。' })
+            return
+          }
+        }
         const target = runtime(host)
         if (request.method === 'GET' || request.method === 'HEAD') {
           const payload = await status(options, target)

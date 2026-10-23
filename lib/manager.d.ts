@@ -110,6 +110,7 @@ export declare class ChannelManager {
     private readonly log;
     private readonly ctx;
     private readonly engineConfig;
+    private readonly hostUpdateDisabled;
     private store;
     private readonly running;
     private readonly proxyUrlCache;
@@ -123,6 +124,7 @@ export declare class ChannelManager {
         stateDir: string;
         log: (line: string) => void;
         engineConfig: EngineConfig;
+        hostUpdateDisabled?: boolean;
     });
     list(): ChannelView[];
     private hydrateProxyUrl;
@@ -154,6 +156,11 @@ export declare class ChannelManager {
     initEnabled(): Promise<void>;
     registerApi(ctx: Context): void;
     disposeApi(): void;
+    getSidebarEntry(): boolean;
+    setSidebarEntry(enabled: boolean): Promise<boolean>;
+    isHostUpdateDisabled(): boolean;
+    isUpdateEnabled(): boolean;
+    setOnlineUpdate(enabled: boolean): Promise<boolean>;
     currentAssistant(): AssistantModel | undefined;
     updateAccount(accountId: string, input: Record<string, unknown>): Promise<{
         ok: boolean;

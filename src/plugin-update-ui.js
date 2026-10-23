@@ -323,6 +323,14 @@ function observePluginUpdate(options) {
     const links = row.querySelector(options.linksSelector);
     if (links === null) return;
     const existing = links.querySelector(`[data-mpi-check="${options.packageName}"]`);
+    if (options.isEnabled && !options.isEnabled()) {
+      if (dialogHost !== undefined) closeDialog();
+      if (existing !== null) {
+        unmountCheck();
+        existing.remove();
+      }
+      return;
+    }
     if (existing !== null) {
       const label = existing.querySelector("[data-mpi-label]");
       if (label === null || label.textContent !== pluginUpdateCopy(document.documentElement.lang).check) renderCheck();
@@ -348,7 +356,7 @@ function observePluginUpdate(options) {
   observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["lang"] });
   applyControls();
   void load().catch(() => {});
-  return () => {
+  const cleanup = () => {
     controller.abort();
     observer.disconnect();
     closeDialog();
@@ -356,6 +364,8 @@ function observePluginUpdate(options) {
     if (frame !== undefined) window.cancelAnimationFrame(frame);
     document.querySelectorAll(`[data-mpi-check="${options.packageName}"],.mpi-version[data-package="${options.packageName}"]`).forEach((node) => node.remove());
   };
+  cleanup.refresh = () => applyControls();
+  return cleanup;
 }
 export {
   handlePluginUpdateEscape,

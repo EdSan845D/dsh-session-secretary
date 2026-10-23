@@ -141,3 +141,137 @@ test('侧边栏入口配置：管理器方法、持久化与 HTTP API', async ()
     await rm(temporary, { recursive: true, force: true }).catch(() => {})
   }
 })
+
+test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const React = await import('react')
+
+  let definition
+  new Function('window', await readFile(new URL('../lib/client.js', import.meta.url), 'utf8'))({
+    __ModuleLoader__: { load(value) { definition = value } },
+  })
+  const client = definition.factory((id) => {
+    if (id === 'react') return React
+    if (id === 'react/jsx-runtime') return { jsx: React.createElement, jsxs: React.createElement, Fragment: React.Fragment }
+    if (id.startsWith('react-dom')) return { createPortal: (node) => node }
+    if (id === '@deepseek-ai/dsh-client-ui-primitives') {
+      return {
+        Button: (props) => React.createElement('button', props, props.children),
+        Input: (props) => React.createElement('input', props),
+        Modal: () => null,
+        SegmentedTabs: () => null,
+        Switch: (props) => React.createElement('input', { type: 'checkbox', checked: props.checked, onChange: (e) => props.onChange(e.target.checked) }),
+      }
+    }
+    return new Proxy({}, { get: () => function Dummy() { return null } })
+  })
+
+  const { setupSidebarEntry } = client
+  assert.equal(typeof setupSidebarEntry, 'function', 'client 导出 setupSidebarEntry')
+
+  const slotRegistrations = new Map()
+  const slotInjections = new Map()
+  let selectedPanel = 'im-connect'
+
+  const mockCtx = {
+    locale: {
+      bind: () => (key) => key,
+    },
+    slots: {
+      inject(name, fn) {
+        slotInjections.set(name, fn)
+      },
+      register(meta, component) {
+        slotRegistrations.set(meta.name, { meta, component })
+        return () => {
+          slotRegistrations.delete(meta.name)
+        }
+      },
+    },
+    inject(deps, fn) {
+      if (deps.includes('layout')) {
+        fn({
+          layout: {
+            panelInfo: { getSnapshot: () => ({ activePanelId: selectedPanel }) },
+            selectPanel: (id) => { selectedPanel = id },
+          },
+        })
+      }
+    },
+  }
+
+  let clientSidebar = false
+  let clientUpdate = true
+  const controller = setupSidebarEntry(mockCtx, {
+    callApi: async (path, options) => {
+      if (path === '/sidebar-entry') {
+        if (options?.method === 'POST') {
+          const body = JSON.parse(options.body)
+          clientSidebar = body.enabled
+          return { enabled: clientSidebar }
+        }
+        return { enabled: clientSidebar }
+      }
+      if (path === '/online-update') {
+        if (options?.method === 'POST') {
+          const body = JSON.parse(options.body)
+          clientUpdate = body.enabled
+          return { enabled: clientUpdate }
+        }
+        return { enabled: clientUpdate }
+      }
+      throw new Error('unexpected path: ' + path)
+    },
+    renderPanel: () => 'panel-element',
+    ns: 'im-connect',
+  })
+
+  // 默认关闭且尚未 inject 槽位时
+  assert.equal(controller.isEnabled(), false)
+  assert.equal(controller.isSupported(), false)
+  assert.equal(slotRegistrations.has('main'), false)
+  assert.equal(slotRegistrations.has('sidebar.panellist'), false)
+
+  // plugins.bundle.config 应该已经触发 inject
+  assert.ok(slotInjections.has('plugins.bundle.config'))
+  // 执行 bundle config 注入
+  slotInjections.get('plugins.bundle.config')()
+  assert.ok(slotRegistrations.has('plugins.bundle.config'))
+  assert.equal(slotRegistrations.get('plugins.bundle.config').meta.key, '@michengai/dsh-im-connect')
+
+  // 触发 sidebar.panellist 槽位注入（代表宿主支持侧边栏）
+  assert.ok(slotInjections.has('sidebar.panellist'))
+  slotInjections.get('sidebar.panellist')()
+  assert.equal(controller.isSupported(), true)
+  // 开关仍为关闭，所以侧栏和 main 仍未注册
+  assert.equal(slotRegistrations.has('main'), false)
+  assert.equal(slotRegistrations.has('sidebar.panellist'), false)
+
+  // 打开开关
+  await controller.setEnabled(true)
+  assert.equal(controller.isEnabled(), true)
+  assert.ok(slotRegistrations.has('main'), '开启后注册 main 槽位')
+  assert.equal(slotRegistrations.get('main').meta.key, 'im-connect')
+  assert.ok(slotRegistrations.has('sidebar.panellist'), '开启后注册 sidebar.panellist 槽位')
+  assert.equal(slotRegistrations.get('sidebar.panellist').meta.id, 'im-connect')
+  assert.equal(slotRegistrations.get('sidebar.panellist').meta.order, 3)
+
+  // 关闭开关：验证安全切走当前激活面板并注销槽位
+  selectedPanel = 'im-connect'
+  await controller.setEnabled(false)
+  assert.equal(controller.isEnabled(), false)
+  assert.equal(selectedPanel, null, '关闭开关时如果当前在该面板，安全重置选中的面板')
+  assert.equal(slotRegistrations.has('main'), false, '关闭后注销 main')
+  assert.equal(slotRegistrations.has('sidebar.panellist'), false, '关闭后注销 sidebar.panellist')
+
+  // 测试 onlineUpdate 控制
+  assert.equal(controller.isOnlineUpdateEnabled(), true)
+  await controller.setOnlineUpdate(false)
+  assert.equal(controller.isOnlineUpdateEnabled(), false)
+  assert.equal(clientUpdate, false)
+  await controller.setOnlineUpdate(true)
+  assert.equal(controller.isOnlineUpdateEnabled(), true)
+  assert.equal(clientUpdate, true)
+
+  controller.destroy()
+})

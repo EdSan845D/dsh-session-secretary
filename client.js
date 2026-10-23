@@ -14,6 +14,7 @@ window.__ModuleLoader__.load({
     const HostMenu = primitives.Menu;
     const HostModal = primitives.Modal;
     const HostSegmentedTabs = primitives.SegmentedTabs;
+    const PrimitiveSwitch = primitives.Switch;
     // 宿主 Button 由 forwardRef 包成对象，typeof 是 object，不是 function。
     function isHostComponent(component) {
       return typeof component === "function" || (!!component && typeof component === "object" && typeof component.render === "function");
@@ -848,7 +849,7 @@ window.__ModuleLoader__.load({
 .ima-btn-danger:hover:not(:disabled){color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;background:rgba(239,68,68,.12)!important}
 .ima-btn-danger-primary,.ima-btn-danger.ima-btn-danger-primary{background:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;color:#fff!important}
 @container (max-width:480px){.ima-account-row{grid-template-columns:minmax(0,1fr) auto auto;gap:8px;padding:10px}.ima-account-receive>span{display:none}.ima-platform-head{padding:10px 12px}.ima-account-list{padding:0 12px 12px}}
-
+.ima-main-panel{box-sizing:border-box;height:100%;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:28px clamp(24px,4vw,48px) 48px}.ima-main-panel>*{width:100%;max-width:960px}.ima-bundle-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:0.5px solid var(--dsw-alias-border-l2)}.ima-bundle-label-box{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;text-align:left}.ima-bundle-title{font-size:13px;font-weight:500;line-height:20px;color:var(--dsw-alias-label-primary)}.ima-bundle-desc{font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}
 `;
 
     const TITLE_LINK_CSS = "@media(max-width:720px){.ima-title-row{flex-wrap:wrap}}";
@@ -3482,6 +3483,305 @@ window.__ModuleLoader__.load({
         || component.__dshAutomationOriginal !== undefined);
     }
 
+    const BUNDLE_KEY = "@michengai/dsh-im-connect";
+    const SIDEBAR_PANEL_ID = "im-connect";
+    const SIDEBAR_PANEL_ORDER = 3;
+
+    function ImSidebarIcon(props) {
+      const size = props && typeof props.size === "number" ? props.size : 16;
+      return h(IconQueueOutline, { size });
+    }
+
+    function ImBundleConfigCard(props) {
+      const {
+        t,
+        enabled,
+        onToggle,
+        disabled,
+        onlineUpdateEnabled = true,
+        onToggleOnlineUpdate,
+        onlineUpdateDisabled,
+      } = props;
+
+      const SwitchComponent = PrimitiveSwitch || Switch;
+      const rows = [
+        h("div", { key: "sidebar-entry", className: "ima-bundle-row" },
+          h("div", { className: "ima-bundle-label-box" },
+            h("span", { className: "ima-bundle-title" }, t("sidebar.entry.title")),
+            h("span", { className: "ima-bundle-desc" }, t("sidebar.entry.desc"))
+          ),
+          h(SwitchComponent, {
+            checked: enabled,
+            onChange: onToggle,
+            label: t("sidebar.entry.toggle"),
+            disabled: disabled,
+          })
+        ),
+      ];
+
+      if (typeof onToggleOnlineUpdate === "function") {
+        rows.push(
+          h("div", { key: "online-update", className: "ima-bundle-row" },
+            h("div", { className: "ima-bundle-label-box" },
+              h("span", { className: "ima-bundle-title" }, t("update.entry.title")),
+              h("span", { className: "ima-bundle-desc" }, t("update.entry.desc"))
+            ),
+            h(SwitchComponent, {
+              checked: onlineUpdateEnabled,
+              onChange: onToggleOnlineUpdate,
+              label: t("update.entry.toggle"),
+              disabled: onlineUpdateDisabled,
+            })
+          )
+        );
+      }
+
+      return h(React.Fragment, null, rows);
+    }
+
+    function ImBundleConfigCardWrapper(props) {
+      const [enabled, setEnabled] = useState(props.getEnabled);
+      const [onlineUpdateEnabled, setOnlineUpdateEnabled] = useState(props.getOnlineUpdateEnabled ? props.getOnlineUpdateEnabled : () => true);
+      const [savingSidebar, setSavingSidebar] = useState(false);
+      const [savingUpdate, setSavingUpdate] = useState(false);
+
+      useEffect(() => {
+        setEnabled(props.getEnabled());
+        if (props.getOnlineUpdateEnabled) {
+          setOnlineUpdateEnabled(props.getOnlineUpdateEnabled());
+        }
+        return props.subscribe(() => {
+          setEnabled(props.getEnabled());
+          if (props.getOnlineUpdateEnabled) {
+            setOnlineUpdateEnabled(props.getOnlineUpdateEnabled());
+          }
+        });
+      }, [props]);
+
+      const onToggleSidebar = (next) => {
+        setSavingSidebar(true);
+        setEnabled(next);
+        props.setSidebar(next).catch(() => {
+          setEnabled(props.getEnabled());
+        }).finally(() => {
+          setSavingSidebar(false);
+        });
+      };
+
+      const onToggleOnlineUpdate = props.setOnlineUpdate ? (next) => {
+        setSavingUpdate(true);
+        setOnlineUpdateEnabled(next);
+        props.setOnlineUpdate(next).catch(() => {
+          if (props.getOnlineUpdateEnabled) {
+            setOnlineUpdateEnabled(props.getOnlineUpdateEnabled());
+          }
+        }).finally(() => {
+          setSavingUpdate(false);
+        });
+      } : undefined;
+
+      return h(ImBundleConfigCard, {
+        t: props.t,
+        enabled,
+        disabled: savingSidebar,
+        onToggle: onToggleSidebar,
+        onlineUpdateEnabled,
+        onlineUpdateDisabled: savingUpdate,
+        onToggleOnlineUpdate,
+      });
+    }
+
+    function setupSidebarEntry(ctx, options) {
+      if (!ctx.locale) {
+        return {
+          isEnabled: () => false,
+          isSupported: () => false,
+          setEnabled: async () => false,
+          isOnlineUpdateEnabled: () => true,
+          setOnlineUpdate: async () => false,
+          destroy: () => {},
+        };
+      }
+      const { callApi, renderPanel, ns } = options;
+      let sidebarEntryEnabled = false;
+      let sidebarSupported = false;
+      let offPanel = null;
+      let offRow = null;
+      let epoch = 0;
+      let layoutService;
+      const listeners = new Set();
+
+      const notify = () => {
+        for (const listener of listeners) {
+          try { listener(); } catch {}
+        }
+      };
+
+      const sync = () => {
+        if (sidebarSupported && sidebarEntryEnabled) {
+          if (!offPanel) {
+            const res = ctx.slots.register({
+              name: "main",
+              key: SIDEBAR_PANEL_ID,
+              locale: ns,
+              inject: () => ({ t: ctx.locale?.bind ? ctx.locale.bind(ns) : undefined }),
+            }, (ownerProps) => h("div", { className: "ima-main-panel" }, renderPanel(ownerProps)));
+            offPanel = typeof res === "function" ? res : () => {};
+          }
+          if (!offRow) {
+            const res = ctx.slots.register({
+              name: "sidebar.panellist",
+              id: SIDEBAR_PANEL_ID,
+              order: SIDEBAR_PANEL_ORDER,
+              label: () => ctx.locale.bind(ns)("settings.title"),
+              locale: ns,
+            }, (ownerProps) => h(ImSidebarIcon, ownerProps));
+            offRow = typeof res === "function" ? res : () => {};
+          }
+        } else {
+          if (layoutService?.panelInfo && typeof layoutService.selectPanel === "function") {
+            try {
+              if (layoutService.panelInfo.getSnapshot().activePanelId === SIDEBAR_PANEL_ID) {
+                layoutService.selectPanel(null);
+              }
+            } catch {}
+          }
+          if (offRow) {
+            try { offRow(); } catch {}
+            offRow = null;
+          }
+          if (offPanel) {
+            try { offPanel(); } catch {}
+            offPanel = null;
+          }
+        }
+      };
+
+      const setEnabled = async (next) => {
+        const currentEpoch = ++epoch;
+        sidebarEntryEnabled = next;
+        sync();
+        notify();
+        try {
+          await callApi("/sidebar-entry", {
+            method: "POST",
+            body: JSON.stringify({ enabled: next }),
+          });
+          return next;
+        } catch (err) {
+          if (currentEpoch === epoch) {
+            sidebarEntryEnabled = !next;
+            sync();
+            notify();
+          }
+          throw err;
+        }
+      };
+
+      let onlineUpdateEnabled = true;
+      let updateEpoch = 0;
+
+      const setOnlineUpdate = async (next) => {
+        const currentEpoch = ++updateEpoch;
+        onlineUpdateEnabled = next;
+        notify();
+        if (typeof options.onOnlineUpdateChange === "function") {
+          try { options.onOnlineUpdateChange(next); } catch {}
+        }
+        try {
+          await callApi("/online-update", {
+            method: "POST",
+            body: JSON.stringify({ enabled: next }),
+          });
+          return next;
+        } catch (err) {
+          if (currentEpoch === updateEpoch) {
+            onlineUpdateEnabled = !next;
+            notify();
+            if (typeof options.onOnlineUpdateChange === "function") {
+              try { options.onOnlineUpdateChange(!next); } catch {}
+            }
+          }
+          throw err;
+        }
+      };
+
+      const loadEpoch = epoch;
+      callApi("/sidebar-entry")
+        .then((res) => {
+          if (epoch === loadEpoch && res && typeof res.enabled === "boolean") {
+            sidebarEntryEnabled = res.enabled;
+            sync();
+            notify();
+          }
+        })
+        .catch(() => {});
+
+      const loadUpdateEpoch = updateEpoch;
+      callApi("/online-update")
+        .then((res) => {
+          if (updateEpoch === loadUpdateEpoch && res && typeof res.enabled === "boolean") {
+            onlineUpdateEnabled = res.enabled;
+            notify();
+            if (typeof options.onOnlineUpdateChange === "function") {
+              try { options.onOnlineUpdateChange(res.enabled); } catch {}
+            }
+          }
+        })
+        .catch(() => {});
+
+      if (typeof ctx.inject === "function") {
+        ctx.inject(["layout"], (scoped) => {
+          layoutService = scoped.layout;
+        });
+      }
+
+      ctx.slots.inject("sidebar.panellist", () => {
+        sidebarSupported = true;
+        sync();
+      });
+
+      ctx.slots.inject("plugins.bundle.config", () => {
+        return ctx.slots.register({
+          name: "plugins.bundle.config",
+          key: BUNDLE_KEY,
+          locale: ns,
+        }, (ownerProps) => {
+          if (ownerProps && ownerProps.view === "summary") return null;
+          return h(ImBundleConfigCardWrapper, {
+            t: ctx.locale.bind(ns),
+            getEnabled: () => sidebarEntryEnabled,
+            setSidebar: setEnabled,
+            getOnlineUpdateEnabled: () => onlineUpdateEnabled,
+            setOnlineUpdate: setOnlineUpdate,
+            subscribe: (fn) => {
+              listeners.add(fn);
+              return () => { listeners.delete(fn); };
+            },
+          });
+        });
+      });
+
+      return {
+        isEnabled: () => sidebarEntryEnabled,
+        isSupported: () => sidebarSupported,
+        setEnabled,
+        isOnlineUpdateEnabled: () => onlineUpdateEnabled,
+        setOnlineUpdate,
+        destroy: () => {
+          listeners.clear();
+          if (offRow) {
+            try { offRow(); } catch {}
+            offRow = null;
+          }
+          if (offPanel) {
+            try { offPanel(); } catch {}
+            offPanel = null;
+          }
+        },
+      };
+    }
+
     function apply(ctx) {
       ensureStyle();
       ctx.effect(() => {
@@ -3514,6 +3814,14 @@ window.__ModuleLoader__.load({
       }), "im-connect: channel membership");
       ctx.effect(() => ctx.locale.register(IM_LOCALE_NS, IM_LOCALES), "im-connect: dictionaries");
       const t = ctx.locale.bind(IM_LOCALE_NS);
+      const sidebarController = setupSidebarEntry(ctx, {
+        callApi: api,
+        renderPanel: (ownerProps) => h(LocalizedSettingsPage, ownerProps),
+        ns: IM_LOCALE_NS,
+        onOnlineUpdateChange: () => {
+          if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("ima-update-toggle"));
+        },
+      });
       ctx.effect(() => observePluginUpdate({
         endpoint: "/api/michengai/dsh-im-connect/update",
         packageName: "@michengai/dsh-im-connect",
@@ -3522,6 +3830,7 @@ window.__ModuleLoader__.load({
         zhName: t("settings.title"),
         enName: t("settings.title"),
         createIcon: createPluginUpdateIcon,
+        isEnabled: () => sidebarController.isOnlineUpdateEnabled(),
       }), "im-connect: plugin update ui");
       const permissionT = ctx.locale.bind("permission.access");
       const modelT = ctx.locale.bind("model");
@@ -3834,6 +4143,7 @@ window.__ModuleLoader__.load({
     exports.apply = apply;
     exports.inject = inject;
     exports.resolveApiUrl = resolveApiUrl;
+    exports.setupSidebarEntry = setupSidebarEntry;
     return module.exports;
   },
 });

@@ -68,6 +68,21 @@ interface ResourceClient {
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024
 // Shared across all images in one message, not renewed for each resource.
 const MAX_MESSAGE_IMAGE_BYTES = MAX_IMAGE_BYTES
+/** 发送图片消息走 im/v1/images，飞书限制单图 10 MB。 */
+const MAX_OUTGOING_IMAGE_BYTES = 10 * 1024 * 1024
+const OUTGOING_IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico', 'tif', 'tiff', 'heic'])
+/**
+ * 只有明确是图片且大小合规的文件才改用图片消息；其余一律按文件发送，
+ * 避免把改名成 .png 的文本当成图片上传后被平台拒绝。
+ */
+function outgoingImageExt(file: { name?: string; data?: Uint8Array }): string | undefined {
+  const name = typeof file?.name === 'string' ? file.name : ''
+  const ext = name.toLowerCase().split('.').pop() ?? ''
+  if (!OUTGOING_IMAGE_EXTENSIONS.has(ext)) return
+  const size = typeof file?.data?.length === 'number' ? file.data.length : 0
+  if (size === 0 || size > MAX_OUTGOING_IMAGE_BYTES) return
+  return ext
+}
 
 /** SDK messageResource.get is the receive-side API, not im.image.get. */
 export async function resolveFeishuContent(client: ResourceClient, message: FeishuContentMessage, signal: AbortSignal = AbortSignal.timeout(30_000)): Promise<{ text: string; media: ImMedia[] }> {
@@ -167,7 +182,7 @@ export function createFeishuChannel(id: 'feishu' | 'lark', config: FeishuConfig,
   let handler: ((msg: ImMessage) => void | Promise<void>) | undefined
   let client: ResourceClient & {
     request(opts: { url: string; method: 'GET' }): Promise<unknown>
-    im: { messageReaction: { create(opts: unknown): Promise<{ code?: number; data?: { reaction_id?: string } }>; delete(opts: unknown): Promise<{ code?: number }> }; message: { create(opts: unknown): Promise<unknown>; patch(opts: unknown): Promise<unknown> }; file: { create(opts: unknown): Promise<{ file_key?: string } | null> } }
+    im: { messageReaction: { create(opts: unknown): Promise<{ code?: number; data?: { reaction_id?: string } }>; delete(opts: unknown): Promise<{ code?: number }> }; message: { create(opts: unknown): Promise<unknown>; patch(opts: unknown): Promise<unknown> }; file: { create(opts: unknown): Promise<{ file_key?: string } | null> }; image: { create(opts: unknown): Promise<{ image_key?: string } | null> } }
   } | undefined
   let ws: { close(opts?: { force?: boolean }): void } | undefined
   let statusText = '未连接'
@@ -350,7 +365,25 @@ export function createFeishuChannel(id: 'feishu' | 'lark', config: FeishuConfig,
       const active = client
       const scope = AbortSignal.any([timeoutSignal(120_000, lifecycle.signal), ...(signal ? [signal] : [])])
       scope.throwIfAborted()
-      const uploaded = await fileOperation(active.im.file.create({ data: { file_type: 'stream', file_name: file.name, file: Buffer.from(file.data) } }), scope)
+      const data = Buffer.from(file.data)
+      // 图片优先走 IM 图片消息，飞书才会内联预览；上传或发送被拒时回落到文件消息，不中断交付。
+      if (outgoingImageExt(file)) {
+        try {
+          const picture = await fileOperation(active.im.image.create({ data: { image_type: 'message', image: data } }), scope) as { image_key?: string }
+          scope.throwIfAborted()
+          if (picture?.image_key) {
+            const sentPicture = await active.im.message.create({
+              params: { receive_id_type: 'chat_id' },
+              data: { receive_id: chatId, msg_type: 'image', content: JSON.stringify({ image_key: picture.image_key }) },
+            }) as { code?: number }
+            if (!isRejectedCode(sentPicture.code)) return
+          }
+        } catch (error) {
+          if (scope.aborted) throw error
+        }
+        scope.throwIfAborted()
+      }
+      const uploaded = await fileOperation(active.im.file.create({ data: { file_type: 'stream', file_name: file.name, file: data } }), scope)
       scope.throwIfAborted()
       if (!uploaded?.file_key) throw new Error('file-upload-rejected')
       const sent = await active.im.message.create({

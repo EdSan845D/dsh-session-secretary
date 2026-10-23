@@ -945,7 +945,8 @@ window.__ModuleLoader__.load({
         request.headers = Object.assign({ "content-type": "application/json" }, request.headers || {}, { "x-dsh-im-connect-client": "1" });
         if (request.body === undefined) request.body = "{}";
       }
-      return fetch(API_BASE + path, request).then((r) => r.json()).then((data) => {
+      const targetUrl = typeof resolveApiUrl === "function" ? resolveApiUrl(API_BASE + path) : API_BASE + path;
+      return fetch(targetUrl, request).then((r) => r.json()).then((data) => {
         if (!request.signal?.aborted && data.ok && Array.isArray(data.groups)) updateChannelMembership(data.groups);
         return data;
       });
@@ -3828,6 +3829,7 @@ window.__ModuleLoader__.load({
 
     exports.apply = apply;
     exports.inject = inject;
+    exports.resolveApiUrl = resolveApiUrl;
     return module.exports;
   },
 });

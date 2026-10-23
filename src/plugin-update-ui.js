@@ -148,6 +148,38 @@ function ensureStyle() {
   style.setAttribute("data-plugin", "@michengai/dsh-im-connect");
   (document.head ?? document.documentElement).append(style);
 }
+/** 页面基准地址；末尾补斜杠，避免 /app/dsh 这类无斜杠页面把前缀解析掉一级。 */
+function pageBaseHref() {
+  if (typeof document === "undefined") return undefined;
+  const raw = document.baseURI;
+  if (typeof raw !== "string" || raw === "") return undefined;
+  try {
+    const url = new URL(raw);
+    if (!url.pathname.endsWith("/")) url.pathname += "/";
+    return url.href;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 解析插件端点 URL。
+ *
+ * @param {string} path 端点路径，通常是 "/api/..." 这类根绝对路径。
+ * @returns {string} 基于页面 base 的绝对 URL；相对路径、完整 URL、协议相对 URL、无 document
+ *          或 base 非法时原样返回，保证非浏览器环境与测试夹具行为不变。
+ */
+function resolveApiUrl(path) {
+  if (typeof path !== "string" || path.charAt(0) !== "/" || path.charAt(1) === "/") return path;
+  const base = pageBaseHref();
+  if (base === undefined) return path;
+  try {
+    return new URL(path.slice(1), base).href;
+  } catch {
+    return path;
+  }
+}
+
 function validPayload(value) {
   if (value === null || typeof value !== "object") return false;
   const item = value;
@@ -233,6 +265,7 @@ function UpdateDialog(props) {
 }
 function observePluginUpdate(options) {
   if (typeof document === "undefined" || document.body === null) return () => {};
+  const endpoint = resolveApiUrl(options.endpoint);
   ensureStyle();
   const createRoot = ReactDOM.createRoot || function createRootFallback(host) {
     return {
@@ -267,7 +300,7 @@ function observePluginUpdate(options) {
     const root = createRoot(host);
     dialogRoot = root;
     root.render(React.createElement(UpdateDialog, {
-      flow: createUpdateFlow((method) => requestStatus(options.endpoint, method, controller.signal), payload, (next) => { payload = next; applyControls(); }),
+      flow: createUpdateFlow((method) => requestStatus(endpoint, method, controller.signal), payload, (next) => { payload = next; applyControls(); }),
       packageName: options.packageName, zhName: options.zhName, enName: options.enName, onClose: closeDialog,
     }));
   }
@@ -304,7 +337,7 @@ function observePluginUpdate(options) {
     renderCheck();
   };
   const load = async () => {
-    payload = await requestStatus(options.endpoint, "GET", controller.signal);
+    payload = await requestStatus(endpoint, "GET", controller.signal);
     applyControls();
     return payload;
   };
@@ -327,5 +360,6 @@ function observePluginUpdate(options) {
 export {
   handlePluginUpdateEscape,
   manualPluginUpdateCommand,
-  observePluginUpdate
+  observePluginUpdate,
+  resolveApiUrl
 };

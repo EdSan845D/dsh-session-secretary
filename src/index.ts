@@ -31,6 +31,8 @@ export interface PluginConfig {
   agentPreset: string
   mergeTimeoutSecs: number
   topicNaming: TopicMode
+  updater?: boolean
+  onlineUpdate?: boolean
 }
 
 export const Config: Schema<PluginConfig> = Schema.object({
@@ -41,14 +43,12 @@ export const Config: Schema<PluginConfig> = Schema.object({
   agentPreset: Schema.string().default('standard'),
   mergeTimeoutSecs: Schema.number().default(5),
   topicNaming: Schema.union(['once', 'follow', 'off']).default('once'),
+  updater: Schema.boolean(),
+  onlineUpdate: Schema.boolean(),
 })
 
 export function apply(ctx: Context, config: PluginConfig): void {
-  ctx.effect(() => registerPluginUpdater(ctx, {
-    endpoint: '/api/michengai/dsh-im-connect/update',
-    packageName: '@michengai/dsh-im-connect',
-    manifestUrl: new URL('../package.json', import.meta.url),
-  }), 'im-connect.plugin-updater')
+  const hostUpdateDisabled = config.updater === false || config.onlineUpdate === false
   const permissionPresets = (ctx as Context & { permissionPresets: { defaultPreset: string } }).permissionPresets
   const stateDir = config.stateDir !== ''
     ? config.stateDir
@@ -73,8 +73,14 @@ export function apply(ctx: Context, config: PluginConfig): void {
   }
 
   const applyStarted = Date.now()
-  const manager = new ChannelManager({ ctx, stateDir, log, engineConfig })
+  const manager = new ChannelManager({ ctx, stateDir, log, engineConfig, hostUpdateDisabled })
   log(`[boot] ChannelManager 构造 ${Date.now() - applyStarted}ms`)
+  ctx.effect(() => registerPluginUpdater(ctx, {
+    endpoint: '/api/michengai/dsh-im-connect/update',
+    packageName: '@michengai/dsh-im-connect',
+    manifestUrl: new URL('../package.json', import.meta.url),
+    isEnabled: async () => !hostUpdateDisabled && manager.isUpdateEnabled(),
+  }), 'im-connect.plugin-updater')
   ctx.effect(() => {
     manager.registerApi(ctx)
     // 卸载或初始化失败后不再恢复会话；保留一个完整异常链，避免后台拒绝终止宿主。

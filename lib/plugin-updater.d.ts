@@ -23,6 +23,7 @@ export type PluginUpdaterOptions = {
     readonly endpoint: string;
     readonly packageName: string;
     readonly manifestUrl: URL;
+    readonly isEnabled?: () => Promise<boolean> | boolean;
 };
 type PackageManagerLaunch = {
     command: string;

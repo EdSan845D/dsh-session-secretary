@@ -14,6 +14,8 @@ export interface PluginConfig {
     agentPreset: string;
     mergeTimeoutSecs: number;
     topicNaming: TopicMode;
+    updater?: boolean;
+    onlineUpdate?: boolean;
 }
 export declare const Config: Schema<PluginConfig>;
 export declare function apply(ctx: Context, config: PluginConfig): void;

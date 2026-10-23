@@ -3501,6 +3501,7 @@ window.__ModuleLoader__.load({
         onlineUpdateEnabled = true,
         onToggleOnlineUpdate,
         onlineUpdateDisabled,
+        onlineUpdateLocked = false,
       } = props;
 
       const SwitchComponent = PrimitiveSwitch || Switch;
@@ -3520,17 +3521,20 @@ window.__ModuleLoader__.load({
       ];
 
       if (typeof onToggleOnlineUpdate === "function") {
+        const updateDesc = onlineUpdateLocked
+          ? `${t("update.entry.desc")} (${t("error.update.disabled")})`
+          : t("update.entry.desc");
         rows.push(
           h("div", { key: "online-update", className: "ima-bundle-row" },
             h("div", { className: "ima-bundle-label-box" },
               h("span", { className: "ima-bundle-title" }, t("update.entry.title")),
-              h("span", { className: "ima-bundle-desc" }, t("update.entry.desc"))
+              h("span", { className: "ima-bundle-desc" }, updateDesc)
             ),
             h(SwitchComponent, {
               checked: onlineUpdateEnabled,
               onChange: onToggleOnlineUpdate,
               label: t("update.entry.toggle"),
-              disabled: onlineUpdateDisabled,
+              disabled: onlineUpdateDisabled || onlineUpdateLocked,
             })
           )
         );
@@ -3542,6 +3546,7 @@ window.__ModuleLoader__.load({
     function ImBundleConfigCardWrapper(props) {
       const [enabled, setEnabled] = useState(props.getEnabled);
       const [onlineUpdateEnabled, setOnlineUpdateEnabled] = useState(props.getOnlineUpdateEnabled ? props.getOnlineUpdateEnabled : () => true);
+      const [onlineUpdateLocked, setOnlineUpdateLocked] = useState(props.getOnlineUpdateLocked ? props.getOnlineUpdateLocked : () => false);
       const [savingSidebar, setSavingSidebar] = useState(false);
       const [savingUpdate, setSavingUpdate] = useState(false);
 
@@ -3550,10 +3555,16 @@ window.__ModuleLoader__.load({
         if (props.getOnlineUpdateEnabled) {
           setOnlineUpdateEnabled(props.getOnlineUpdateEnabled());
         }
+        if (props.getOnlineUpdateLocked) {
+          setOnlineUpdateLocked(props.getOnlineUpdateLocked());
+        }
         return props.subscribe(() => {
           setEnabled(props.getEnabled());
           if (props.getOnlineUpdateEnabled) {
             setOnlineUpdateEnabled(props.getOnlineUpdateEnabled());
+          }
+          if (props.getOnlineUpdateLocked) {
+            setOnlineUpdateLocked(props.getOnlineUpdateLocked());
           }
         });
       }, [props]);
@@ -3569,6 +3580,7 @@ window.__ModuleLoader__.load({
       };
 
       const onToggleOnlineUpdate = props.setOnlineUpdate ? (next) => {
+        if (onlineUpdateLocked) return;
         setSavingUpdate(true);
         setOnlineUpdateEnabled(next);
         props.setOnlineUpdate(next).catch(() => {
@@ -3587,6 +3599,7 @@ window.__ModuleLoader__.load({
         onToggle: onToggleSidebar,
         onlineUpdateEnabled,
         onlineUpdateDisabled: savingUpdate,
+        onlineUpdateLocked,
         onToggleOnlineUpdate,
       });
     }
@@ -3624,7 +3637,10 @@ window.__ModuleLoader__.load({
               name: "main",
               key: SIDEBAR_PANEL_ID,
               locale: ns,
-              inject: () => ({ t: ctx.locale?.bind ? ctx.locale.bind(ns) : undefined }),
+              inject: () => {
+                const extra = typeof options.injectProps === "function" ? options.injectProps() : options.injectProps;
+                return Object.assign({ t: ctx.locale?.bind ? ctx.locale.bind(ns) : undefined }, extra);
+              },
             }, (ownerProps) => h("div", { className: "ima-main-panel" }, renderPanel(ownerProps)));
             offPanel = typeof res === "function" ? res : () => {};
           }
@@ -3679,9 +3695,11 @@ window.__ModuleLoader__.load({
       };
 
       let onlineUpdateEnabled = true;
+      let onlineUpdateLocked = false;
       let updateEpoch = 0;
 
       const setOnlineUpdate = async (next) => {
+        if (onlineUpdateLocked) return onlineUpdateEnabled;
         const currentEpoch = ++updateEpoch;
         onlineUpdateEnabled = next;
         notify();
@@ -3720,11 +3738,12 @@ window.__ModuleLoader__.load({
       const loadUpdateEpoch = updateEpoch;
       callApi("/online-update")
         .then((res) => {
-          if (updateEpoch === loadUpdateEpoch && res && typeof res.enabled === "boolean") {
-            onlineUpdateEnabled = res.enabled;
+          if (updateEpoch === loadUpdateEpoch && res) {
+            if (typeof res.enabled === "boolean") onlineUpdateEnabled = res.enabled;
+            if (typeof res.locked === "boolean") onlineUpdateLocked = res.locked;
             notify();
             if (typeof options.onOnlineUpdateChange === "function") {
-              try { options.onOnlineUpdateChange(res.enabled); } catch {}
+              try { options.onOnlineUpdateChange(onlineUpdateEnabled); } catch {}
             }
           }
         })
@@ -3753,6 +3772,7 @@ window.__ModuleLoader__.load({
             getEnabled: () => sidebarEntryEnabled,
             setSidebar: setEnabled,
             getOnlineUpdateEnabled: () => onlineUpdateEnabled,
+            getOnlineUpdateLocked: () => onlineUpdateLocked,
             setOnlineUpdate: setOnlineUpdate,
             subscribe: (fn) => {
               listeners.add(fn);
@@ -3767,6 +3787,7 @@ window.__ModuleLoader__.load({
         isSupported: () => sidebarSupported,
         setEnabled,
         isOnlineUpdateEnabled: () => onlineUpdateEnabled,
+        isOnlineUpdateLocked: () => onlineUpdateLocked,
         setOnlineUpdate,
         destroy: () => {
           listeners.clear();
@@ -3814,14 +3835,25 @@ window.__ModuleLoader__.load({
       }), "im-connect: channel membership");
       ctx.effect(() => ctx.locale.register(IM_LOCALE_NS, IM_LOCALES), "im-connect: dictionaries");
       const t = ctx.locale.bind(IM_LOCALE_NS);
+      const permissionT = ctx.locale.bind("permission.access");
+      const modelT = ctx.locale.bind("model");
+      const presetT = ctx.locale.bind("settings.agentPreset");
       const sidebarController = setupSidebarEntry(ctx, {
         callApi: api,
         renderPanel: (ownerProps) => h(LocalizedSettingsPage, ownerProps),
         ns: IM_LOCALE_NS,
+        injectProps: () => ({
+          createWorkspace: (input) => ctx.workspaces?.create ? ctx.workspaces.create(input) : undefined,
+          pickDirectory: () => pickHostDirectory(ctx),
+          permissionT,
+          modelT,
+          presetT,
+        }),
         onOnlineUpdateChange: () => {
           if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("ima-update-toggle"));
         },
       });
+      ctx.effect(() => () => sidebarController.destroy(), "im-connect: sidebar entry");
       ctx.effect(() => observePluginUpdate({
         endpoint: "/api/michengai/dsh-im-connect/update",
         packageName: "@michengai/dsh-im-connect",
@@ -3832,9 +3864,6 @@ window.__ModuleLoader__.load({
         createIcon: createPluginUpdateIcon,
         isEnabled: () => sidebarController.isOnlineUpdateEnabled(),
       }), "im-connect: plugin update ui");
-      const permissionT = ctx.locale.bind("permission.access");
-      const modelT = ctx.locale.bind("model");
-      const presetT = ctx.locale.bind("settings.agentPreset");
       const subscribeLocale = (listener) => ctx.locale.subscribe(listener);
       const localeSnapshot = () => ctx.locale.getSnapshot();
       const openChannelSettings = (request) => {

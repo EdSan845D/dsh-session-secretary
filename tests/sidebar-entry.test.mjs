@@ -202,6 +202,7 @@ test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async
 
   let clientSidebar = false
   let clientUpdate = true
+  const mockWorkspaces = { create: (input) => ({ id: 'ws-mock-id', ...input }) }
   const controller = setupSidebarEntry(mockCtx, {
     callApi: async (path, options) => {
       if (path === '/sidebar-entry') {
@@ -218,12 +219,19 @@ test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async
           clientUpdate = body.enabled
           return { enabled: clientUpdate }
         }
-        return { enabled: clientUpdate }
+        return { enabled: clientUpdate, locked: false }
       }
       throw new Error('unexpected path: ' + path)
     },
     renderPanel: () => 'panel-element',
     ns: 'im-connect',
+    injectProps: () => ({
+      createWorkspace: (input) => mockWorkspaces.create(input),
+      pickDirectory: async () => 'D:/mock-dir',
+      permissionT: (k) => 'perm:' + k,
+      modelT: (k) => 'model:' + k,
+      presetT: (k) => 'preset:' + k,
+    }),
   })
 
   // 默认关闭且尚未 inject 槽位时
@@ -252,6 +260,17 @@ test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async
   assert.equal(controller.isEnabled(), true)
   assert.ok(slotRegistrations.has('main'), '开启后注册 main 槽位')
   assert.equal(slotRegistrations.get('main').meta.key, 'im-connect')
+  // 验证 main 槽位 inject 注入了完整的工作区与选择器函数
+  const mainMeta = slotRegistrations.get('main').meta
+  assert.equal(typeof mainMeta.inject, 'function', 'main 必须包含 inject 函数')
+  const injected = mainMeta.inject()
+  assert.equal(typeof injected.createWorkspace, 'function', 'main 注入 createWorkspace')
+  assert.equal(injected.createWorkspace({ name: 'demo' }).id, 'ws-mock-id')
+  assert.equal(typeof injected.pickDirectory, 'function', 'main 注入 pickDirectory')
+  assert.equal(typeof injected.permissionT, 'function', 'main 注入 permissionT')
+  assert.equal(typeof injected.modelT, 'function', 'main 注入 modelT')
+  assert.equal(typeof injected.presetT, 'function', 'main 注入 presetT')
+
   assert.ok(slotRegistrations.has('sidebar.panellist'), '开启后注册 sidebar.panellist 槽位')
   assert.equal(slotRegistrations.get('sidebar.panellist').meta.id, 'im-connect')
   assert.equal(slotRegistrations.get('sidebar.panellist').meta.order, 3)
@@ -266,6 +285,7 @@ test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async
 
   // 测试 onlineUpdate 控制
   assert.equal(controller.isOnlineUpdateEnabled(), true)
+  assert.equal(controller.isOnlineUpdateLocked(), false)
   await controller.setOnlineUpdate(false)
   assert.equal(controller.isOnlineUpdateEnabled(), false)
   assert.equal(clientUpdate, false)
@@ -274,4 +294,20 @@ test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async
   assert.equal(clientUpdate, true)
 
   controller.destroy()
+
+  // 4. 测试宿主锁定场景（locked: true）
+  const lockedController = setupSidebarEntry(mockCtx, {
+    callApi: async (path) => {
+      if (path === '/sidebar-entry') return { enabled: true }
+      if (path === '/online-update') return { enabled: false, locked: true }
+      return {}
+    },
+    renderPanel: () => null,
+    ns: 'im-connect',
+  })
+  await new Promise((r) => setTimeout(r, 10))
+  assert.equal(lockedController.isOnlineUpdateLocked(), true, '感知宿主锁定状态')
+  await lockedController.setOnlineUpdate(true)
+  assert.equal(lockedController.isOnlineUpdateEnabled(), false, '宿主锁定状态下拒绝开启在线更新')
+  lockedController.destroy()
 })

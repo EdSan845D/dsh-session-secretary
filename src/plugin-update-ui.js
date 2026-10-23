@@ -354,9 +354,12 @@ function observePluginUpdate(options) {
     frame = window.requestAnimationFrame(() => { frame = undefined; applyControls(); });
   });
   observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["lang"] });
+  const onToggle = () => applyControls();
+  if (typeof window !== "undefined") window.addEventListener("ima-update-toggle", onToggle);
   applyControls();
   void load().catch(() => {});
   const cleanup = () => {
+    if (typeof window !== "undefined") window.removeEventListener("ima-update-toggle", onToggle);
     controller.abort();
     observer.disconnect();
     closeDialog();

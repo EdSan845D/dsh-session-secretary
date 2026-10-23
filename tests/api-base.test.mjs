@@ -11,6 +11,8 @@ import { readFile } from 'node:fs/promises'
 import React from 'react'
 import ReactDOM from 'react-dom'
 import ReactDOMClient from 'react-dom/client'
+import { resolveApiUrl as sharedResolveApiUrl } from '../lib/api-base.js'
+import { resolveApiUrl as updateResolveApiUrl } from '../src/plugin-update-ui.js'
 
 const bundleSource = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
 const clientSource = await readFile(new URL('../client.js', import.meta.url), 'utf8')
@@ -121,6 +123,10 @@ test('无 document 或非法 base 时安全回退', () => {
       'invalid base falls back to the literal path',
     )
   })
+})
+
+test('更新 UI 直接消费共享解析器，避免维护无引用的重复实现', () => {
+  assert.equal(updateResolveApiUrl, sharedResolveApiUrl)
 })
 
 test('源码出口级防回归断言', () => {

@@ -1741,8 +1741,12 @@ window.__ModuleLoader__.load({
         if (!next) { setHint(t("error.chooseWorkspace")); return Promise.resolve(); }
         if (typeof props.createWorkspace !== "function") { setHint(t("error.workspaceUnavailable")); return Promise.resolve(); }
         setAddBusy(true);
-        return Promise.resolve(props.createWorkspace({ path: next })).then((created) => {
-          const cwdPath = (created && (created.path || created.cwd)) || next;
+        return Promise.resolve().then(() => props.createWorkspace({ path: next })).then((created) => {
+          const cwdPath = created && (created.path || created.cwd);
+          if (typeof cwdPath !== "string" || !cwdPath.trim()) {
+            setHint(t("error.addWorkspace"));
+            return;
+          }
           update({ cwd: cwdPath });
         }).catch((error) => setHint((error && error.message) || t("error.addWorkspace")))
           .finally(() => setAddBusy(false));
@@ -3711,6 +3715,10 @@ window.__ModuleLoader__.load({
             method: "POST",
             body: JSON.stringify({ enabled: next }),
           });
+          // 乐观通知可能早于服务端开启；保存完成后再通知更新器重读版本。
+          if (currentEpoch === updateEpoch && typeof options.onOnlineUpdateChange === "function") {
+            options.onOnlineUpdateChange(next);
+          }
           return next;
         } catch (err) {
           if (currentEpoch === updateEpoch) {
@@ -3843,7 +3851,7 @@ window.__ModuleLoader__.load({
         renderPanel: (ownerProps) => h(LocalizedSettingsPage, ownerProps),
         ns: IM_LOCALE_NS,
         injectProps: () => ({
-          createWorkspace: (input) => ctx.workspaces?.create ? ctx.workspaces.create(input) : undefined,
+          createWorkspace: typeof ctx.workspaces?.create === "function" ? (input) => ctx.workspaces.create(input) : undefined,
           pickDirectory: () => pickHostDirectory(ctx),
           permissionT,
           modelT,
@@ -3987,7 +3995,7 @@ window.__ModuleLoader__.load({
           icon: "chat",
           locale: IM_LOCALE_NS,
         inject: () => ({
-          createWorkspace: (input) => ctx.workspaces.create(input),
+          createWorkspace: typeof ctx.workspaces?.create === "function" ? (input) => ctx.workspaces.create(input) : undefined,
           pickDirectory: () => pickHostDirectory(ctx),
           permissionT,
           modelT,

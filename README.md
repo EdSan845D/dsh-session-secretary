@@ -239,7 +239,7 @@ The configuration output should contain `im-connect`. Restart DSH Web and hard-r
 The plugin follows standard DSH bundle configuration conventions. Options are located at:
 > **Sidebar → Plugins → Click `@michengai/dsh-im-connect`** (the host's `plugins.bundle.config` slot).
 
-Two native switches are available:
+Two native switches are available. Their values are persisted in `channels.json` under the plugin's `stateDir` and survive restarts; they are not two equivalent Cordis YAML options. `sidebarEntry` is managed through this UI, while `onlineUpdate` is also subject to the host lock described below:
 
 ### 1. Sidebar Entry (`sidebarEntry`)
 - **Default**: Disabled (`false`)
@@ -259,7 +259,7 @@ Two native switches are available:
     ```yaml
     updater: false # or onlineUpdate: false
     ```
-    Once configured, the built-in updater is disabled at startup and the update action stays hidden.
+    Once configured, the updater is disabled at startup, the update action stays hidden, and the online-update switch is disabled. The host lock takes precedence over the user's choice in `channels.json` and cannot be lifted through the UI. Removing the host lock restores the saved user preference.
   - **Update Modes**: When a newer release is available, **Update automatically** runs only when the DSH CLI or Desktop update service is available; otherwise, the dialog provides a profile-specific manual command to copy and run.
 
 ## Usage

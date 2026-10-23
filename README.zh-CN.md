@@ -239,7 +239,7 @@ dsh --profile web --dump-config
 插件遵循 DSH 官方扩展配置规范，配置项位于：
 > **主界面侧边栏「插件」→ 点击 `@michengai/dsh-im-connect` 详情页**（对应宿主 `plugins.bundle.config` 槽位）。
 
-此处提供两个原生扁平行开关：
+此处提供两个原生扁平行开关。界面开关值保存在插件 `stateDir` 下的 `channels.json` 中，重启后保留；它们不是两个等价的 Cordis YAML 配置项。`sidebarEntry` 只通过此界面管理，`onlineUpdate` 另受下述宿主锁定规则约束：
 
 ### 1. 侧边栏入口 (`sidebarEntry`)
 - **默认状态**：关闭（`false`）
@@ -259,7 +259,7 @@ dsh --profile web --dump-config
     ```yaml
     updater: false # 或 onlineUpdate: false
     ```
-    配置生效后，更新器在启动时即被完全禁用，且更新入口默认保持隐藏。
+    配置生效后，更新器在启动时即被禁用，更新入口隐藏，详情页在线更新开关置灰。宿主锁定优先于 `channels.json` 中的用户选择，界面不能解除锁定；宿主移除锁定后，重新按已保存的用户选择生效。
   - **更新模式**：发现新版后，只有检测到 DSH CLI 或 Desktop 更新服务时才可使用“自动更新”；其他环境会在弹窗中提供可复制、与当前 Profile 对应的手工更新命令。
 
 ## 使用

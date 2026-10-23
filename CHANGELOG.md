@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.13 - 2026-10-23
+
+- Add an optional IM Assistant sidebar entry that opens the full management panel in a centered workspace view, while retaining the existing Settings entry.
+- Add persistent sidebar-entry and online-update switches to the plugin details page. Disabling updates hides both the update button and version badge; re-enabling refreshes version information even after starting with updates disabled. Host-level update locks remain authoritative and are shown as a disabled switch.
+- Fix management and update requests losing the deployment prefix when DSH is accessed through a path-prefixed reverse proxy.
+- Restore workspace creation and the host's model, permission, and preset labels in the sidebar management panel. Failed or unavailable workspace creation now reports an error instead of selecting an unregistered path.
+- Prevent sidebar search requests from reopening a collapsed sidebar, and clarify how UI preferences and host update locks are stored and applied.
+
 ## 1.0.12 - 2026-10-21
 
 - Support per-account outbound proxy configuration for Telegram and Discord: choose between following host proxy (default), connecting directly, or configuring custom HTTP/HTTPS proxies.

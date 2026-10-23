@@ -450,28 +450,13 @@ test('设置标题旁提供项目主页与问题反馈入口', () => {
 test('设置导航图标走通用 mask 注入，不改宿主 svg 内容', () => {
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
   assert.doesNotMatch(client, /data-orca-link-icon|NAV_ICON_SKIN/, '不得写死任何皮肤属性')
-  assert.match(client, /\[data-ima-nav-icon="assistant"\]>svg\{display:none!important\}/)
-  assert.match(client, /\.ima-nav-icon-assistant\{/)
+  assert.match(client, /\[data-ima-nav-icon\]>svg\{display:none!important\}/)
+  assert.match(client, /\[data-ima-nav-icon\]::before\{/)
 
   const start = client.indexOf('const NAV_ICON_MARKER')
   const end = client.indexOf('function installSettingsNavIcon', start)
   assert.ok(start >= 0 && end > start, '必须能提取设置导航图标补丁')
-  const document = {
-    createElement() {
-      const node = {
-        className: '',
-        attributes: new Map(),
-        setAttribute(name, value) { this.attributes.set(name, String(value)) },
-        remove() {
-          if (!node.parent) return
-          const index = node.parent.children.indexOf(node)
-          if (index >= 0) node.parent.children.splice(index, 1)
-          node.parent = null
-        },
-      }
-      return node
-    },
-  }
+  const document = {}
   const { applySettingsNavIcon, restoreSettingsNavIcon } = new Function('document', 'settingsNavIconMask', `${client.slice(start, end)}\nreturn { applySettingsNavIcon, restoreSettingsNavIcon };`)(document, () => 'url("data:image/svg+xml,x")')
 
   const svg = { innerHTML: '<path d="host"/>' }
@@ -479,28 +464,25 @@ test('设置导航图标走通用 mask 注入，不改宿主 svg 内容', () => 
     textContent: 'IM 助理',
     attributes: new Map(),
     children: [svg],
+    style: { setProperty() {} },
+    hasAttribute(name) { return this.attributes.has(name) },
     getAttribute(name) { return this.attributes.has(name) ? this.attributes.get(name) : null },
     setAttribute(name, value) { this.attributes.set(name, String(value)) },
     removeAttribute(name) { this.attributes.delete(name) },
-    querySelector(selector) {
-      if (selector === ':scope > svg') return svg
-      if (selector === 'svg') return svg
-      if (selector === '.ima-nav-icon-assistant') return this.children.find((node) => node.className === 'ima-nav-icon-assistant') ?? null
-      return null
-    },
-    prepend(node) { this.children.unshift(node); node.parent = this },
   }
 
   assert.equal(applySettingsNavIcon(button, () => 'IM 助理'), true)
-  assert.equal(button.getAttribute('data-ima-nav-icon'), 'assistant')
-  assert.equal(button.children[0].className, 'ima-nav-icon-assistant')
-  assert.equal(button.children[0].attributes.get('aria-hidden'), 'true')
+  assert.equal(button.getAttribute('data-ima-nav-icon'), '')
+  assert.equal(button.children.length, 1, '禁止向 button 插入任何真实 DOM 节点')
   assert.equal(svg.innerHTML, '<path d="host"/>', '不得改写宿主 svg 内容')
   assert.equal(applySettingsNavIcon(button, () => 'IM 助理'), false, '重复同步必须幂等')
+  assert.equal(applySettingsNavIcon(button, () => '其他'), true, '非本插件项清除 marker')
+  assert.equal(button.hasAttribute('data-ima-nav-icon'), false)
 
-  restoreSettingsNavIcon(button)
+  applySettingsNavIcon(button, () => 'IM 助理')
+  assert.equal(button.hasAttribute('data-ima-nav-icon'), true)
+  assert.equal(restoreSettingsNavIcon(button), true)
   assert.equal(button.getAttribute('data-ima-nav-icon'), null)
-  assert.equal(button.querySelector('.ima-nav-icon-assistant'), null)
 })
 
 test('设置页账号行和账号设置都能填写名称备注', () => {

@@ -93,7 +93,7 @@ The receive paths cover WeChat, WeCom, DingTalk, Feishu, Lark, QQ, Telegram, Dis
 
 WeChat, WeCom, DingTalk, Feishu, Lark, QQ, Telegram, Discord, and Slack accept ordinary files through Chat’s upload service for the current session. Send PDFs, documents or spreadsheets for the assistant to process. Format support follows web Chat’s models, tools and file capabilities; uploading does not guarantee that every format can be understood directly.
 
-- Requires the file-upload service on the supported hosts listed below: `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and `0.2.1-rc.2`. Hosts before `0.2.0`, the `0.2.1` alphas, and stable `0.2.0` are refused by the version gate and the plugin will not run; saved account settings stay in the profile. If you still use a `0.1.x` host, install plugin `0.1.78` instead of `@latest`.
+- Requires the file-upload service on the supported hosts listed below: `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`, and `0.2.1-rc.3`. Hosts before `0.2.0`, the `0.2.1` alphas, and stable `0.2.0` are refused by the version gate and the plugin will not run; saved account settings stay in the profile. If you still use a `0.1.x` host, install plugin `0.1.78` instead of `@latest`.
 - Up to 4 ordinary files per message, totaling 20 MiB. Channel download limits also apply.
 - Files become standard Chat attachments and are submitted with session-specific receipts, rather than local-path text.
 - Private admission and group mention rules remain in force. File captions such as `/new` or “allow” are content, not commands or approval responses.
@@ -201,7 +201,7 @@ For a desktop workbench, download [DSH Codex Desktop](https://github.com/Micheng
 ## Prerequisites
 
 - A working DeepSeek Harness Web installation with `dsh` available in PowerShell.
-- The current source supports DSH `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, and `0.2.1-rc.2`; `0.2.1-rc.2` is recommended. `0.2.1-alpha.1` through `0.2.1-alpha.5`, stable `0.2.0`, and hosts before `0.2.0` are refused by the version gate: the plugin will not run, and existing IM settings in the profile are not deleted. If you still use a `0.1.x` host, install plugin `0.1.78` instead of `@latest`.
+- The current source supports DSH `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-rc.1`, `0.2.1-rc.2`, and `0.2.1-rc.3`; `0.2.1-rc.2` is recommended. `0.2.1-alpha.1` through `0.2.1-alpha.5`, stable `0.2.0`, and hosts before `0.2.0` are refused by the version gate: the plugin will not run, and existing IM settings in the profile are not deleted. If you still use a `0.1.x` host, install plugin `0.1.78` instead of `@latest`.
 - Examples use the `web` profile; replace it with the target profile.
 - Source installation and development require Node.js 22+. npm installation does not require running `npm install` in an arbitrary directory.
 - After install, restart `dsh web` and hard-refresh the browser before opening **Settings → IM Assistant**.

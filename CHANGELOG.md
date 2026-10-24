@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.15 - 2026-10-24
+
+- Support DeepSeek Harness `0.2.1-rc.3` while retaining all existing supported versions.
+
 ## 1.0.14 - 2026-10-23
 
 - Deliver outbound images on Feishu / Lark as real image messages: upload through `im/v1/images` with `image_type=message`, then send with `msg_type=image` so pictures render inline instead of arriving as file attachments (PR #47).

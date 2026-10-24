@@ -1,6 +1,6 @@
 {
   "name": "@michengai/dsh-im-connect",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "DSH IM Connect — 将主流即时通讯平台接入本机 DeepSeek Harness · Connect major messaging platforms to local DeepSeek Harness agents",
   "type": "module",
   "packageManager": "pnpm@11.22.0",
@@ -85,7 +85,8 @@
     "esbuild": "^0.25.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "@deepseek-ai/dsh-llm": "0.2.1-rc.3"
   },
   "dsh": {
     "bundle": {

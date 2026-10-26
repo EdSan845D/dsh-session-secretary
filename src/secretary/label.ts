@@ -34,7 +34,8 @@ const CACHE_TTL_MS = 30_000
 export function basenameOf(path: string | undefined): string {
   if (typeof path !== 'string' || path === '') return ''
   const parts = path.split(/[\\/]/).filter(part => part !== '')
-  return parts.length > 0 ? parts[parts.length - 1] : ''
+  const last = parts.at(-1)
+  return last ?? ''
 }
 
 export function createLabelProvider(deps: LabelDeps) {

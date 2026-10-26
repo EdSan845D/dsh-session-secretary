@@ -143,6 +143,8 @@ export class ImEngine {
   private readonly chatCommands: ChatCommands
   private readonly commandScopes = new Map<string, AbortController>()
   private readonly inputScopes = new Map<string, AbortController>()
+  // [secretary] 出站会话前缀：index.ts 装配 labelProvider 后注入；null = 上游原样行为
+  applySessionLabel: ((text: string, sessionId: string) => Promise<string>) | null = null
   /** 话题名回写状态：默认一个话题只命名一次。 */
   private readonly topicTitles: TopicTitleStore
   private readonly topicWrites = new KeyedSerialQueue()
@@ -1008,6 +1010,16 @@ export class ImEngine {
     return work.catch(error => { this.log(`[im-progress] 会话回复失败: ${error instanceof Error ? error.name : 'Error'}`) })
   }
 
+  // [secretary] 会话前缀应用；labeler 缺席或抛错都退回原文，绝不影响投递本身
+  private async labelText(text: string, sessionId: string): Promise<string> {
+    if (this.applySessionLabel === null || text === '') return text
+    try {
+      return await this.applySessionLabel(text, sessionId)
+    } catch {
+      return text
+    }
+  }
+
   private async processSessionEvent(
     session: DeliverySession,
     event: { type?: string; data?: { message?: { content?: Array<{ type?: string; text?: string }> }; chunk?: { type?: string; text?: string } } },
@@ -1088,7 +1100,7 @@ export class ImEngine {
             markAttempt()
             let delivered = true
             try {
-              await taken.stream.finish(finalText)
+              await taken.stream.finish(await this.labelText(finalText, sessionId))
             } catch (error) {
               // 请求可能已经到达渠道，不能自动补一份重复回复。
               this.log(`[${channel.id}] 流式收口结果未知，请通过 /delivery 查询: ${error instanceof Error ? error.message : String(error)}`)
@@ -1109,7 +1121,7 @@ export class ImEngine {
           outcome.content = true
           markAttempt()
           this.log(`[${channel.id}] 准备回复 ${sessionId}，长度 ${text.length}`)
-          const delivered = await this.deliver(channel, binding.chatId, text, outcome)
+          const delivered = await this.deliver(channel, binding.chatId, await this.labelText(text, sessionId), outcome)
           outcome.ok = outcome.ok && delivered
         } else {
           this.log(`[${channel.id}] 助手消息为空 ${sessionId}`)

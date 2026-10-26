@@ -71,6 +71,7 @@ export declare class ImEngine {
     private readonly chatCommands;
     private readonly commandScopes;
     private readonly inputScopes;
+    applySessionLabel: ((text: string, sessionId: string) => Promise<string>) | null;
     /** 话题名回写状态：默认一个话题只命名一次。 */
     private readonly topicTitles;
     private readonly topicWrites;
@@ -128,6 +129,7 @@ export declare class ImEngine {
     private runInteraction;
     private approvalPrompt;
     private onSessionEvent;
+    private labelText;
     private processSessionEvent;
     /**
      * 把会话标题写成话题名。

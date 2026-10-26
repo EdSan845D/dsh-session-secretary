@@ -49,7 +49,7 @@ export function createLabelProvider(deps: LabelDeps) {
       if (typeof item?.sessionId !== 'string' || item.sessionId === '') continue
       rows.set(item.sessionId, {
         cwd: typeof item.cwd === 'string' ? item.cwd : undefined,
-        title: item.projections?.values?.title,
+        title: typeof item.projections?.values?.title === 'string' ? item.projections.values.title : undefined,
       })
     }
     return rows

@@ -16,6 +16,11 @@ export interface ChannelMeta {
   description: string
   kind: ChannelKind
   fields: ChannelField[]
+  /**
+   * 是否开放分段回复：只对已验证「一条回复拆成多条消息」的渠道放开。
+   * 未标记的渠道不展示开关、不注入提示词，引擎也不会切分。
+   */
+  supportsSegmentReply?: boolean
 }
 
 /** 设置页卡片顺序，对标视觉稿后再补 Telegram。 */
@@ -89,6 +94,8 @@ export const CHANNEL_META: Record<ChannelId, ChannelMeta> = {
       { key: 'appId', label: 'AppID' },
       { key: 'appSecret', label: 'AppSecret', secret: true },
     ],
+    // 先在 QQ 上验证「一条回复拆成多条消息」：被动回复按 msg_seq 递增逐条发出。
+    supportsSegmentReply: true,
   },
   telegram: {
     id: 'telegram',
@@ -129,5 +136,14 @@ export function listChannelMeta(): ChannelMeta[] {
 export function supportsQr(id: ChannelId): boolean {
   const kind = CHANNEL_META[id]?.kind
   return kind === 'qr' || kind === 'qr-or-credentials'
+}
+
+/** 该渠道是否已验证逐条投递，可以开放分段回复。 */
+export function channelSupportsSegmentReply(id: ChannelId | string): boolean {
+  const key = String(id)
+  if (CHANNEL_META[key as ChannelId]?.supportsSegmentReply === true) return true
+  // 引擎和会话绑定里拿到的常是账号 ID（如 qq_8107bade2f35），回落到平台名再查一次。
+  const platform = key.split('_', 1)[0] as ChannelId
+  return CHANNEL_META[platform]?.supportsSegmentReply === true
 }
 

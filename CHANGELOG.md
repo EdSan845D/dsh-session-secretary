@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add segmented replies: when enabled in an account's settings, the assistant splits one reply into several short messages at a separator and sends them one by one; when disabled, replies are still sent as one whole message.
+- Each message, including the first, waits a random gap drawn from the minimum/maximum range configured for that account. Gaps are in seconds, limited to 0–60, and saving is rejected when the maximum is lower than the minimum. Changes take effect immediately.
+- The separator comes from the plugin configuration `segmentMarker` (default `<<<MSG>>>`) and must occupy its own line; the same text inside a fenced code block never splits a reply, so code samples stay intact.
+- Only QQ is enabled for now (verified end to end): other channels show no toggle, receive no prompt instruction, and never split, so unverified channels cannot produce duplicated or lost messages.
+- The toggle and range are stored per account in `channels.json`; the plugin configuration `segmentReply` acts as the default for every account, with the account setting taking precedence. A failed segment stops the rest instead of resending the whole reply. Existing configs and accounts with the feature off behave exactly as before.
+
 ## 1.0.18 - 2026-10-26
 
 - Distinguish `max-tokens` turn truncation from user cancellation: when a turn ends due to output token limits (`reason.kind === 'max-tokens'`), notify the user that the maximum output length was reached and prompt them to send "continue" to proceed, instead of incorrectly reporting that the turn was stopped (#48).

@@ -151,6 +151,22 @@ export declare class ImEngine {
     /** 逐片发送；返回是否至少送达过一片，供调用方决定是否标记已投递。 */
     private deliver;
     /**
+     * 打开分段回复后按标记切消息。
+     *
+     * 渠道未开放、账号没开启、正文里没有标记、或标记全在围栏代码块里时，
+     * 返回原文一条，后续仍走原有投递路径，行为与发布前一致。
+     */
+    private segmentBubbles;
+    /** 逐条发送切好的分段消息，条与条之间随机留间隔；中途失败立即停，不整条重发。 */
+    private deliverSegments;
+    /** 分段回复的第一条也要等一个随机间隔；等待被 dispose 中止时返回 false。 */
+    private pauseBeforeSegment;
+    /**
+     * 给系统提示用的分段说明：只对本插件已绑定、且渠道已开放的会话生效，
+     * 未绑定或该账号没开启分段回复时返回空串，提示词与发布前一致。
+     */
+    segmentInstructionForSession(sessionId: string): string;
+    /**
      * 发送一个分片，平台明确拒绝时按 {@link SEND_RETRY_DELAYS_MS} 退避重试。
      * 结果不明的失败（超时、网络中断）立即返回：请求可能已经送达。
      * 等待超过 `deadline` 就放弃，让整条回复的重试开销有上界。

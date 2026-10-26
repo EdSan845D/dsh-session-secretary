@@ -418,6 +418,9 @@ window.__ModuleLoader__.load({
     }
 
     const IconSettingsOutline16 = pickHostIcon("IconSettingsOutlineRegular", "IconSettingsOutline16");
+    // 已通过逐条投递验证的渠道，与宿主端 channels/meta.ts 的 supportsSegmentReply 保持一致。
+    const SEGMENT_REPLY_PLATFORMS = ["qq"];
+    const supportsSegmentReply = (platform) => SEGMENT_REPLY_PLATFORMS.indexOf(platform) >= 0;
     const CHANNEL_SETTINGS_EVENT = "dsh-im-connect:open-channel-settings";
     const CHANNEL_SETTINGS_STORAGE_KEY = "dsh-im-connect:pending-channel-settings";
     const SETTINGS_CODEX_TRIGGER_SELECTOR = "[data-dcu-settings-trigger]";
@@ -614,7 +617,7 @@ window.__ModuleLoader__.load({
         "update.entry.title": "在线更新", "update.entry.desc": "允许检查并在线安装即时通讯插件的新版本。关闭后隐藏更新入口。", "update.entry.toggle": "切换在线更新", "error.update.disabled": "在线更新已被禁用",
         "settings.aria": "IM助理", "settings.publicChatNotice": "未批准用户可以发起聊天，但不能批准工具调用。", "pending.notice": "有访问请求。批准后该用户才能驱动本机助手。", "action.approve": "批准", "action.deny": "拒绝", "loading": "加载中…",
         "account.presetUnavailable": "预设不可用", "account.presetNote": "更改后使用新会话，旧会话保留。", "action.settings": "设置", "command.dm": "私聊命令", "command.group": "群聊命令", "command.enabled": "可以执行命令", "command.disabled": "仅正常对话",
-        "account.workspace": "工作区", "account.currentWorkspace": "当前工作区", "account.selectWorkspace": "请选择工作区", "account.selectModel": "请选择模型", "account.selectPermission": "请选择权限", "account.privateAccess": "私聊准入", "account.privateApproved": "仅已批准用户", "account.privateAll": "允许所有私聊用户", "account.sendMode": "发送方式", "account.sendQueue": "排队发送", "account.sendSteer": "插话发送", "account.sendSteerNote": "插话发送会把消息作为补充指令立即交给运行中的任务；任务空闲时与排队发送相同。", "account.autoNameNote": "绑定成功后会自动生成账号名，无需手动填写。需要区分使用者时，可在账号行填写备注。", "account.proxyMode": "网络代理", "account.proxyInherit": "跟随宿主", "account.proxyDirect": "直接连接", "account.proxyCustom": "手动配置",        "account.proxyUrl": "代理地址", "account.proxyNote": "仅影响当前账号；保存后自动重连生效。", "account.proxySaved": "代理地址已保存；留空保存可保留当前地址。", "account.defaultName": "{channel}账号 {count}",
+        "account.workspace": "工作区", "account.currentWorkspace": "当前工作区", "account.selectWorkspace": "请选择工作区", "account.selectModel": "请选择模型", "account.selectPermission": "请选择权限", "account.privateAccess": "私聊准入", "account.privateApproved": "仅已批准用户", "account.privateAll": "允许所有私聊用户", "account.sendMode": "发送方式", "account.sendQueue": "排队发送", "account.sendSteer": "插话发送", "account.sendSteerNote": "插话发送会把消息作为补充指令立即交给运行中的任务；任务空闲时与排队发送相同。", "account.segmentReply": "分段回复", "account.segmentReplyNote": "打开后助手会把一次回复拆成多条短消息，在分隔标记处切开逐条发送；关闭时仍是一条完整回复。", "account.segmentGap": "发送间隔", "account.segmentGapMin": "最小间隔", "account.segmentGapMax": "最大间隔", "account.segmentGapNote": "每条分段消息之间会从这个区间里随机取一个间隔，单位秒，可直接填写。", "account.segmentGapInvalid": "请填写 0 到 60 之间的秒数", "account.segmentGapOrder": "上限不能低于下限", "account.seconds": "秒", "account.autoNameNote": "绑定成功后会自动生成账号名，无需手动填写。需要区分使用者时，可在账号行填写备注。", "account.proxyMode": "网络代理", "account.proxyInherit": "跟随宿主", "account.proxyDirect": "直接连接", "account.proxyCustom": "手动配置",        "account.proxyUrl": "代理地址", "account.proxyNote": "仅影响当前账号；保存后自动重连生效。", "account.proxySaved": "代理地址已保存；留空保存可保留当前地址。", "account.defaultName": "{channel}账号 {count}",
         "account.remark": "名称备注", "account.remarkNote": "只在本机设置页区分账号，留空恢复自动名称。", "account.rename": "修改名称备注",
         "account.count": "{count} 个账号", "account.statusProcessing": "处理中…", "account.statusNotConnected": "未连接", "account.receive": "接收消息", "account.receiveDescription": "关闭后保留账号配置，但不接收新消息", "account.removeConfirm": "确定移除这个账号？本机保存的配置和凭据将一并删除。",
         "action.addAccount": "添加账号", "action.generateQr": "生成二维码", "action.checkConnection": "诊断连接", "action.reconnectAccount": "重新连接", "action.removeAccount": "移除接入", "status.saving": "保存中…", "status.saved": "已保存",
@@ -645,7 +648,7 @@ window.__ModuleLoader__.load({
         "update.entry.title": "Online updates", "update.entry.desc": "Allow checking and installing new versions online. Hides the update entry when disabled.", "update.entry.toggle": "Toggle online updates", "error.update.disabled": "Online updates are disabled",
         "settings.aria": "IM Assistant", "settings.publicChatNotice": "Unapproved users can start chats, but they cannot approve tool calls.", "pending.notice": "There are access requests. Approve a user before they can control the local assistant.", "action.approve": "Approve", "action.deny": "Deny", "loading": "Loading…",
         "account.presetUnavailable": "Preset unavailable", "account.presetNote": "Changes start a new session; previous sessions are kept.", "action.settings": "Settings", "command.dm": "DM commands", "command.group": "Group commands", "command.enabled": "Commands enabled", "command.disabled": "Conversation only",
-        "account.workspace": "Workspace", "account.currentWorkspace": "Current workspace", "account.selectWorkspace": "Select a workspace", "account.selectModel": "Select a model", "account.selectPermission": "Select a permission", "account.privateAccess": "Private chat access", "account.privateApproved": "Approved users only", "account.privateAll": "Allow all DM users", "account.sendMode": "Send mode", "account.sendQueue": "Queue", "account.sendSteer": "Steer", "account.sendSteerNote": "Steer hands the message to the running task as additional instructions at its next step; when the task is idle it behaves like Queue.", "account.autoNameNote": "The account name is generated automatically after setup. Add a remark on the account row if you need to tell users apart.", "account.proxyMode": "Network proxy", "account.proxyInherit": "Follow Host", "account.proxyDirect": "Connect directly", "account.proxyCustom": "Configure manually",        "account.proxyUrl": "Proxy address", "account.proxyNote": "Affects only this account. The channel reconnects automatically after saving.", "account.proxySaved": "A proxy address is saved. Leave the field blank to keep it.", "account.defaultName": "{channel} account {count}",
+        "account.workspace": "Workspace", "account.currentWorkspace": "Current workspace", "account.selectWorkspace": "Select a workspace", "account.selectModel": "Select a model", "account.selectPermission": "Select a permission", "account.privateAccess": "Private chat access", "account.privateApproved": "Approved users only", "account.privateAll": "Allow all DM users", "account.sendMode": "Send mode", "account.sendQueue": "Queue", "account.sendSteer": "Steer", "account.sendSteerNote": "Steer hands the message to the running task as additional instructions at its next step; when the task is idle it behaves like Queue.", "account.segmentReply": "Segmented replies", "account.segmentReplyNote": "When on, the assistant splits one reply into several short messages at the separator and sends them one by one; when off, replies are sent as one whole message.", "account.segmentGap": "Send gap", "account.segmentGapMin": "Minimum gap", "account.segmentGapMax": "Maximum gap", "account.segmentGapNote": "Each segmented message waits a random gap inside this range, in seconds. Type the values directly.", "account.segmentGapInvalid": "Enter a number of seconds between 0 and 60.", "account.segmentGapOrder": "The maximum gap cannot be lower than the minimum.", "account.seconds": "s", "account.autoNameNote": "The account name is generated automatically after setup. Add a remark on the account row if you need to tell users apart.", "account.proxyMode": "Network proxy", "account.proxyInherit": "Follow Host", "account.proxyDirect": "Connect directly", "account.proxyCustom": "Configure manually",        "account.proxyUrl": "Proxy address", "account.proxyNote": "Affects only this account. The channel reconnects automatically after saving.", "account.proxySaved": "A proxy address is saved. Leave the field blank to keep it.", "account.defaultName": "{channel} account {count}",
         "account.remark": "Name remark", "account.remarkNote": "Shown only in settings to tell accounts apart. Leave blank to restore the automatic name.", "account.rename": "Edit name remark",
         "account.count": "{count} accounts", "account.statusProcessing": "Processing…", "account.statusNotConnected": "Not connected", "account.receive": "Receive messages", "account.receiveDescription": "Turn this off to keep the account settings without receiving new messages", "account.removeConfirm": "Remove this account? Its saved settings and credentials will also be deleted.",
         "action.addAccount": "Add account", "action.generateQr": "Generate QR code", "action.checkConnection": "Diagnose connection", "action.reconnectAccount": "Reconnect", "action.removeAccount": "Remove", "status.saving": "Saving…", "status.saved": "Saved",
@@ -814,6 +817,9 @@ window.__ModuleLoader__.load({
    把宿主的 content 区设为滚动容器，footer 保持在容器外可见。 */
 .ima-bind-modal>.ima-modal-content,.ima-account-modal>.ima-modal-content{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .ima-account-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;width:100%;box-sizing:border-box}
+.ima-segment-gap{display:flex;align-items:center;gap:8px;width:100%}
+.ima-segment-gap-input{flex:1 1 0;min-width:0}
+.ima-segment-gap-sep,.ima-segment-gap-unit{color:var(--ima-muted, #8a8a8a);white-space:nowrap}
 .ima-account-settings.compact{grid-template-columns:1fr}
 .ima-proxy-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;width:100%;box-sizing:border-box}
 .ima-proxy-settings>.ima-picker-note{grid-column:1/-1}
@@ -1411,6 +1417,9 @@ window.__ModuleLoader__.load({
           permission: defaults && defaults.permission || "",
           privateAccess: "approved",
           sendMode: "queue",
+          segmentReply: false,
+          segmentDelayMinSecs: 1,
+          segmentDelayMaxSecs: 2,
           agentPreset: defaults && defaults.agentPreset || "standard",
         };
       });
@@ -1587,6 +1596,7 @@ window.__ModuleLoader__.load({
             permissionT,
             presetT,
             showAutoNameNote: true,
+            segmentReplySupported: supportsSegmentReply(ch.id),
             t,
           }),
           h(CommandPermissionSettings, { value: settings.commandPermissions, onSave: commandPermissions => setSettings(current => ({ ...current, commandPermissions })), t }),
@@ -1685,10 +1695,17 @@ window.__ModuleLoader__.load({
       const permissionT = props.permissionT || ((key) => key);
       const presetT = props.presetT || ((key) => key);
       const value = props.value || {};
+      const segmentDelayMinSecs = Number.isInteger(value.segmentDelayMinSecs) ? value.segmentDelayMinSecs : 1;
+      const segmentDelayMaxSecs = Number.isInteger(value.segmentDelayMaxSecs) ? value.segmentDelayMaxSecs : 2;
       const [addBusy, setAddBusy] = useState(false);
       const [hint, setHint] = useState("");
       const [confirmingFullAccess, setConfirmingFullAccess] = useState(false);
       const [fullAccessAcknowledged, setFullAccessAcknowledged] = useState(false);
+      const [segmentGapMinDraft, setSegmentGapMinDraft] = useState(String(segmentDelayMinSecs));
+      const [segmentGapMaxDraft, setSegmentGapMaxDraft] = useState(String(segmentDelayMaxSecs));
+      const [segmentGapError, setSegmentGapError] = useState("");
+      useEffect(() => { setSegmentGapMinDraft(String(segmentDelayMinSecs)); }, [segmentDelayMinSecs]);
+      useEffect(() => { setSegmentGapMaxDraft(String(segmentDelayMaxSecs)); }, [segmentDelayMaxSecs]);
       const items = props.workspaces || [];
       const providers = props.catalog || [];
       const permissions = props.permissions || [];
@@ -1699,6 +1716,10 @@ window.__ModuleLoader__.load({
       const permission = value.permission || "";
       const privateAccess = value.privateAccess === "all" ? "all" : "approved";
       const sendMode = value.sendMode === "steer" ? "steer" : "queue";
+      const segmentSupported = typeof props.segmentReplySupported === "boolean"
+        ? props.segmentReplySupported
+        : supportsSegmentReply(value.platform);
+      const segmentReply = value.segmentReply === true;
       const workspace = items.find((item) => item.path === cwd);
       const modelGroups = providers.map((item) => {
         const providerName = formatProviderLabel(item.id, item.name || item.id, modelT);
@@ -1734,6 +1755,27 @@ window.__ModuleLoader__.load({
       const update = (patch) => {
         setHint("");
         if (typeof props.onChange === "function") props.onChange(patch);
+      };
+
+      // 分段间隔手填秒数：失焦时统一校验，不合法就保留草稿并提示，不提交脏值。
+      const parseSegmentSecs = (raw) => {
+        const text = String(raw == null ? "" : raw).trim();
+        if (text === "") return undefined;
+        const parsed = Number(text);
+        if (!Number.isFinite(parsed)) return undefined;
+        return Math.min(60, Math.max(0, Math.round(parsed)));
+      };
+      const commitSegmentGap = () => {
+        const min = parseSegmentSecs(segmentGapMinDraft);
+        const max = parseSegmentSecs(segmentGapMaxDraft);
+        if (min === undefined || max === undefined) { setSegmentGapError(t("account.segmentGapInvalid")); return; }
+        if (max < min) { setSegmentGapError(t("account.segmentGapOrder")); return; }
+        setSegmentGapError("");
+        const patch = {};
+        if (min !== segmentDelayMinSecs) patch.segmentDelayMinSecs = min;
+        if (max !== segmentDelayMaxSecs) patch.segmentDelayMaxSecs = max;
+        if (patch.segmentDelayMinSecs === undefined && patch.segmentDelayMaxSecs === undefined) return;
+        update(patch);
       };
 
       const addWorkspace = (path) => {
@@ -1878,6 +1920,47 @@ window.__ModuleLoader__.load({
         })),
         h("div", { className: "ima-picker-note" }, t("account.presetNote")),
         sendMode === "steer" && h("div", { className: "ima-picker-note" }, t("account.sendSteerNote")),
+        segmentSupported && field("segmentReply", t("account.segmentReply"), h(PrimitiveSwitch || Switch, {
+          checked: segmentReply,
+          label: t("account.segmentReply"),
+          "aria-label": t("account.segmentReply"),
+          onChange: (checked) => update({ segmentReply: checked === true }),
+        })),
+        segmentSupported && h("div", { className: "ima-picker-note" }, t("account.segmentReplyNote")),
+        segmentSupported && segmentReply && field("segmentGap", t("account.segmentGap"), h("div", { className: "ima-segment-gap" },
+          h(Input, {
+            type: "number",
+            min: 0,
+            max: 60,
+            step: 1,
+            inputMode: "numeric",
+            className: "ima-segment-gap-input",
+            value: segmentGapMinDraft,
+            placeholder: "1",
+            "aria-label": t("account.segmentGapMin"),
+            onChange: (event) => { setSegmentGapMinDraft(event.target.value); setSegmentGapError(""); },
+            onBlur: commitSegmentGap,
+            onKeyDown: (event) => { if (event.key === "Enter") event.currentTarget.blur(); },
+          }),
+          h("span", { className: "ima-segment-gap-sep" }, "~"),
+          h(Input, {
+            type: "number",
+            min: 0,
+            max: 60,
+            step: 1,
+            inputMode: "numeric",
+            className: "ima-segment-gap-input",
+            value: segmentGapMaxDraft,
+            placeholder: "2",
+            "aria-label": t("account.segmentGapMax"),
+            onChange: (event) => { setSegmentGapMaxDraft(event.target.value); setSegmentGapError(""); },
+            onBlur: commitSegmentGap,
+            onKeyDown: (event) => { if (event.key === "Enter") event.currentTarget.blur(); },
+          }),
+          h("span", { className: "ima-segment-gap-unit" }, t("account.seconds")),
+        )),
+        segmentSupported && segmentReply && segmentGapError && h("div", { className: "ima-picker-note warning" }, segmentGapError),
+        segmentSupported && segmentReply && h("div", { className: "ima-picker-note" }, t("account.segmentGapNote")),
         privateAccess === "all" && h("div", { className: "ima-picker-note warning" }, t("settings.publicChatNotice")),
         hint && h("div", { className: "ima-picker-note" }, hint),
         props.showAutoNameNote && h("div", { className: "ima-picker-note" }, t("account.autoNameNote")),
@@ -1985,7 +2068,7 @@ window.__ModuleLoader__.load({
         setDraft(account);
         setProxyModeDraft(account.proxyMode || "inherit");
         setNote("");
-      }, [account.id, account.cwd, account.permission, account.agentPreset, account.privateAccess, account.sendMode, account.proxyMode, account.proxyConfigured, JSON.stringify(account.commandPermissions), account.receiveEnabled, account.assistant && account.assistant.provider, account.assistant && account.assistant.model, account.assistant && account.assistant.reasoningEffort]);
+      }, [account.id, account.cwd, account.permission, account.agentPreset, account.privateAccess, account.sendMode, account.segmentReply, account.segmentDelayMinSecs, account.segmentDelayMaxSecs, account.proxyMode, account.proxyConfigured, JSON.stringify(account.commandPermissions), account.receiveEnabled, account.assistant && account.assistant.provider, account.assistant && account.assistant.model, account.assistant && account.assistant.reasoningEffort]);
       useEffect(() => {
         setProxyUrlDraft(account.proxyUrl || "");
       }, [account.id, account.proxyUrl]);
@@ -2004,6 +2087,9 @@ window.__ModuleLoader__.load({
           permission: next.permission,
           privateAccess: next.privateAccess,
           sendMode: next.sendMode,
+          segmentReply: next.segmentReply === true,
+          segmentDelayMinSecs: next.segmentDelayMinSecs,
+          segmentDelayMaxSecs: next.segmentDelayMaxSecs,
           agentPreset: next.agentPreset,
           commandPermissions: next.commandPermissions,
         };
@@ -2054,6 +2140,7 @@ window.__ModuleLoader__.load({
           h(AccountSettingsPicker, {
             value: draft,
             onChange: applySettings,
+            segmentReplySupported: account.segmentReplySupported !== false,
             catalog,
             permissions,
             agentPresets,

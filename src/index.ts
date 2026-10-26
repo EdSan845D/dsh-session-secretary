@@ -3,19 +3,22 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
+import { mkdirSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { mkdirSync } from 'node:fs'
 import { ChannelManager } from './manager.js'
 import type { EngineConfig } from './engine/types.js'
 import type { TopicMode } from './engine/topic-title.js'
 import { createRotatingFileAppender } from './engine/file-log.js'
 import { registerPluginUpdater } from './plugin-updater.js'
+import { createImSessionId } from './engine/session-id.js'
 // [secretary]
 import { createControlChat } from './secretary/control-chat.js'
 import { createLabelProvider } from './secretary/label.js'
 import { createNotifier } from './secretary/notifier.js'
 import { createSecretaryBridge } from './secretary/bridge.js'
+import { buildIntentPrompt, candidateLines, parseIntentReply } from './secretary/intent.js'
 import { createSystemChannel } from './notify-channels/system.js'
 
 export const name = 'dsh-session-secretary'
@@ -235,10 +238,141 @@ function wireSecretary(
   })
   bridge.setUserQuestions(ctx.userQuestions)
 
-  // tag 截断：先于原生流程消费秘书代笔回复；顺带学习控制聊天
+  // tag 截断：先于原生流程消费秘书代笔回复；顺带学习控制聊天 + 意图解析
+  const pendingIntents = new Map<string, Array<() => Promise<string>>>()
+  const sendControl = async (text: string): Promise<void> => {
+    const target = controlChat.resolve(manager.runningChannels)
+    if (target === null) return
+    await target.channel.send(target.chatId, text).catch(error => {
+      warnLog(`控制投递失败: ${error instanceof Error ? error.message : String(error)}`)
+    })
+  }
+  const getController = () => (ctx as Context & { get?(name: string): unknown }).get?.('sessionController') as
+    | {
+        list(request: object): Promise<{ items?: Array<{ sessionId?: string; cwd?: string; running?: boolean; origin?: string; projections?: { values?: { title?: string } } }> }>
+        resolveAgent(sessionId: string): Promise<{ agent?: unknown }>
+        prompt(request: { sessionId: string; requestId: string; mode?: string; content: Array<{ type: 'text'; text: string }> }): Promise<unknown>
+      }
+    | undefined
+  const sessionBaseName = (path: string | undefined): string => {
+    if (typeof path !== 'string' || path === '') return ''
+    const parts = path.split(/[\\/]/).filter(part => part !== '')
+    return parts.at(-1) ?? ''
+  }
+  const askAgentOnce = (intentSessionId: string, prompt: string, timeoutMs: number): Promise<string | null> => new Promise(resolve => {
+    let settled = false
+    const finish = (value: string | null) => {
+      if (settled) return
+      settled = true
+      off()
+      clearTimeout(timer)
+      resolve(value)
+    }
+    const off = ctx.on('session/event', (session: { id?: string }, event: { type?: string; surfaceOp?: string; data?: unknown }) => {
+      if (session?.id !== intentSessionId || event?.type !== 'assistant/message') return
+      if (event.surfaceOp !== undefined && event.surfaceOp !== 'append') return
+      const text = extractAssistantText(event.data)
+      if (text.trim() !== '') finish(text)
+    })
+    const timer = setTimeout(() => finish(null), timeoutMs)
+    timer.unref?.()
+    const controller = getController()
+    if (controller === undefined) { finish(null); return }
+    void controller.prompt({ sessionId: intentSessionId, requestId: randomUUID(), content: [{ type: 'text', text: prompt }] })
+      .catch(() => finish(null))
+  })
+  const runIntent = async (channelId: string, kind: 'dm' | 'group', msg: { chatId: string; text: string }): Promise<{ confirmText: string; options: Array<() => Promise<string>> } | null> => {
+    const controller = getController()
+    const agents = (ctx as Context & { agents?: { create(options: Record<string, unknown>): Promise<{ dispose?(): Promise<void> }>; withoutInitiator?(run: () => Promise<unknown>): unknown } }).agents
+    if (controller === undefined || agents?.create === undefined) return null
+    const listed = await controller.list({}).catch(() => null)
+    const rows = (listed?.items ?? []).filter(row => !row.origin && row.running !== true).slice(0, 8)
+    const candidates = rows.map(row => ({
+      sessionId: row.sessionId!,
+      title: row.projections?.values?.title || row.sessionId!.slice(0, 8),
+      project: sessionBaseName(row.cwd) || '未知项目',
+    }))
+    let handle: { dispose?(): Promise<void> } | undefined
+    try {
+      const intentSessionId = createImSessionId('secretary', kind, msg.chatId)
+      handle = await agents.create({
+        sessionId: intentSessionId,
+        meta: { cwd: config.cwd || process.cwd() },
+        agentOptions: { provider: config.provider, model: config.model },
+      }) as { dispose?(): Promise<void> }
+      const reply = await askAgentOnce(intentSessionId, buildIntentPrompt({ userText: msg.text, chatId: msg.chatId, candidates }), 25_000)
+      const intent = reply === null ? null : parseIntentReply(reply, candidates)
+      if (intent === null || intent.action === 'chat') return null
+      if (intent.action === 'open' && intent.sessionId !== undefined) {
+        const row = rows.find(item => item.sessionId === intent.sessionId)
+        const known = candidates.find(item => item.sessionId === intent.sessionId)
+        const bind = async (): Promise<string> => {
+          const resolved = await controller.resolveAgent(intent.sessionId!).then(value => value?.agent).catch(() => undefined)
+          await manager.imEngine.bindSessionToChat(channelId, kind, msg.chatId, intent.sessionId!, row?.projections?.values?.title || intent.sessionId!, resolved, row?.cwd)
+          return `已切换：【${known?.project ?? ''}·${known?.title ?? ''}】。直接发消息即可。`
+        }
+        return { confirmText: `${intent.reply}\n\n[1] 确认打开  [2] 取消`, options: [bind, async () => '已取消。'] }
+      }
+      if (intent.action === 'create') {
+        const knownRow = intent.project === undefined ? undefined : rows.find(row => sessionBaseName(row.cwd) === intent.project)
+        const cwd = knownRow?.cwd ?? (config.cwd || process.cwd())
+        const create = async (): Promise<string> => {
+          await manager.imEngine.createAndBindSession(channelId, kind, msg.chatId, '新会话', cwd)
+          return `已在「${cwd}」创建新会话。直接发消息即可。`
+        }
+        return { confirmText: `${intent.reply}\n\n[1] 确认新建（${cwd}）  [2] 取消`, options: [create, async () => '已取消。'] }
+      }
+      // clarify：列候选让用户选
+      if (candidates.length === 0) return null
+      return {
+        confirmText: `${intent.reply || '请选择目标会话：'}\n\n${candidateLines(candidates).join('\n')}\n\n回复序号选择，或「取消」。`,
+        options: candidates.map(item => async (): Promise<string> => {
+          const row = rows.find(entry => entry.sessionId === item.sessionId)
+          const resolved = await controller.resolveAgent(item.sessionId).then(value => value?.agent).catch(() => undefined)
+          await manager.imEngine.bindSessionToChat(channelId, kind, msg.chatId, item.sessionId, item.title, resolved, row?.cwd)
+          return `已切换：【${item.project}·${item.title}】。直接发消息即可。`
+        }),
+      }
+    } catch (error) {
+      warnLog(`意图解析失败: ${error instanceof Error ? error.message : String(error)}`)
+      return null
+    } finally {
+      void handle?.dispose?.().catch(() => {})
+    }
+  }
   manager.imEngine.secretaryInbound = async (channelId, msg) => {
     controlChat.observe({ channelId, chatId: msg.chatId, kind: msg.kind })
-    return bridge.tryConsumeReply(msg.text)
+    if (bridge.tryConsumeReply(msg.text)) return true
+    const kind = msg.kind === 'group' ? 'group' : 'dm'
+    const chatKey = `${channelId}:${kind}:${msg.chatId}`
+    const pending = pendingIntents.get(chatKey)
+    if (pending !== undefined) {
+      const pick = /^([1-9]\d*)$/.exec(msg.text.trim())
+      if (pick !== null) {
+        pendingIntents.delete(chatKey)
+        const run = pending[Number(pick[1]) - 1]
+        if (run === undefined) {
+          void sendControl('序号无效，请重新说明你的需求。')
+          return true
+        }
+        const result = await run().catch(error => `执行失败：${error instanceof Error ? error.message : String(error)}`)
+        void sendControl(result)
+        return true
+      }
+      if (/^(取消|算了|取消吧|no|cancel)$/i.test(msg.text.trim())) {
+        pendingIntents.delete(chatKey)
+        void sendControl('已取消。')
+        return true
+      }
+    }
+    // 意图解析：仅私聊、非命令、无绑定、开关开启（有绑定 → 文本原生直达当前会话）
+    if (kind !== 'dm' || msg.text.trim().startsWith('/') || config.secretary.intentParse !== true) return false
+    if (manager.imEngine.chatBound(channelId, kind, msg.chatId)) return false
+    const intent = await runIntent(channelId, kind, msg).catch(() => null)
+    if (intent === null) return false
+    pendingIntents.set(chatKey, intent.options)
+    void sendControl(intent.confirmText)
+    return true
   }
 
   // 四个扩展点全部 global：事件由宿主在根上下文派发（v1 已验证的同款接线）

@@ -75,6 +75,12 @@ export declare class ImEngine {
     secretaryInbound: ((channelId: string, msg: ImMessage) => Promise<boolean>) | null;
     /** [secretary] 该会话是否已绑定到某个聊天（桥的分流判据：绑定 → 原生接管）。 */
     isSessionBound(sessionId: string): boolean;
+    /** [secretary] 该聊天当前是否绑定了会话（意图解析的触发判据）。 */
+    chatBound(channelId: string, kind: 'dm' | 'group', chatId: string): boolean;
+    /** [secretary] 意图执行：把已存在的会话绑定到聊天。 */
+    bindSessionToChat(channelId: string, kind: 'dm' | 'group', chatId: string, sessionId: string, title: string, agent: unknown, cwd?: string): Promise<void>;
+    /** [secretary] 意图执行：在指定工作区创建新会话并绑定。 */
+    createAndBindSession(channelId: string, kind: 'dm' | 'group', chatId: string, title: string, cwd: string, signal?: AbortSignal): Promise<import("./router.js").ChatBinding>;
     /** 话题名回写状态：默认一个话题只命名一次。 */
     private readonly topicTitles;
     private readonly topicWrites;

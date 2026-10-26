@@ -171,3 +171,27 @@ test('完成通知等待投递且同一回合只触发一次，取消后不迟�
   tracker.cancel(); release(true); await tick()
   assert.equal(notices.length, 1)
 })
+
+test('turn/end 的 reason.kind 会透传到 onComplete (如 max-tokens)', async t => {
+  const notices = []
+  const tracker = new ProgressTracker(result => { notices.push(result) })
+  const item = new MessageProgress({ id: 'bot' }, { chatId: 'chat' }, { get() {} }, () => {})
+  t.after(() => { tracker.cancel(); item.finish('cleared') })
+  tracker.begin('s', 'request', [item])
+  tracker.event('s', { type: 'turn/start', data: { turn: 1 } })
+  tracker.event('s', { type: 'user/message', surfaceOp: 'append', data: { id: 'request' } })
+  tracker.delivery('s', 1, Promise.resolve(true))
+  tracker.event('s', { type: 'turn/end', data: { turn: 1, reason: { kind: 'max-tokens' } } })
+  await tick()
+  assert.equal(notices.length, 1)
+  assert.equal(notices[0].status, 'cancelled')
+  assert.equal(notices[0].reasonKind, 'max-tokens')
+})
+
+test('max-tokens 回合的消息状态显示已结束，不显示已取消', async t => {
+  const f = fixture(t), item = f.make('one')
+  f.start(1, 'one'); f.tracker.delivery('session', 1, Promise.resolve(true)); f.end(1, 'max-tokens')
+  await tick(); await item.settled()
+  assert.equal(f.calls.at(-1)[2], 'ended')
+  assert.equal(f.calls.at(-1)[3], '✅已结束')
+})

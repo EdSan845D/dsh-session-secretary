@@ -165,6 +165,28 @@ test('取消回合只发送一次停止文字，不发送卡片', async t => {
   assert.deepEqual(f.sent, ['本次处理已停止，已返回的内容保留。可直接发消息继续。'])
 })
 
+test('max-tokens 回合发送达到上限提示，可发送「继续」接续生成', async t => {
+  const f = fixture(t), { engine, channel } = f.make()
+  await engine.inject(channel, message)
+  f.completeHistory()
+  const events = [...f.history.slice(0, 2), { type: 'turn/end', data: { turn: 1, reason: { kind: 'max-tokens' } } }]
+  for (const event of events) await engine.onSessionEvent({ id: f.sessionId }, event)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(f.sent, ['本次处理已达到输出长度上限，已返回的内容保留。可发送「继续」接续生成。'])
+})
+
+test('英文全局语言下，max-tokens 回合发送英文达到上限提示', async t => {
+  const f = fixture(t)
+  f.setEnglish()
+  const { engine, channel } = f.make()
+  await engine.inject(channel, message)
+  f.completeHistory()
+  const events = [...f.history.slice(0, 2), { type: 'turn/end', data: { turn: 1, reason: { kind: 'max-tokens' } } }]
+  for (const event of events) await engine.onSessionEvent({ id: f.sessionId }, event)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(f.sent, ['This turn reached the maximum output length. Any results already sent are kept. Send "continue" to proceed.'])
+})
+
 test('失败收口保留已累计的流式正文', async t => {
   const f = fixture(t), { engine, channel } = f.make()
   let final
@@ -178,6 +200,21 @@ test('失败收口保留已累计的流式正文', async t => {
   await new Promise(resolve => setImmediate(resolve))
   assert.match(final, /HALF-ANSWER/)
   assert.match(final, /处理失败/)
+})
+
+test('max-tokens 收口保留已累计的流式正文并追加上限提示', async t => {
+  const f = fixture(t), { engine, channel } = f.make()
+  let final
+  channel.beginReply = async () => ({ update: async () => {}, finish: async text => { final = text } })
+  await engine.inject(channel, message)
+  f.completeHistory()
+  for (const event of f.history.slice(0, 2)) await engine.onSessionEvent({ id: f.sessionId }, event)
+  await engine.onSessionEvent({ id: f.sessionId }, { type: 'assistant/chunk', data: { chunk: { type: 'text-delta', text: 'HALF-ANSWER' } } })
+  await new Promise(resolve => setImmediate(resolve))
+  await engine.onSessionEvent({ id: f.sessionId }, { type: 'turn/end', data: { turn: 1, reason: { kind: 'max-tokens' } } })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.match(final, /HALF-ANSWER/)
+  assert.match(final, /达到输出长度上限/)
 })
 
 test('注入抛错不再每轮扫描未认领记录', async t => {

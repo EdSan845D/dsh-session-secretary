@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "IM Connect",
-    "description": "将主流即时通讯平台接入本机 DeepSeek Harness。"
+    "title": "会话秘书",
+    "description": "会话中断/完成双通道通知与 IM 会话控制台（基于 dsh-im-connect）。"
   }
 }

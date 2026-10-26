@@ -12,7 +12,7 @@ import type { TopicMode } from './engine/topic-title.js'
 import { createRotatingFileAppender } from './engine/file-log.js'
 import { registerPluginUpdater } from './plugin-updater.js'
 
-export const name = 'dsh-im-connect'
+export const name = 'dsh-session-secretary'
 export const inject = [
   'webServer',
   'credentials',
@@ -43,8 +43,8 @@ export const Config: Schema<PluginConfig> = Schema.object({
   agentPreset: Schema.string().default('standard'),
   mergeTimeoutSecs: Schema.number().default(5),
   topicNaming: Schema.union(['once', 'follow', 'off']).default('once'),
-  updater: Schema.boolean(),
-  onlineUpdate: Schema.boolean(),
+  updater: Schema.boolean().default(false),
+  onlineUpdate: Schema.boolean().default(false),
 })
 
 export function apply(ctx: Context, config: PluginConfig): void {
@@ -52,7 +52,7 @@ export function apply(ctx: Context, config: PluginConfig): void {
   const permissionPresets = (ctx as Context & { permissionPresets: { defaultPreset: string } }).permissionPresets
   const stateDir = config.stateDir !== ''
     ? config.stateDir
-    : join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'dsh-im-connect')
+    : join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'dsh-session-secretary')
   mkdirSync(stateDir, { recursive: true })
   const logFile = join(stateDir, 'gateway.log')
   const fileLog = createRotatingFileAppender(logFile)

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "IM Connect",
-    "description": "Connect major messaging platforms to local DeepSeek Harness agents."
+    "title": "Session Secretary",
+    "description": "Dual-channel session interruption/completion notifications and an IM console for DSH sessions (fork of dsh-im-connect)."
   }
 }

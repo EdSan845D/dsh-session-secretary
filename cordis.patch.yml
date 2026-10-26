@@ -1,4 +1,4 @@
-# 把 IM 助理插入 profile。
+# 把会话秘书（dsh-im-connect fork）插入 profile。
 - insert:
-    - id: im-connect
-      name: '@michengai/dsh-im-connect'
+    - id: dsh-session-secretary
+      name: dsh-session-secretary

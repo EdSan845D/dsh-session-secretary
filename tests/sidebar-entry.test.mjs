@@ -245,7 +245,7 @@ test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async
   // 执行 bundle config 注入
   slotInjections.get('plugins.bundle.config')()
   assert.ok(slotRegistrations.has('plugins.bundle.config'))
-  assert.equal(slotRegistrations.get('plugins.bundle.config').meta.key, '@michengai/dsh-im-connect')
+  assert.equal(slotRegistrations.get('plugins.bundle.config').meta.key, 'dsh-session-secretary')
 
   // 触发 sidebar.panellist 槽位注入（代表宿主支持侧边栏）
   assert.ok(slotInjections.has('sidebar.panellist'))

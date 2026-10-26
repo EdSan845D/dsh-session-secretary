@@ -48,7 +48,7 @@ function fixture() {
       return { currentVersion: '1.0.13' }
     }, () => ({ check: '检查更新' }), () => null, () => null, () => null, () => null,
   )
-  const cleanup = observe({ endpoint: '/update', packageName: '@michengai/dsh-im-connect', titleRowSelector: '.title', linksSelector: '.links', createIcon: () => ({}), isEnabled: () => enabled })
+  const cleanup = observe({ endpoint: '/update', packageName: 'dsh-session-secretary', titleRowSelector: '.title', linksSelector: '.links', createIcon: () => ({}), isEnabled: () => enabled })
   return { heading, links, cleanup, requests: () => requests, toggle(value) { enabled = value; window.dispatchEvent(new Event('ima-update-toggle')) } }
 }
 

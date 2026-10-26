@@ -75,7 +75,7 @@ test('在线更新开关：管理器方法、持久化、HTTP API 与更新器�
     manager.registerApi(serverCtx)
     registerPluginUpdater(serverCtx, {
       endpoint: '/api/michengai/dsh-im-connect/update',
-      packageName: '@michengai/dsh-im-connect',
+      packageName: 'dsh-session-secretary',
       manifestUrl: new URL('../package.json', import.meta.url),
       isEnabled: async () => manager.isUpdateEnabled(),
     })

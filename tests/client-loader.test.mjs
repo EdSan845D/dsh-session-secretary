@@ -15,7 +15,7 @@ test('lib/client.js 经 ModuleLoader 注册完整包名，工厂不向宿主要 
   vm.createContext(sandbox)
   vm.runInContext(source, sandbox, { filename: 'lib/client.js' })
   assert.equal(loaded.length, 1)
-  assert.equal(loaded[0].id, '@michengai/dsh-im-connect')
+  assert.equal(loaded[0].id, 'dsh-session-secretary')
   const required = []
   const hostModule = new Proxy({}, { get: () => function HostExport() { return null } })
   const exports = loaded[0].factory((id) => {

@@ -229,7 +229,7 @@ test('别人已经包裹时只插入频道页签，自己包裹时提供插入�
 })
 
 test('客户端模块按完整包名注册，避免 client-modules 加载失败', () => {
-  assert.match(bundled, /id:\s*"@michengai\/dsh-im-connect"/)
+  assert.match(bundled, /id:\s*"dsh-session-secretary"/)
   assert.doesNotMatch(bundled, /id:\s*"dsh-im-connect"/)
 })
 

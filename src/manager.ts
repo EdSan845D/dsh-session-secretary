@@ -314,6 +314,12 @@ export class ChannelManager {
     this.flush()
   }
 
+  // [secretary] 秘书装配访问口：tag 截断 / 前缀注入 / 绑定查询 / 运行渠道枚举
+  get imEngine(): ImEngine { return this.engine }
+  get runningChannels(): Array<{ id: string; send(chatId: string, text: string): Promise<void> }> {
+    return [...this.running.values()]
+  }
+
   list(): ChannelView[] {
     return CHANNEL_ORDER.map((id) => {
       const meta = CHANNEL_META[id]

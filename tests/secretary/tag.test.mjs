@@ -40,13 +40,14 @@ function makeEngine(t) {
 test('命中秘书 pending 的带 tag 回复被截断消费，不进原生命令/交互流程', async t => {
   const { engine, sent, inbound } = makeEngine(t)
   const consumed = []
-  engine.secretaryInbound = async msg => {
-    if (msg.text === '[a3f2] 批准') { consumed.push(msg.text); return true }
+  engine.secretaryInbound = async (channelId, msg) => {
+    if (msg.text === '[a3f2] 批准') { consumed.push([channelId, msg.text]); return true }
     return false
   }
   try {
     await inbound({ chatId: 'user-1', userId: 'u', text: '[a3f2] 批准', kind: 'dm', messageId: 'm1' })
     await waitFor(() => consumed.length === 1)
+    assert.equal(consumed[0][0], 'qq')
     await sleep(20)
     assert.equal(sent.length, 0, '消费后不应触发任何原生回执')
   } finally { engine.dispose() }

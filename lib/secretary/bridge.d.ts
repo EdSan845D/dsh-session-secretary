@@ -52,6 +52,12 @@ export interface SecretaryBridge {
     onQuestions(request: UserQuestionsRequest, next: () => Promise<UserQuestionsAnswer | undefined>): Promise<UserQuestionsAnswer | undefined>;
     onApproval(request: ApprovalRequest, next: () => Promise<ApprovalOutcomeLike>): Promise<ApprovalOutcomeLike>;
     onInboxClaimed(payload: InboxClaimed): void;
+    /**
+     * 网关 tag 截断入口（gateway.secretaryInbound）：命中 pending 的回复就地消费，
+     * 返回 true 表示已消费、网关不得再走原生流程。与 onInboxClaimed 的差别：
+     * 消息未进 inbox，无需 pre-step 丢弃记录。
+     */
+    tryConsumeReply(text: string): boolean;
     onPreStep(payload: PreStepPayload, next: () => Promise<PreStepDecision>): Promise<PreStepDecision>;
     /** 注入 `ctx.userQuestions` 服务（阶段二作答需要）。 */
     setUserQuestions(service: UserQuestionsService | undefined): void;

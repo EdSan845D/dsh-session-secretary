@@ -27,6 +27,7 @@ test('插件配置经 apply 和管理器传到引擎，并持久化话题开关'
     permissionPresets: { names: ['standard'], defaultPreset: 'standard' },
     logger: () => ({ info() {} }),
     effect: (operation, name) => { effects.set(name, operation) },
+    on: () => () => {},
   }
   apply(ctx, Config({ stateDir: directory, topicNaming: 'off' }))
   const cleanup = effects.get('im-connect.serve')()

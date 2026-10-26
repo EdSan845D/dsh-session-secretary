@@ -142,6 +142,33 @@ declare module '@deepseek-ai/cordis' {
          * @mode waterfall
          */
         'user-questions/request'(request: UserQuestionsRequest, next: () => Promise<UserQuestionsAnswer | undefined>): unknown;
+        /**
+         * 工具审批拦截点（官方 dsh-user-approval 声明；本 fork 无 DSH 依赖，
+         * 此处按 dsh-user-approval 的公开签名补结构化声明）。
+         * @mode waterfall
+         */
+        'approval/request'(request: ApprovalRequest, next: () => Promise<ApprovalOutcomeLike>): unknown;
+        /**
+         * 一条消息离开收件箱（官方 dsh-agent 声明；结构子集）。
+         * @mode emit
+         */
+        'agent/inbox/claimed'(payload: InboxClaimed): unknown;
+        /**
+         * 提交 step 前的拦截/改写点（官方 dsh-agent 声明；结构子集）。
+         * @mode waterfall
+         */
+        'agent/pre-step'(payload: PreStepPayload, next: () => Promise<PreStepDecision>): unknown;
+        /**
+         * 会话事件流（官方 dsh-session 声明；fork 只消费 session/title、
+         * assistant/message、turn/end，保持宽松入参由消费方自行收窄）。
+         * @mode emit
+         */
+        'session/event'(session: unknown, event: unknown): void;
+        /**
+         * 步骤/回合错误（官方 dsh-agent 声明；宽松入参由消费方收窄）。
+         * @mode emit
+         */
+        'agent/error'(payload: unknown): void;
     }
 }
 //# sourceMappingURL=types.d.ts.map

@@ -16,9 +16,9 @@ export interface PluginConfig {
     topicNaming: TopicMode;
     updater?: boolean;
     onlineUpdate?: boolean;
-    secretary?: SecretaryConfig;
-    system?: SystemConfig;
-    browser?: BrowserConfig;
+    secretary: SecretaryConfig;
+    system: SystemConfig;
+    browser: BrowserConfig;
 }
 export interface SecretaryConfig {
     notifyQuestion: boolean;

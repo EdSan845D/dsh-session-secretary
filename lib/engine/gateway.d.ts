@@ -72,7 +72,9 @@ export declare class ImEngine {
     private readonly commandScopes;
     private readonly inputScopes;
     applySessionLabel: ((text: string, sessionId: string) => Promise<string>) | null;
-    secretaryInbound: ((msg: ImMessage) => Promise<boolean>) | null;
+    secretaryInbound: ((channelId: string, msg: ImMessage) => Promise<boolean>) | null;
+    /** [secretary] 该会话是否已绑定到某个聊天（桥的分流判据：绑定 → 原生接管）。 */
+    isSessionBound(sessionId: string): boolean;
     /** 话题名回写状态：默认一个话题只命名一次。 */
     private readonly topicTitles;
     private readonly topicWrites;

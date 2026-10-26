@@ -118,6 +118,12 @@ export interface SecretaryBridge {
     next: () => Promise<ApprovalOutcomeLike>,
   ): Promise<ApprovalOutcomeLike>
   onInboxClaimed(payload: InboxClaimed): void
+  /**
+   * 网关 tag 截断入口（gateway.secretaryInbound）：命中 pending 的回复就地消费，
+   * 返回 true 表示已消费、网关不得再走原生流程。与 onInboxClaimed 的差别：
+   * 消息未进 inbox，无需 pre-step 丢弃记录。
+   */
+  tryConsumeReply(text: string): boolean
   onPreStep(
     payload: PreStepPayload,
     next: () => Promise<PreStepDecision>,
@@ -294,6 +300,28 @@ export function createSecretaryBridge(options: SecretaryBridgeOptions): Secretar
     return tag
   }
 
+  /** 命中待办后的消费动作；messageId 非空时记录 pre-step 丢弃（网关截断路径为 null）。 */
+  function consumeRouted(routed: NonNullable<ReturnType<typeof routeReply>>, messageId: string | null): void {
+    if (routed.kind === 'approval') {
+      const pending = approvals.get(routed.tag)
+      if (pending === undefined || pending.settled) return
+      if (messageId !== null) rememberDiscarded(messageId, routed.tag)
+      dropPending(pending)
+      pending.resolve?.(routed.decision)
+      return
+    }
+    const pending = questions.get(routed.tag)
+    if (pending === undefined || pending.settled) return
+    if (messageId !== null) rememberDiscarded(messageId, routed.tag)
+    if (pending.phase === 'one') {
+      // 阶段一：waterfall 仍在等，onQuestions 负责收尾并清理待办表。
+      pending.settled = true
+      pending.resolveReply?.(routed.answer)
+      return
+    }
+    void answerContinued(pending, routed.answer)
+  }
+
   function sessionIdOf(agent: SecretaryAgent | undefined): string | null {
     const id = agent?.session?.id ?? agent?.id
     if (typeof id !== 'string' || id === '') return null
@@ -455,26 +483,15 @@ export function createSecretaryBridge(options: SecretaryBridgeOptions): Secretar
       const routed = routeReply({ text, questions, approvals })
       if (routed === null) return
       if (discarded.has(message.id)) return
+      consumeRouted(routed, message.id)
+    },
 
-      if (routed.kind === 'approval') {
-        const pending = approvals.get(routed.tag)
-        if (pending === undefined || pending.settled) return
-        rememberDiscarded(message.id, routed.tag)
-        dropPending(pending)
-        pending.resolve?.(routed.decision)
-        return
-      }
-
-      const pending = questions.get(routed.tag)
-      if (pending === undefined || pending.settled) return
-      rememberDiscarded(message.id, routed.tag)
-      if (pending.phase === 'one') {
-        // 阶段一：waterfall 仍在等，onQuestions 负责收尾并清理待办表。
-        pending.settled = true
-        pending.resolveReply?.(routed.answer)
-        return
-      }
-      void answerContinued(pending, routed.answer)
+    tryConsumeReply(text: string): boolean {
+      if (questions.size === 0 && approvals.size === 0) return false
+      const routed = routeReply({ text, questions, approvals })
+      if (routed === null) return false
+      consumeRouted(routed, null)
+      return true
     },
 
     async onPreStep(payload, next) {

@@ -52,6 +52,7 @@
     "@tencent-connect/qqbot-connector": "^1.2.0",
     "@wecom/aibot-node-sdk": "^1.0.7",
     "dingtalk-stream": "^2.1.4",
+    "node-notifier": "^11.0.0",
     "qrcode": "^1.5.4",
     "undici": "^6.29.1"
   },
@@ -82,6 +83,7 @@
     "@deepseek-ai/dsh-llm": "0.2.1-rc.3",
     "@deepseek-ai/schemastery": "3.18.5",
     "@types/node": "^22.10.0",
+    "@types/node-notifier": "^8.0.5",
     "@types/qrcode": "^1.5.6",
     "esbuild": "^0.25.0",
     "react": "^18.3.1",

@@ -146,7 +146,12 @@ export class ImEngine {
   // [secretary] 出站会话前缀：index.ts 装配 labelProvider 后注入；null = 上游原样行为
   applySessionLabel: ((text: string, sessionId: string) => Promise<string>) | null = null
   // [secretary] 入站 tag 截断：命中秘书 pending 的【4hex】回复返回 true（已消费），不进原生交互状态机
-  secretaryInbound: ((msg: ImMessage) => Promise<boolean>) | null = null
+  secretaryInbound: ((channelId: string, msg: ImMessage) => Promise<boolean>) | null = null
+
+  /** [secretary] 该会话是否已绑定到某个聊天（桥的分流判据：绑定 → 原生接管）。 */
+  isSessionBound(sessionId: string): boolean {
+    return this.router.bindingForSession(sessionId) !== undefined
+  }
   /** 话题名回写状态：默认一个话题只命名一次。 */
   private readonly topicTitles: TopicTitleStore
   private readonly topicWrites = new KeyedSerialQueue()
@@ -423,7 +428,7 @@ export class ImEngine {
       // [secretary] tag 截断：先于命令解析与原生交互捕获，避免绑定会话未决交互吞掉其他会话的代答回复
       if (this.secretaryInbound !== null) {
         try {
-          if (await this.secretaryInbound(msg)) return
+          if (await this.secretaryInbound(channelId, msg)) return
         } catch (error) {
           this.log(`[secretary] tag 截断失败，放行原文: ${error instanceof Error ? error.message : String(error)}`)
         }

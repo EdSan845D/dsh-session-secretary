@@ -3,6 +3,7 @@ import type { Context } from '@deepseek-ai/cordis';
 import { type ConnectionState } from './channels/connection-state.js';
 import { type DiagnosticCheck } from './channels/diagnostics.js';
 import type { ChannelId, SessionRecord } from './engine/session-id.js';
+import { ImEngine } from './engine/gateway.js';
 import { type AssistantModel, type PermissionPreset } from './engine/assistant-settings.js';
 import type { EngineConfig, SendMode } from './engine/types.js';
 export declare const API_CLIENT_HEADER = "x-dsh-im-connect-client";
@@ -126,6 +127,11 @@ export declare class ChannelManager {
         engineConfig: EngineConfig;
         hostUpdateDisabled?: boolean;
     });
+    get imEngine(): ImEngine;
+    get runningChannels(): Array<{
+        id: string;
+        send(chatId: string, text: string): Promise<void>;
+    }>;
     list(): ChannelView[];
     private hydrateProxyUrl;
     private hydrateProxyUrls;

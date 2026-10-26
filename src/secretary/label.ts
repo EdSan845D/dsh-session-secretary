@@ -47,9 +47,10 @@ export function createLabelProvider(deps: LabelDeps) {
     const rows = new Map<string, SessionRow>()
     for (const item of listed?.items ?? []) {
       if (typeof item?.sessionId !== 'string' || item.sessionId === '') continue
+      const rawTitle = item.projections?.values?.title
       rows.set(item.sessionId, {
         cwd: typeof item.cwd === 'string' ? item.cwd : undefined,
-        title: typeof item.projections?.values?.title === 'string' ? item.projections.values.title : undefined,
+        title: typeof rawTitle === 'string' ? rawTitle : undefined,
       })
     }
     return rows

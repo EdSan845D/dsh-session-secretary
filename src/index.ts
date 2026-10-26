@@ -33,7 +33,39 @@ export interface PluginConfig {
   topicNaming: TopicMode
   updater?: boolean
   onlineUpdate?: boolean
+  // [secretary] 会话秘书行为组
+  secretary?: SecretaryConfig
+  // [secretary] 系统通知通道（桌面壳默认关：原生弹窗由 client 半边承担）
+  system?: SystemConfig
+  // [secretary] 浏览器通知通道（client 半边读取）
+  browser?: BrowserConfig
 }
+
+export interface SecretaryConfig {
+  notifyQuestion: boolean
+  notifyApproval: boolean
+  notifyCompletion: boolean
+  notifyError: boolean
+  labelPrefix: boolean
+  intentParse: boolean
+  controlChatId: string
+  pendingTtlMinutes: number
+  maxForwardChars: number
+}
+
+export interface SystemConfig {
+  enabled: boolean
+  icon?: string
+  verbosity: 'minimal' | 'normal' | 'detailed'
+}
+
+export interface BrowserConfig {
+  enabled: boolean
+  onlyWhenHidden: boolean
+  verbosity: 'minimal' | 'normal' | 'detailed'
+}
+
+const notifyVerbosity = Schema.union(['minimal', 'normal', 'detailed'] as const).default('normal')
 
 export const Config: Schema<PluginConfig> = Schema.object({
   stateDir: Schema.string().default(''),
@@ -45,6 +77,28 @@ export const Config: Schema<PluginConfig> = Schema.object({
   topicNaming: Schema.union(['once', 'follow', 'off']).default('once'),
   updater: Schema.boolean().default(false),
   onlineUpdate: Schema.boolean().default(false),
+  // [secretary]
+  secretary: Schema.object({
+    notifyQuestion: Schema.boolean().default(true),
+    notifyApproval: Schema.boolean().default(true),
+    notifyCompletion: Schema.boolean().default(true),
+    notifyError: Schema.boolean().default(true),
+    labelPrefix: Schema.boolean().default(true),
+    intentParse: Schema.boolean().default(true),
+    controlChatId: Schema.string().default(''),
+    pendingTtlMinutes: Schema.number().default(1440),
+    maxForwardChars: Schema.number().default(1200),
+  }),
+  system: Schema.object({
+    enabled: Schema.boolean().default(false),
+    icon: Schema.string(),
+    verbosity: notifyVerbosity,
+  }),
+  browser: Schema.object({
+    enabled: Schema.boolean().default(true),
+    onlyWhenHidden: Schema.boolean().default(true),
+    verbosity: notifyVerbosity,
+  }),
 })
 
 export function apply(ctx: Context, config: PluginConfig): void {

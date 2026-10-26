@@ -16,6 +16,30 @@ export interface PluginConfig {
     topicNaming: TopicMode;
     updater?: boolean;
     onlineUpdate?: boolean;
+    secretary?: SecretaryConfig;
+    system?: SystemConfig;
+    browser?: BrowserConfig;
+}
+export interface SecretaryConfig {
+    notifyQuestion: boolean;
+    notifyApproval: boolean;
+    notifyCompletion: boolean;
+    notifyError: boolean;
+    labelPrefix: boolean;
+    intentParse: boolean;
+    controlChatId: string;
+    pendingTtlMinutes: number;
+    maxForwardChars: number;
+}
+export interface SystemConfig {
+    enabled: boolean;
+    icon?: string;
+    verbosity: 'minimal' | 'normal' | 'detailed';
+}
+export interface BrowserConfig {
+    enabled: boolean;
+    onlyWhenHidden: boolean;
+    verbosity: 'minimal' | 'normal' | 'detailed';
 }
 export declare const Config: Schema<PluginConfig>;
 export declare function apply(ctx: Context, config: PluginConfig): void;

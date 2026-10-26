@@ -2,7 +2,7 @@
  * dsh-im-connect 浏览器端：IM助理设置页 + 工作区频道槽。
  */
 window.__ModuleLoader__.load({
-  id: "@michengai/dsh-im-connect",
+  id: "dsh-session-secretary",
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;
@@ -857,11 +857,11 @@ window.__ModuleLoader__.load({
     let styleEl = null;
     const ensureStyle = () => {
       if (styleEl && styleEl.isConnected) {
-        styleEl.setAttribute("data-plugin", "@michengai/dsh-im-connect");
+        styleEl.setAttribute("data-plugin", "dsh-session-secretary");
         return;
       }
       styleEl = document.createElement("style");
-      styleEl.setAttribute("data-plugin", "@michengai/dsh-im-connect");
+      styleEl.setAttribute("data-plugin", "dsh-session-secretary");
       styleEl.textContent = CSS + TITLE_LINK_CSS;
       document.head.appendChild(styleEl);
     };
@@ -3487,7 +3487,7 @@ window.__ModuleLoader__.load({
         || component.__dshAutomationOriginal !== undefined);
     }
 
-    const BUNDLE_KEY = "@michengai/dsh-im-connect";
+    const BUNDLE_KEY = "dsh-session-secretary";
     const SIDEBAR_PANEL_ID = "im-connect";
     const SIDEBAR_PANEL_ORDER = 3;
 
@@ -3864,7 +3864,7 @@ window.__ModuleLoader__.load({
       ctx.effect(() => () => sidebarController.destroy(), "im-connect: sidebar entry");
       ctx.effect(() => observePluginUpdate({
         endpoint: "/api/michengai/dsh-im-connect/update",
-        packageName: "@michengai/dsh-im-connect",
+        packageName: "dsh-session-secretary",
         titleRowSelector: ".ima-title-row",
         linksSelector: ".ima-title-links",
         zhName: t("settings.title"),

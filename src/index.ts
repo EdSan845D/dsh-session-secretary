@@ -99,7 +99,8 @@ export const Config: Schema<PluginConfig> = Schema.object({
     maxForwardChars: Schema.number().default(1200),
   }),
   system: Schema.object({
-    enabled: Schema.boolean().default(false),
+    // v2.0：client 通知半边延期到 v2.1，桌面 toast 由本通道（node-notifier/SnoreToast）承担
+    enabled: Schema.boolean().default(true),
     icon: Schema.string(),
     verbosity: notifyVerbosity,
   }),

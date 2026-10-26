@@ -25,9 +25,9 @@ test('secretary 配置可覆盖且不影响上游字段', () => {
   assert.equal(resolved.model, 'm')
 })
 
-test('通知通道组默认值与桌面环境默认', () => {
+test('通知通道组默认值（v2.0 系统通道默认开：client 半边延期到 v2.1）', () => {
   const plain = Config({})
-  assert.equal(plain.system.enabled, false)
+  assert.equal(plain.system.enabled, true)
   assert.equal(plain.browser.enabled, true)
   assert.equal(plain.browser.onlyWhenHidden, true)
 })

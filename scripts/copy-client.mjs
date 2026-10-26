@@ -123,7 +123,7 @@ const clientBody = client.slice(start, end + "    return module.exports;".length
 assertClientSymbols(["function factory(require) {", apiBase, helper, clientBody, "}"].join("\n"));
 
 writeFileSync("lib/client.js", [
-  'window.__ModuleLoader__.load({ id: "@michengai/dsh-im-connect", factory: (require) => {',
+  'window.__ModuleLoader__.load({ id: "dsh-session-secretary", factory: (require) => {',
   apiBase,
   helper,
   clientBody,

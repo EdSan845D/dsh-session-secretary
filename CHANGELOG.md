@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.18 - 2026-10-26
+
+- Distinguish `max-tokens` turn truncation from user cancellation: when a turn ends due to output token limits (`reason.kind === 'max-tokens'`), notify the user that the maximum output length was reached and prompt them to send "continue" to proceed, instead of incorrectly reporting that the turn was stopped (#48).
+- Harmonize original message status reaction for truncated turns: map message progress status to `ended` (Done `✅`) rather than `cancelled` (`🚫`) when output tokens are exhausted without delivery failure, resolving visual contradictions between the status emoji and the turn completion notice.
+- Preserve backward-compatible fallback: manual stops, aborted turns, and older host versions smoothly fall back to the standard cancellation copy.
+
 ## 1.0.17 - 2026-10-24
 
 - Upgrade host admission policy: Declare `engines.dsh: ">=0.2.0-rc.1 <0.3.0-0"` to support the entire DeepSeek Harness `0.2.x` line (including `0.2.0-rc.1` onwards, future alphas, RCs, and stable releases) without requiring routine plugin version bumps.

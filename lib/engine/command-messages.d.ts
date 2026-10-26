@@ -1,5 +1,14 @@
 /** IM 命令文案字典。中文原文作为稳定键，插值与用户内容分开处理。 */
 export declare const commandEnglish: {
+    readonly '\u300C{0}\u300D\u5339\u914D\u5230\u591A\u4E2A{1}\uFF0C\u8BF7\u7528\u5E8F\u53F7\u9009\u62E9\uFF1A\n\n': "「{0}」matches multiple {1}; reply with a number:\n\n";
+    readonly 会话: "sessions";
+    readonly 项目: "projects";
+    readonly '\u9009\u62E9\uFF1A/session \u5E8F\u53F7': "Choose: /session <number>";
+    readonly '\u9009\u62E9\uFF1A/workspace \u5E8F\u53F7': "Choose: /workspace <number>";
+    readonly '\u6CA1\u6709\u627E\u5230\u9879\u76EE\u300C{0}\u300D\u3002\u53D1\u9001 /workspaces \u67E5\u770B\u5168\u90E8\u9879\u76EE\u3002': "Project 「{0}」 was not found. Send /workspaces to list all projects.";
+    readonly '\u5728\u300C{0}\u300D\u6CA1\u6709\u627E\u5230\u4F1A\u8BDD\u300C{1}\u300D\uFF0C\u5DF2\u521B\u5EFA\u65B0\u4F1A\u8BDD\u3002\n\u5DE5\u4F5C\u533A\uFF1A{2}\n\u63A5\u4E0B\u6765\u7684\u6D88\u606F\u4F1A\u53D1\u9001\u5230\u6B64\u4F1A\u8BDD\u3002': "Session 「{1}」 was not found in 「{0}」; a new session was created.\nWorkspace: {2}\nFollowing messages go to this session.";
+    readonly '\u67E5\u770B\u4F1A\u8BDD\uFF1A/ls-sessions': "List sessions: /ls-sessions";
+    readonly '\u9879\u76EE\u300C{0}\u300D\u8FD8\u6CA1\u6709\u53EF\u63A5\u5165\u7684\u4F1A\u8BDD\uFF0C\u5DF2\u521B\u5EFA\u65B0\u4F1A\u8BDD\u3002\n\u5DE5\u4F5C\u533A\uFF1A{1}\n\u63A5\u4E0B\u6765\u7684\u6D88\u606F\u4F1A\u53D1\u9001\u5230\u6B64\u4F1A\u8BDD\u3002': "Project 「{0}」 has no attachable session yet; a new session was created.\nWorkspace: {1}\nFollowing messages go to this session.";
     readonly '\u5E8F\u53F7\u65E0\u6548\u6216\u5DF2\u8FC7\u671F\uFF0C\u672C\u6B21\u64CD\u4F5C\u672A\u6267\u884C\u3002\u8BF7\u53D1\u9001 /unbind \u83B7\u53D6\u65B0\u5217\u8868\u3002': "The number is invalid or expired; no action was taken. Send /unbind for a new list.";
     readonly 按上方完整说明选择操作: "Choose an option described above";
     readonly "\u2705\u5DF2\u7ED3\u675F": "✅Finished";

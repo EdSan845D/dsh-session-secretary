@@ -1,5 +1,19 @@
 /** IM 命令文案字典。中文原文作为稳定键，插值与用户内容分开处理。 */
 export const commandEnglish = {
+  // [secretary] /session 名字解析与 /ls-* 别名
+  '「{0}」匹配到多个{1}，请用序号选择：\n\n':
+    '「{0}」matches multiple {1}; reply with a number:\n\n',
+  '会话': 'sessions',
+  '项目': 'projects',
+  '选择：/session 序号': 'Choose: /session <number>',
+  '选择：/workspace 序号': 'Choose: /workspace <number>',
+  '没有找到项目「{0}」。发送 /workspaces 查看全部项目。':
+    'Project 「{0}」 was not found. Send /workspaces to list all projects.',
+  '在「{0}」没有找到会话「{1}」，已创建新会话。\n工作区：{2}\n接下来的消息会发送到此会话。':
+    'Session 「{1}」 was not found in 「{0}」; a new session was created.\nWorkspace: {2}\nFollowing messages go to this session.',
+  '查看会话：/ls-sessions': 'List sessions: /ls-sessions',
+  '项目「{0}」还没有可接入的会话，已创建新会话。\n工作区：{1}\n接下来的消息会发送到此会话。':
+    'Project 「{0}」 has no attachable session yet; a new session was created.\nWorkspace: {1}\nFollowing messages go to this session.',
   '序号无效或已过期，本次操作未执行。请发送 /unbind 获取新列表。':
     'The number is invalid or expired; no action was taken. Send /unbind for a new list.',
   "按上方完整说明选择操作": "Choose an option described above",

@@ -121,6 +121,138 @@ export class ChatCommands {
     return listed?.items ?? []
   }
 
+  // ── [secretary] /session 名字解析 ────────────────────────────────────
+
+  /** 工作区目录基名（项目名）。 */
+  private static pathBase(path: string | undefined): string {
+    if (typeof path !== 'string' || path === '') return ''
+    const parts = path.split(/[\\/]/).filter(part => part !== '')
+    return parts.at(-1) ?? ''
+  }
+
+  /** 名称匹配：精确（大小写不敏感）优先，唯一前缀次之；多个 → many（列候选），0 → none。 */
+  private matchByName<T>(items: T[], token: string, nameOf: (item: T) => string): { kind: 'one'; item: T } | { kind: 'many'; items: T[] } | { kind: 'none' } {
+    const lower = token.toLowerCase()
+    const exact = items.filter(item => nameOf(item).toLowerCase() === lower)
+    if (exact.length === 1) return { kind: 'one', item: exact[0]! }
+    if (exact.length > 1) return { kind: 'many', items: exact }
+    const prefix = items.filter(item => nameOf(item) !== '' && nameOf(item).toLowerCase().startsWith(lower))
+    if (prefix.length === 1) return { kind: 'one', item: prefix[0]! }
+    if (prefix.length > 1) return { kind: 'many', items: prefix }
+    return { kind: 'none' }
+  }
+
+  private sessionTitleOf(row: Row): string {
+    return row.projections?.values?.title || ''
+  }
+
+  private workspaceNameOf(item: { path?: string; title?: string }): string {
+    return ChatCommands.pathBase(item.path) || (typeof item.title === 'string' ? item.title : '')
+  }
+
+  /** 候选列表回复：序号已 remember，用户回 `/session N`（或 `/workspace N`）即可命中。 */
+  private candidatesReply(kind: 'session' | 'workspace', token: string, lines: string[], scope: string, values: string[]): string {
+    this.remember(`${scope}:${kind === 'session' ? 'sessions' : 'workspaces'}`, values)
+    return replyText('「{0}」匹配到多个{1}，请用序号选择：\n\n', token, kind === 'session' ? replyText('会话') : replyText('项目'))
+      + lines.join('\n\n')
+      + related(kind === 'session' ? replyText('选择：/session 序号') : replyText('选择：/workspace 序号'))
+  }
+
+  /**
+   * [secretary] `/session` 名字形态：
+   * - 两段：`/session <项目基名> [会话标题]`——项目唯一命中 → 项目内标题精确/前缀唯一 → 绑定；
+   *   会话 miss → 在该项目新建（对齐「进入已有会话或创建会话」）；
+   * - 一段：先全量会话标题，再项目基名；项目命中时取其第一个空闲会话，无可接入会话则新建；
+   * - 都不命中且单 token 恰为完整会话 ID → 返回 null 落回原生路径。
+   */
+  private async sessionByName(
+    parts: string[],
+    env: { channel: ChannelAdapter; kind: 'dm' | 'group'; msg: ImMessage; current: { sessionId: string } | undefined; signal: AbortSignal; scope: string },
+  ): Promise<string | null> {
+    const { channel, kind, msg, current, signal, scope } = env
+    const rows = (await this.listSessions(signal)).filter(row => !row.origin)
+    if (parts.length === 1 && rows.some(row => row.sessionId === parts[0])) return null
+    const workspaces = await this.workspaces(signal)
+    const projectLabelOf = (item: { path?: string; title?: string }) => oneLine(item.title || ChatCommands.pathBase(item.path) || item.path || '')
+
+    if (parts.length >= 2) {
+      const projectToken = parts[0]!
+      const sessionToken = parts.slice(1).join(' ')
+      const projectMatch = this.matchByName(workspaces.items, projectToken, item => this.workspaceNameOf(item))
+      if (projectMatch.kind === 'many') {
+        return this.candidatesReply('workspace', projectToken,
+          projectMatch.items.map((item, i) => `${i + 1}. ${projectLabelOf(item)}\n${item.path}`),
+          scope, projectMatch.items.map(item => item.workspaceId))
+      }
+      if (projectMatch.kind === 'none') throw new Error(replyText('没有找到项目「{0}」。发送 /workspaces 查看全部项目。', projectToken))
+      const ws = projectMatch.item
+      const projectLabel = projectLabelOf(ws)
+      const inProject = rows.filter(row => row.cwd !== undefined && ChatCommands.pathBase(row.cwd) === ChatCommands.pathBase(ws.path))
+      const sessionMatch = this.matchByName(inProject, sessionToken, row => this.sessionTitleOf(row) || row.sessionId)
+      if (sessionMatch.kind === 'many') {
+        return this.candidatesReply('session', sessionToken,
+          sessionMatch.items.map((row, i) => `${i + 1}. ${oneLine(this.sessionTitleOf(row) || row.sessionId)}\n${row.sessionId}`),
+          scope, sessionMatch.items.map(row => row.sessionId))
+      }
+      if (sessionMatch.kind === 'one') {
+        return this.switchToSession(channel, kind, msg, current, sessionMatch.item.sessionId, sessionMatch.item, signal)
+      }
+      await this.idle(current?.sessionId, signal, 'session')
+      await this.router.rotate(channel.id, kind, msg.chatId, msg.username || msg.chatId, { cwd: ws.path, signal })
+      return replyText('在「{0}」没有找到会话「{1}」，已创建新会话。\n工作区：{2}\n接下来的消息会发送到此会话。', projectLabel, oneLine(sessionToken), ws.path)
+        + related(replyText('查看会话：/ls-sessions'))
+    }
+
+    const token = parts[0]!
+    const titleMatch = this.matchByName(rows, token, row => this.sessionTitleOf(row))
+    if (titleMatch.kind === 'many') {
+      return this.candidatesReply('session', token,
+        titleMatch.items.map((row, i) => `${i + 1}. ${oneLine(this.sessionTitleOf(row) || row.sessionId)}${row.cwd ? `\n${ChatCommands.pathBase(row.cwd)}` : ''}`),
+        scope, titleMatch.items.map(row => row.sessionId))
+    }
+    if (titleMatch.kind === 'one') {
+      return this.switchToSession(channel, kind, msg, current, titleMatch.item.sessionId, titleMatch.item, signal)
+    }
+    const projectMatch = this.matchByName(workspaces.items, token, item => this.workspaceNameOf(item))
+    if (projectMatch.kind === 'many') {
+      return this.candidatesReply('workspace', token,
+        projectMatch.items.map((item, i) => `${i + 1}. ${projectLabelOf(item)}\n${item.path}`),
+        scope, projectMatch.items.map(item => item.workspaceId))
+    }
+    if (projectMatch.kind === 'none') return null
+    const ws = projectMatch.item
+    const inProject = rows.filter(row => row.cwd !== undefined && ChatCommands.pathBase(row.cwd) === ChatCommands.pathBase(ws.path) && row.running !== true)
+    const recent = inProject[0]
+    if (recent !== undefined) {
+      return this.switchToSession(channel, kind, msg, current, recent.sessionId, recent, signal)
+    }
+    await this.idle(current?.sessionId, signal, 'session')
+    await this.router.rotate(channel.id, kind, msg.chatId, msg.username || msg.chatId, { cwd: ws.path, signal })
+    return replyText('项目「{0}」还没有可接入的会话，已创建新会话。\n工作区：{1}\n接下来的消息会发送到此会话。', projectLabelOf(ws), ws.path || replyText('暂时无法读取'))
+      + related(replyText('查看会话：/ls-sessions'))
+  }
+
+  /** [secretary] 绑定指定会话到聊天：归档/归属/运行中/忙闲校验 + router.bind，返回回复文案。 */
+  private async switchToSession(
+    channel: ChannelAdapter,
+    kind: 'dm' | 'group',
+    msg: ImMessage,
+    current: { sessionId: string } | undefined,
+    id: string,
+    row: Row,
+    signal: AbortSignal,
+  ): Promise<string> {
+    const workspace = await this.workspaces(signal)
+    if (workspace.archivedSessionIds.includes(id)) throw new Error(replyText('请先在 Chat 恢复该归档会话。'))
+    if (workspace.items.filter((item) => item.sessionIds?.includes(id)).length !== 1) throw new Error(replyText('会话工作区归属无效。'))
+    if (row.running && id !== current?.sessionId) throw new Error(replyText('目标会话正在运行，请在 Chat 停止后再切换。'))
+    await this.idle(current?.sessionId, signal, 'session')
+    const cwd = row.cwd || workspace.items.find((item) => item.sessionIds?.includes(id))?.path
+    await this.router.bind(channel.id, kind, msg.chatId, id, row.projections?.values?.title || id, await this.agent(id), cwd)
+    return replyText('已切换会话：{0}\n工作区：{1}\n接下来的消息会发送到此会话。', oneLine(row.projections?.values?.title || id), cwd || replyText('暂时无法读取'))
+      + related(replyText('最近记录：/history'), replyText('重新开始：/new'))
+  }
+
   private remember(key: string, values: string[]): void {
     if (this.choices.size >= 256) this.choices.delete(this.choices.keys().next().value!)
     this.choices.set(key, { values, time: Date.now() })
@@ -220,7 +352,11 @@ export class ChatCommands {
     signal.throwIfAborted()
     const match = /^\/([a-z][a-z0-9_-]*)([\s\S]*)$/i.exec(msg.text.trim())
     if (!match) throw new Error(replyText('命令格式无效，请发送 /help。'))
-    const command = match[1]!.toLowerCase()
+    const rawCommand = match[1]!.toLowerCase()
+    // [secretary] 别名：/ls-session(s) → sessions、/ls-project(s) → workspaces
+    const command = rawCommand === 'ls-session' || rawCommand === 'ls-sessions' ? 'sessions'
+      : rawCommand === 'ls-project' || rawCommand === 'ls-projects' ? 'workspaces'
+      : rawCommand
     const input = match[2]!.trim()
     const kind = msg.kind === 'group' ? 'group' : 'dm'
     const scope = JSON.stringify([channel.id, kind, msg.chatId, msg.userId ?? ''])
@@ -366,17 +502,17 @@ export class ChatCommands {
         const row = rows.find((item) => item.sessionId === current.sessionId)
         return replyText('当前会话：{0}\n工作区：{1}\n会话 ID：{2}', oneLine(row?.projections?.values?.title || replyText('未命名会话')), row?.cwd || replyText('暂时无法读取'), current.sessionId) + related(replyText('切换会话：/sessions'), replyText('详细状态：/status'))
       }
+      // [secretary] 名字形态优先：/session <项目> [会话标题] 或 /session <会话标题>；纯数字走原生序号
+      const parts = input.trim().split(/\s+/)
+      if (!/^\d+$/.test(parts[0]!)) {
+        const named = await this.sessionByName(parts, { channel, kind, msg, current, signal, scope })
+        if (named !== null) return named
+      }
       const id = this.resolve(scope + ':sessions', input)
       const rows = await this.listSessions(signal)
       const row = rows.find((item) => item.sessionId === id && !item.origin)
       if (!row) throw new Error(replyText('会话不存在或不是可接入的普通会话。'))
-      const workspace = await this.workspaces(signal)
-      if (workspace.archivedSessionIds.includes(id)) throw new Error(replyText('请先在 Chat 恢复该归档会话。'))
-      if (workspace.items.filter((item) => item.sessionIds?.includes(id)).length !== 1) throw new Error(replyText('会话工作区归属无效。'))
-      if (row.running && id !== current?.sessionId) throw new Error(replyText('目标会话正在运行，请在 Chat 停止后再切换。'))
-      await this.idle(current?.sessionId, signal, command)
-      await this.router.bind(channel.id, kind, msg.chatId, id, row.projections?.values?.title || id, await this.agent(id), row.cwd || workspace.items.find((item) => item.sessionIds?.includes(id))?.path)
-      return replyText('已切换会话：{0}\n工作区：{1}\n接下来的消息会发送到此会话。', oneLine(row.projections?.values?.title || id), row.cwd || workspace.items.find((item) => item.sessionIds?.includes(id))?.path || replyText('暂时无法读取')) + related(replyText('最近记录：/history'), replyText('重新开始：/new'))
+      return this.switchToSession(channel, kind, msg, current, id, row, signal)
     }
     if (command === 'unbind' || command === 'mute' || command === 'unmute') {
       if (command !== 'unbind' && !input) throw new Error(replyText('用法：/{0} 序号或ID。先发送 /unbind 查看本聊天登记的会话。', command))

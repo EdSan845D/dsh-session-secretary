@@ -26,6 +26,24 @@ export declare class ChatCommands {
     private snapshot;
     private workspaces;
     private listSessions;
+    /** 工作区目录基名（项目名）。 */
+    private static pathBase;
+    /** 名称匹配：精确（大小写不敏感）优先，唯一前缀次之；多个 → many（列候选），0 → none。 */
+    private matchByName;
+    private sessionTitleOf;
+    private workspaceNameOf;
+    /** 候选列表回复：序号已 remember，用户回 `/session N`（或 `/workspace N`）即可命中。 */
+    private candidatesReply;
+    /**
+     * [secretary] `/session` 名字形态：
+     * - 两段：`/session <项目基名> [会话标题]`——项目唯一命中 → 项目内标题精确/前缀唯一 → 绑定；
+     *   会话 miss → 在该项目新建（对齐「进入已有会话或创建会话」）；
+     * - 一段：先全量会话标题，再项目基名；项目命中时取其第一个空闲会话，无可接入会话则新建；
+     * - 都不命中且单 token 恰为完整会话 ID → 返回 null 落回原生路径。
+     */
+    private sessionByName;
+    /** [secretary] 绑定指定会话到聊天：归档/归属/运行中/忙闲校验 + router.bind，返回回复文案。 */
+    private switchToSession;
     private remember;
     private reasoningChoice;
     private resolve;

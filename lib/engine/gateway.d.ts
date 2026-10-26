@@ -72,6 +72,7 @@ export declare class ImEngine {
     private readonly commandScopes;
     private readonly inputScopes;
     applySessionLabel: ((text: string, sessionId: string) => Promise<string>) | null;
+    secretaryInbound: ((msg: ImMessage) => Promise<boolean>) | null;
     /** 话题名回写状态：默认一个话题只命名一次。 */
     private readonly topicTitles;
     private readonly topicWrites;

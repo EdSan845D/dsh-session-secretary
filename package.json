@@ -106,5 +106,5 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "icon": "assets/icon.webp"
+  "icon": "assets/icon.svg"
 }

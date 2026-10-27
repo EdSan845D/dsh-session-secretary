@@ -1925,8 +1925,6 @@ window.__ModuleLoader__.load({
           ],
           onChange: (next) => update({ sendMode: next }),
         })),
-        h("div", { className: "ima-picker-note" }, t("account.presetNote")),
-        sendMode === "steer" && h("div", { className: "ima-picker-note" }, t("account.sendSteerNote")),
         segmentSupported && field("segmentReply", t("account.segmentReply"), h(Select, {
           className: "ima-account-picker",
           value: segmentReply ? "segmented" : "full",
@@ -1937,6 +1935,8 @@ window.__ModuleLoader__.load({
           ],
           onChange: (next) => update({ segmentReply: next === "segmented" }),
         })),
+        h("div", { className: "ima-picker-note" }, t("account.presetNote")),
+        sendMode === "steer" && h("div", { className: "ima-picker-note" }, t("account.sendSteerNote")),
         segmentSupported && h("div", { className: "ima-picker-note" }, t("account.segmentReplyNote")),
         segmentSupported && segmentReply && field("segmentGap", t("account.segmentGap"), h("div", { className: "ima-segment-gap" },
           h(Input, {

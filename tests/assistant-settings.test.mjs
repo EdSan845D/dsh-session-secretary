@@ -1031,6 +1031,7 @@ test('分段回复选择器使用 Select，首选项为「完整发送」，映�
   assert.match(client, /"account\.segmentSplit": "分段发送"/)
   assert.match(client, /"account\.segmentFull": "Send as whole"/)
   assert.match(client, /"account\.segmentSplit": "Send in segments"/)
+  assert.match(client, /field\("sendMode"[\s\S]*?\)\),\s*segmentSupported && field\("segmentReply"/)
   assert.match(client, /field\("segmentReply", t\("account\.segmentReply"\), h\(Select, \{/)
   assert.match(client, /value: segmentReply \? "segmented" : "full"/)
   assert.match(client, /\{ value: "full", label: t\("account\.segmentFull"\) \}/)

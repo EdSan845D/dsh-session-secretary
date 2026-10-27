@@ -45,6 +45,10 @@ export declare function createControlChat(options: ControlChatOptions): {
     observe(msg: ObservedInbound): void;
     /** 从运行中的渠道解析投递目标；不可用时返回 null。 */
     resolve(channels: Iterable<RunningChannel>): ControlTarget | null;
+    /** 当前学习结果（未学习时为 null）；设置页状态卡展示用。 */
+    view(): LearnedChat | null;
+    /** 清除学习结果并删除落盘文件；`secretary.controlChatId` 显式配置不受影响。 */
+    forget(): void;
     /** 渠道重连等场景下清除「渠道缺失」的一次性告警。 */
     resetWarn(): void;
 };

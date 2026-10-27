@@ -1,5 +1,5 @@
 /**
- * dsh-im-connect Host：IM 助理。
+ * dsh-session-secretary Host：会话秘书（中断/完成通知 + IM 会话控制台）。
  */
 import type { Context } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
@@ -20,6 +20,7 @@ import { createNotifier } from './secretary/notifier.js'
 import { createSecretaryBridge } from './secretary/bridge.js'
 import { buildIntentPrompt, candidateLines, parseIntentReply } from './secretary/intent.js'
 import { createSystemChannel } from './notify-channels/system.js'
+import type { SecretarySettings } from './secretary/runtime-settings.js'
 
 export const name = 'dsh-session-secretary'
 export const inject = [
@@ -86,7 +87,9 @@ export const Config: Schema<PluginConfig> = Schema.object({
   topicNaming: Schema.union(['once', 'follow', 'off']).default('once'),
   updater: Schema.boolean().default(false),
   onlineUpdate: Schema.boolean().default(false),
-  // [secretary]
+  // [secretary] 会话秘书行为组：设置 → 会话秘书 页内的「秘书偏好」卡承载读写
+  // （store 覆盖层，即改即生效），这里只是默认值，故对通用配置编辑器隐藏。
+  // 值得留意的例外：secretary.controlChatId 仍可作为手工固定的种子（配置文件）。
   secretary: Schema.object({
     notifyQuestion: Schema.boolean().default(true),
     notifyApproval: Schema.boolean().default(true),
@@ -97,18 +100,18 @@ export const Config: Schema<PluginConfig> = Schema.object({
     controlChatId: Schema.string().default(''),
     pendingTtlMinutes: Schema.number().default(1440),
     maxForwardChars: Schema.number().default(1200),
-  }),
+  }).hidden(),
   system: Schema.object({
     // v2.0：client 通知半边延期到 v2.1，桌面 toast 由本通道（node-notifier/SnoreToast）承担
     enabled: Schema.boolean().default(true),
     icon: Schema.string(),
     verbosity: notifyVerbosity,
-  }),
+  }).hidden(),
   browser: Schema.object({
     enabled: Schema.boolean().default(true),
     onlyWhenHidden: Schema.boolean().default(true),
     verbosity: notifyVerbosity,
-  }),
+  }).hidden(),
 })
 
 export function apply(ctx: Context, config: PluginConfig): void {
@@ -191,9 +194,19 @@ function wireSecretary(
     stateFile: join(stateDir, 'control-chat.json'),
     logger: { warn: warnLog },
   })
-  const systemChannel = config.system.enabled === true
-    ? createSystemChannel(config.system.icon === undefined ? {} : { icon: config.system.icon })
-    : undefined
+  // [secretary] 生效设置 = Config 默认值 ⊕ 设置页覆盖层（channels.json store.secretary）。
+  // 桥/监听闭包统一走 readSecretary()，设置页保存即改即生效，无需插件重载。
+  const readSecretary = (): SecretarySettings => manager.getSecretarySettings()
+  manager.secretaryDefaults = () => ({ ...config.secretary, systemEnabled: config.system.enabled !== false })
+  manager.secretaryControl = {
+    view: () => ({ configured: config.secretary.controlChatId.trim() !== '', learned: controlChat.view() }),
+    forget: () => {
+      controlChat.forget()
+      warnLog('设置页清除了控制聊天学习结果')
+    },
+  }
+  // 系统通道恒创建，发送时按生效设置门控（设置页可随时开关桌面 toast）
+  const systemChannel = createSystemChannel(config.system.icon === undefined ? {} : { icon: config.system.icon })
 
   const labelProvider = createLabelProvider({
     list: async () => {
@@ -205,20 +218,25 @@ function wireSecretary(
     },
   })
   manager.imEngine.applySessionLabel = async (text, sessionId) => {
-    if (config.secretary.labelPrefix !== true) return text
+    if (readSecretary().labelPrefix !== true) return text
     const label = await labelProvider.labelOf(sessionId)
     return label === '' ? text : `${label}${text}`
   }
 
   const notifier = createNotifier({
     control: () => controlChat.resolve(manager.runningChannels),
-    system: systemChannel === undefined ? undefined : { send: payload => systemChannel.send(payload) },
+    system: {
+      send: async payload => {
+        if (readSecretary().systemEnabled !== true) return
+        await systemChannel.send(payload)
+      },
+    },
     labelOf: sessionId => labelProvider.labelOf(sessionId),
     logger: { warn: warnLog },
   })
 
   const bridge = createSecretaryBridge({
-    readConfig: () => config.secretary,
+    readConfig: () => readSecretary(),
     delivery: {
       async sendControlText(text) {
         const target = controlChat.resolve(manager.runningChannels)
@@ -367,7 +385,7 @@ function wireSecretary(
       }
     }
     // 意图解析：仅私聊、非命令、无绑定、开关开启（有绑定 → 文本原生直达当前会话）
-    if (kind !== 'dm' || msg.text.trim().startsWith('/') || config.secretary.intentParse !== true) return false
+    if (kind !== 'dm' || msg.text.trim().startsWith('/') || readSecretary().intentParse !== true) return false
     if (manager.imEngine.chatBound(channelId, kind, msg.chatId)) return false
     const intent = await runIntent(channelId, kind, msg).catch(() => null)
     if (intent === null) return false
@@ -405,7 +423,7 @@ function wireSecretary(
       if (text.trim() !== '') rememberAssistant(sessionId, text.slice(0, 2000))
       return
     }
-    if (config.secretary.notifyCompletion !== true) return
+    if (readSecretary().notifyCompletion !== true) return
     if (event.type !== 'turn/end' || event.data?.reason?.kind !== 'completed') return
     if (session.header?.origin === 'subagent') return
     if (manager.imEngine.isSessionBound(sessionId)) return
@@ -413,7 +431,7 @@ function wireSecretary(
     void notifier.lifecycle(sessionId, '回合完成', `✅ 会话回合完成：${truncate(summary)}`)
   })
   ctx.on('agent/error', (payload: { agent?: { id?: string; session?: { id?: string; header?: { origin?: string } } }; error?: unknown }) => {
-    if (config.secretary.notifyError !== true) return
+    if (readSecretary().notifyError !== true) return
     const sessionId = payload.agent?.session?.id ?? payload.agent?.id
     if (typeof sessionId !== 'string' || sessionId === '') return
     if (payload.agent?.session?.header?.origin === 'subagent') return

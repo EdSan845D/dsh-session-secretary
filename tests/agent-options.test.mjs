@@ -27,7 +27,7 @@ test('插件显式配置优先于 Host 默认模型', () => {
 test('两边都没有模型时给出可执行错误', () => {
   assert.throws(
     () => resolveImAgentOptions({ provider: '  ', model: '', fallback: {} }),
-    /IM助理/,
+    /会话秘书/,
   )
 })
 

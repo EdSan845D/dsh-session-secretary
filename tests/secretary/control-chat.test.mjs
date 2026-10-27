@@ -42,3 +42,25 @@ test('配置的渠道未连接时返回 null', () => {
   const chat = createControlChat({ controlChatId: 'telegram:x', stateFile: null, logger: { warn: () => {} } })
   assert.equal(chat.resolve([channel('qq')]), null)
 })
+
+test('view() 返回学习结果；forget() 清除内存与落盘并允许重新学习', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'control-chat-'))
+  try {
+    const file = join(dir, 'control-chat.json')
+    const chat = createControlChat({ stateFile: file, logger: { warn: () => {} } })
+    assert.equal(chat.view(), null, '未学习时 view 为 null')
+    chat.observe({ channelId: 'qq', chatId: 'user1', kind: 'dm' })
+    assert.deepEqual(chat.view(), { channelId: 'qq', chatId: 'user1', at: chat.view()?.at })
+    chat.forget()
+    assert.equal(chat.view(), null, 'forget 后 view 为 null')
+    assert.equal(createControlChat({ stateFile: file, logger: { warn: () => {} } }).view(), null, '落盘文件已删除')
+    chat.observe({ channelId: 'feishu', chatId: 'user2', kind: 'dm' })
+    assert.equal(chat.view()?.chatId, 'user2', 'forget 后可重新学习')
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
+test('forget() 对未学习实例是空操作', () => {
+  const chat = createControlChat({ stateFile: null, logger: { warn: () => {} } })
+  assert.doesNotThrow(() => chat.forget())
+  assert.equal(chat.view(), null)
+})

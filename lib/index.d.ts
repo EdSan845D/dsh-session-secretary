@@ -1,5 +1,5 @@
 /**
- * dsh-im-connect Host：IM 助理。
+ * dsh-session-secretary Host：会话秘书（中断/完成通知 + IM 会话控制台）。
  */
 import type { Context } from '@deepseek-ai/cordis';
 import Schema from '@deepseek-ai/schemastery';

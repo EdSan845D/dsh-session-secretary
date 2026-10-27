@@ -6,6 +6,7 @@ import type { ChannelId, SessionRecord } from './engine/session-id.js';
 import { ImEngine } from './engine/gateway.js';
 import { type AssistantModel, type PermissionPreset } from './engine/assistant-settings.js';
 import type { EngineConfig, SendMode } from './engine/types.js';
+import { type SecretarySettings } from './secretary/runtime-settings.js';
 export declare const API_CLIENT_HEADER = "x-dsh-im-connect-client";
 type ChannelProxyMode = 'inherit' | 'direct' | 'custom';
 interface ApiBodyReadResult {
@@ -167,6 +168,23 @@ export declare class ChannelManager {
     isHostUpdateDisabled(): boolean;
     isUpdateEnabled(): boolean;
     setOnlineUpdate(enabled: boolean): Promise<boolean>;
+    /** wireSecretary 注入：Config 侧默认值（插件重载时随新 Config 更新）。 */
+    secretaryDefaults?: () => SecretarySettings;
+    /** wireSecretary 注入：控制聊天状态查看与清除学习结果。 */
+    secretaryControl?: {
+        view(): {
+            configured: boolean;
+            learned: {
+                channelId: string;
+                chatId: string;
+                at: string;
+            } | null;
+        };
+        forget(): void;
+    };
+    /** 生效设置 = Config 默认值 ⊕ store.secretary 覆盖层；保存后下一条消息即生效。 */
+    getSecretarySettings(): SecretarySettings;
+    setSecretaryOverrides(patch: Partial<SecretarySettings>): Promise<void>;
     currentAssistant(): AssistantModel | undefined;
     updateAccount(accountId: string, input: Record<string, unknown>): Promise<{
         ok: boolean;

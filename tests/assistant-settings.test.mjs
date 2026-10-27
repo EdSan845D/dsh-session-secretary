@@ -396,10 +396,10 @@ test('IM 自有界面注册双语词典并随 Host 语言刷新', () => {
   assert.match(client, /function LocalizedSessionSwitcher\(props\)[\s\S]*useSyncExternalStore/)
   assert.match(client, /function LocalizedSettingsPage\(props\)[\s\S]*useSyncExternalStore/)
   assert.match(client, /}, LocalizedSettingsPage\)\)/, '设置页本身必须订阅语言变化，模型词条才能立即刷新')
-  assert.match(client, /"settings\.label": "IM Assistant"/)
-  assert.match(client, /"settings\.label": "IM助理"/, '中文设置区标题是 Codex UI 的跨插件导航兼容标识')
-  assert.match(client, /"settings\.title": "IM Assistant"/)
-  assert.match(client, /"settings\.title": "IM助理"/)
+  assert.match(client, /"settings\.label": "Session Secretary"/)
+  assert.match(client, /"settings\.label": "会话秘书"/, '中文设置区标题是 Codex UI 的跨插件导航兼容标识')
+  assert.match(client, /"settings\.title": "Session Secretary"/)
+  assert.match(client, /"settings\.title": "会话秘书"/)
   assert.match(client, /"action\.addAccount": "Add account"/)
   assert.match(client, /"action\.checkConnection": "Diagnose connection"/)
   assert.match(client, /"action\.removeAccount": "Remove"/)
@@ -424,7 +424,7 @@ test('IM 自有界面注册双语词典并随 Host 语言刷新', () => {
   const accountPage = client.slice(client.indexOf('function AccountInspector'), client.indexOf('const CHANNEL_WORKSPACE_PREFIX'))
   assert.doesNotMatch(
     bindAndPicker + accountPage,
-    /生成二维码|请选择工作区|请选择模型|请选择权限|私聊准入|绑定成功后会自动生成账号名|保存中|已保存|运行正常|当前工作区|接收消息|检查连接|重新连接|移除接入|IM助理|添加账号|处理中|在线|离线/,
+    /生成二维码|请选择工作区|请选择模型|请选择权限|私聊准入|绑定成功后会自动生成账号名|保存中|已保存|运行正常|当前工作区|接收消息|检查连接|重新连接|移除接入|会话秘书|添加账号|处理中|在线|离线/,
     '多账号设置页的用户可见文案必须通过 Host i18n 解析',
   )
 })

@@ -1,4 +1,4 @@
-/** IM 助理页选择的模型。 */
+/** 会话秘书设置页选择的模型。 */
 export interface AssistantModel {
   provider: string
   model: string

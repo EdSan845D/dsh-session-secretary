@@ -194,7 +194,7 @@ test('等待中的 Chat 命令可被 stop 取消，不阻塞后续命令', async
     send('/stop', 'stop')
     await waitFor(() => cancelled && sent.some(item => item.text.startsWith('命令已取消。') && item.text.includes('/status')))
     send('/help', 'help-after-stop')
-    await waitFor(() => sent.some(item => item.text.includes('IM 助理已连接')))
+    await waitFor(() => sent.some(item => item.text.includes('会话秘书已连接')))
   } finally { engine.dispose() }
 })
 
@@ -330,7 +330,7 @@ test('账号显式允许所有私聊用户时覆盖渠道本地白名单', async
   })
   try {
     inbound({ chatId: 'user-1', userId: 'stranger', text: '/help', kind: 'dm', messageId: 'private-all' })
-    await waitFor(() => sent.some((item) => item.text.includes('IM 助理已连接')))
+    await waitFor(() => sent.some((item) => item.text.includes('会话秘书已连接')))
   } finally {
     engine.dispose()
   }
@@ -342,7 +342,7 @@ test('允许所有私聊时审批留在原聊天，不再因未写入白名单�
   })
   try {
     inbound({ chatId: 'user-1', userId: 'user-1', text: '/help', kind: 'dm', messageId: 'public-help' })
-    await waitFor(() => sent.some((item) => item.text.includes('IM 助理已连接')))
+    await waitFor(() => sent.some((item) => item.text.includes('会话秘书已连接')))
 
     let settled
     const pending = handlers['approval/request']({
@@ -374,7 +374,7 @@ test('未授权用户在命令和审批之前就被拒绝', async (t) => {
   const pending = []
   const { engine, inbound, sent } = makeEngine(t, (_channelId, msg) => {
     pending.push(msg.userId)
-    return '未授权：请管理员在设置 → IM助理 中批准你的访问。'
+    return '未授权：请管理员在设置 → 会话秘书 中批准你的访问。'
   })
   try {
     inbound({ chatId: 'user-1', userId: 'stranger', text: '/help', kind: 'dm', messageId: '1' })
@@ -409,7 +409,7 @@ test('群聊 @ 后无需绑定', async (t) => {
   })
   try {
     inbound({ chatId: 'chat-9', userId: 'stranger', text: '/help', kind: 'group', addressed: true, messageId: 'g1' })
-    await waitFor(() => sent.some((item) => item.text.includes('IM 助理已连接')))
+    await waitFor(() => sent.some((item) => item.text.includes('会话秘书已连接')))
     assert.deepEqual(pending, [])
   } finally {
     engine.dispose()
@@ -464,7 +464,7 @@ test('白名单用户可通过命令；群聊和私聊都不再交回网页', as
   engine.addAllowed('telegram', 'user-1')
   try {
     inbound({ chatId: 'user-1', userId: 'user-1', text: '/help', kind: 'dm', messageId: '4' })
-    await waitFor(() => sent.some((item) => item.text.includes('IM 助理已连接')))
+    await waitFor(() => sent.some((item) => item.text.includes('会话秘书已连接')))
 
     let groupSettled
     const groupPending = handlers['approval/request']({
@@ -519,7 +519,7 @@ test('Discord 式私聊用频道号作 chatId 时，仍按发言人在原聊天�
   engine.addAllowed('telegram', 'user-1')
   try {
     inbound({ chatId: 'channel-9', userId: 'user-1', text: '/help', kind: 'dm', messageId: 'speak' })
-    await waitFor(() => sent.some((item) => item.text.includes('IM 助理已连接')))
+    await waitFor(() => sent.some((item) => item.text.includes('会话秘书已连接')))
     const pending = handlers['approval/request']({
       agent: {
         id: sessionId,
@@ -1201,7 +1201,7 @@ test('命令关闭不影响准入、普通消息和白名单工具审批', async
     assert.equal(sent.length, before, '普通消息不应被命令权限拦截')
     policy.dm.enabled = true
     inbound({ chatId: 'user-1', userId: 'user-1', kind: 'dm', text: '/help', messageId: 'policy-override' })
-    await waitFor(() => sent.some(item => item.text.includes('IM 助理已连接')))
+    await waitFor(() => sent.some(item => item.text.includes('会话秘书已连接')))
     policy.dm.enabled = false
     const request = handlers['approval/request']({ session: { id: dmSessionId }, toolName: 'read_file', reason: 'test' }, () => Promise.resolve('fallback'))
     await waitFor(() => engine.broker.has(dmSessionId))

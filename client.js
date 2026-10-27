@@ -609,10 +609,25 @@ window.__ModuleLoader__.load({
         "connection.connected": "已连接", "connection.connecting": "连接中", "connection.reconnecting": "重连中", "connection.disconnected": "未连接", "connection.stopped": "已停止", "connection.error": "连接异常", "connection.unknown": "状态未知", "connection.paused": "接收已暂停",
         "connection.title": "本次状态检查", "connection.scope": "仅检查本机渠道运行状态，未验证平台凭据或消息收发。", "connection.checkedAt": "检查时间", "connection.receiveOn": "接收开关已开启", "connection.receiveOff": "接收开关已关闭；请在账号列表开启后再发送消息。", "connection.checking": "检查中…",
         "connection.next.connected": "可在原聊天发送消息验证收发；私聊仍需符合准入设置。", "connection.next.connecting": "请稍后再次检查；等待扫码时请完成手机确认。", "connection.next.reconnecting": "渠道正在尝试恢复，请稍后再次检查。", "connection.next.disconnected": "请重新连接；需要扫码的渠道可重新添加绑定。", "connection.next.stopped": "请点击重新连接以启动账号。", "connection.next.error": "请尝试重新连接；仍有异常时查看本机日志。", "connection.next.unknown": "暂时无法确认状态，请稍后再检查或查看本机日志。",
-        "settings.label": "IM助理", "settings.title": "IM助理", "settings.description": "管理各渠道账号。每个账号独立选择工作区、模型和权限，配置仅保存在本机。", "settings.viewProject": "GitHub", "settings.feedback": "问题反馈",
+        "settings.label": "会话秘书", "settings.title": "会话秘书", "settings.description": "会话中断与完成通知（系统弹窗 + IM）、IM 会话控制台。在下方管理渠道账号与秘书偏好，配置仅保存在本机。", "settings.viewProject": "GitHub", "settings.feedback": "问题反馈",
         "sidebar.entry.title": "侧边栏入口", "sidebar.entry.desc": "在侧栏显示即时通讯管理入口。设置里的入口不变。", "sidebar.entry.toggle": "切换侧边栏入口",
         "update.entry.title": "在线更新", "update.entry.desc": "允许检查并在线安装即时通讯插件的新版本。关闭后隐藏更新入口。", "update.entry.toggle": "切换在线更新", "error.update.disabled": "在线更新已被禁用",
-        "settings.aria": "IM助理", "settings.publicChatNotice": "未批准用户可以发起聊天，但不能批准工具调用。", "pending.notice": "有访问请求。批准后该用户才能驱动本机助手。", "action.approve": "批准", "action.deny": "拒绝", "loading": "加载中…",
+        "secretary.card.title": "秘书偏好", "secretary.card.desc": "会话中断、完成与出错时的通知方式，以及 IM 里的交互行为。保存后立即生效，无需重启。",
+        "secretary.control.title": "控制聊天", "secretary.control.desc": "通知与确认回复都发到这里。在任意已连接渠道私聊机器人即可自动学习。",
+        "secretary.control.fixed": "已固定", "secretary.control.learned": "已自动学习", "secretary.control.none": "尚未学习：给机器人发一条私聊消息即可。",
+        "secretary.control.reset": "清除学习",
+        "secretary.system.title": "系统通知", "secretary.system.desc": "桌面系统弹窗（Windows 通知中心）。",
+        "secretary.notify.question.title": "提问转发", "secretary.notify.question.desc": "会话向用户提问时转发到控制聊天。",
+        "secretary.notify.approval.title": "审批转发", "secretary.notify.approval.desc": "需要批准工具调用或计划时转发到控制聊天。",
+        "secretary.notify.completion.title": "完成通知", "secretary.notify.completion.desc": "回合正常结束且会话未绑定 IM 聊天时通知。",
+        "secretary.notify.error.title": "出错通知", "secretary.notify.error.desc": "会话任务出错且未绑定 IM 聊天时通知。",
+        "secretary.behavior.prefix.title": "【项目·会话】前缀", "secretary.behavior.prefix.desc": "IM 里会话回复都带所属项目与会话标识，便于区分来源。",
+        "secretary.behavior.intent.title": "AI 意图解析", "secretary.behavior.intent.desc": "未绑定聊天里的纯文本先由 AI 解析意图并确认，再打开或新建会话。",
+        "secretary.field.ttl.title": "代笔回复有效期（分钟）", "secretary.field.ttl.desc": "超过时限的序号确认与代答回复自动作废。",
+        "secretary.field.chars.title": "转发截断长度（字符）", "secretary.field.chars.desc": "单条转发消息的最大长度。",
+        "secretary.action.save": "保存", "secretary.action.reload": "重新加载", "secretary.error.load": "无法加载秘书偏好", "secretary.error.range": "有效期与截断长度需为范围内的整数。",
+        "secretary.bundle.entry.title": "会话秘书设置", "secretary.bundle.entry.desc": "在设置里打开会话秘书页，管理通知偏好与控制聊天。", "secretary.bundle.entry.open": "打开设置",
+        "settings.aria": "会话秘书", "settings.publicChatNotice": "未批准用户可以发起聊天，但不能批准工具调用。", "pending.notice": "有访问请求。批准后该用户才能驱动本机助手。", "action.approve": "批准", "action.deny": "拒绝", "loading": "加载中…",
         "account.presetUnavailable": "预设不可用", "account.presetNote": "更改后使用新会话，旧会话保留。", "action.settings": "设置", "command.dm": "私聊命令", "command.group": "群聊命令", "command.enabled": "可以执行命令", "command.disabled": "仅正常对话",
         "account.workspace": "工作区", "account.currentWorkspace": "当前工作区", "account.selectWorkspace": "请选择工作区", "account.selectModel": "请选择模型", "account.selectPermission": "请选择权限", "account.privateAccess": "私聊准入", "account.privateApproved": "仅已批准用户", "account.privateAll": "允许所有私聊用户", "account.sendMode": "发送方式", "account.sendQueue": "排队发送", "account.sendSteer": "插话发送", "account.sendSteerNote": "插话发送会把消息作为补充指令立即交给运行中的任务；任务空闲时与排队发送相同。", "account.autoNameNote": "绑定成功后会自动生成账号名，无需手动填写。需要区分使用者时，可在账号行填写备注。", "account.proxyMode": "网络代理", "account.proxyInherit": "跟随宿主", "account.proxyDirect": "直接连接", "account.proxyCustom": "手动配置",        "account.proxyUrl": "代理地址", "account.proxyNote": "仅影响当前账号；保存后自动重连生效。", "account.proxySaved": "代理地址已保存；留空保存可保留当前地址。", "account.defaultName": "{channel}账号 {count}",
         "account.remark": "名称备注", "account.remarkNote": "只在本机设置页区分账号，留空恢复自动名称。", "account.rename": "修改名称备注",
@@ -627,10 +642,10 @@ window.__ModuleLoader__.load({
         "error.loadAssistant": "无法加载账号配置", "error.noModels": "当前 Host 还没有可用模型，请先在网页里配置提供商", "error.save": "保存失败", "error.chooseWorkspace": "请选择工作区目录", "error.workspaceUnavailable": "当前 Host 无法新增工作区", "error.addWorkspace": "新增工作区失败", "error.load": "加载失败", "error.connection": "无法连接本机 IM 助理接口", "error.request": "请求失败", "error.action": "操作失败", "error.qr": "无法生成二维码", "error.detailsInLog": "操作失败，请查看服务器日志。",
         "composer.noWorkspaces": "暂无工作区", "composer.addWorkspace": "添加工作区…", "composer.workspaceRequired": "请先添加工作区，否则无法保存", "composer.permission": "权限", "composer.noModels": "暂无模型", "action.cancel": "取消",
         "permission.readOnly": "只读", "permission.workspaceWrite": "工作区写入", "permission.fullAccess": "完全访问",
-        "rail.workspace": "工作区", "rail.sessions": "会话", "rail.search": "搜索", "rail.searchPlaceholder": "搜索会话...", "rail.clearSearch": "清除搜索", "rail.filter": "筛选", "rail.group": "分组方式", "rail.byWorkspace": "按工作区", "rail.list": "单列表", "rail.byWorkspaceTree": "按工作区树", "rail.byChannel": "按频道", "rail.treeUnavailable": "当前宿主未提供官方任务树。", "rail.groupReadOnly": "频道分组不能在这里重命名或删除。", "rail.sort": "排序方式", "rail.recent": "最近更新", "rail.showArchived": "显示已归档", "rail.onlyArchived": "仅显示已归档", "rail.running": "运行中", "rail.idle": "空闲", "rail.waitingApproval": "等待审批", "rail.planReview": "计划待审", "rail.waitingAnswer": "等待回答", "rail.subagents": "{n} 个子代理运行中", "rail.completed": "已完成", "rail.archived": "已归档", "rail.compactApproval": "待审批", "rail.compactPlan": "计划待审", "rail.compactAnswer": "待回答", "rail.renameAria": "重命名会话", "rail.rename": "重命名", "rail.fork": "分叉会话", "rail.archive": "归档会话", "rail.unarchive": "恢复会话", "rail.deleteSession": "删除会话", "rail.deleteSessionConfirm": "删除会话", "rail.deleteSessionDescription": "将永久删除会话“{name}”及其子代理（含正在运行的）和全部记录（对话内容、统计、缓存），此操作不可恢复。", "rail.deleteSessionPending": "正在删除会话…", "rail.deleteSessionFailed": "删除会话失败：{message}", "rail.deleteSessionClose": "关闭", "rail.deleteSessionCancel": "取消", "rail.groupActions": "“{name}”的频道操作", "rail.channelSettings": "频道设置", "rail.addChannel": "添加频道", "rail.empty": "还没有频道会话。先在设置 → IM助理 里连接渠道，并给机器人发一条消息。", "rail.ungrouped": "未分组", "rail.tabsAria": "工作区分类", "rail.tasks": "任务", "rail.channels": "频道",
+        "rail.workspace": "工作区", "rail.sessions": "会话", "rail.search": "搜索", "rail.searchPlaceholder": "搜索会话...", "rail.clearSearch": "清除搜索", "rail.filter": "筛选", "rail.group": "分组方式", "rail.byWorkspace": "按工作区", "rail.list": "单列表", "rail.byWorkspaceTree": "按工作区树", "rail.byChannel": "按频道", "rail.treeUnavailable": "当前宿主未提供官方任务树。", "rail.groupReadOnly": "频道分组不能在这里重命名或删除。", "rail.sort": "排序方式", "rail.recent": "最近更新", "rail.showArchived": "显示已归档", "rail.onlyArchived": "仅显示已归档", "rail.running": "运行中", "rail.idle": "空闲", "rail.waitingApproval": "等待审批", "rail.planReview": "计划待审", "rail.waitingAnswer": "等待回答", "rail.subagents": "{n} 个子代理运行中", "rail.completed": "已完成", "rail.archived": "已归档", "rail.compactApproval": "待审批", "rail.compactPlan": "计划待审", "rail.compactAnswer": "待回答", "rail.renameAria": "重命名会话", "rail.rename": "重命名", "rail.fork": "分叉会话", "rail.archive": "归档会话", "rail.unarchive": "恢复会话", "rail.deleteSession": "删除会话", "rail.deleteSessionConfirm": "删除会话", "rail.deleteSessionDescription": "将永久删除会话“{name}”及其子代理（含正在运行的）和全部记录（对话内容、统计、缓存），此操作不可恢复。", "rail.deleteSessionPending": "正在删除会话…", "rail.deleteSessionFailed": "删除会话失败：{message}", "rail.deleteSessionClose": "关闭", "rail.deleteSessionCancel": "取消", "rail.groupActions": "“{name}”的频道操作", "rail.channelSettings": "频道设置", "rail.addChannel": "添加频道", "rail.empty": "还没有频道会话。先在设置 → 会话秘书 里连接渠道，并给机器人发一条消息。", "rail.ungrouped": "未分组", "rail.tabsAria": "工作区分类", "rail.tasks": "任务", "rail.channels": "频道",
         "time.now": "刚刚", "time.minutes": "{n}分钟", "time.hours": "{n}小时", "time.days": "{n}天", "time.months": "{n}个月", "time.years": "{n}年", "time.ago": "{t}前",
         "copy": "复制", "hover.copied": "已复制",
-        "server.unknownChannel": "未知渠道", "server.channelUnconfigured": "渠道未配置", "server.sessionMissing": "会话不存在", "server.accountMissing": "账号不存在", "server.accountConnectFailed": "账号连接失败，请查看本机日志", "server.accountReconnectFailed": "重新连接失败，请查看本机日志", "server.selectAccountSettings": "请选择提供商、模型、工作区或权限", "server.selectModel": "请选择提供商和模型", "server.selectWorkspace": "请选择工作区", "server.createWorkspace": "请先添加工作区", "server.selectPermission": "请选择权限", "server.missingCredentials": "凭据不足，无法启动渠道", "server.qrUnsupported": "该渠道不支持扫码绑定", "server.qrExpired": "二维码已过期", "server.qrIncomplete": "扫码未完成", "server.accessDenied": "未授权：请管理员在设置 → IM助理 中批准你的访问。", "server.remarkTooLong": "账号备注不能超过 40 个字符", "server.remarkControl": "账号备注不能包含换行或控制字符",
+        "server.unknownChannel": "未知渠道", "server.channelUnconfigured": "渠道未配置", "server.sessionMissing": "会话不存在", "server.accountMissing": "账号不存在", "server.accountConnectFailed": "账号连接失败，请查看本机日志", "server.accountReconnectFailed": "重新连接失败，请查看本机日志", "server.selectAccountSettings": "请选择提供商、模型、工作区或权限", "server.selectModel": "请选择提供商和模型", "server.selectWorkspace": "请选择工作区", "server.createWorkspace": "请先添加工作区", "server.selectPermission": "请选择权限", "server.missingCredentials": "凭据不足，无法启动渠道", "server.qrUnsupported": "该渠道不支持扫码绑定", "server.qrExpired": "二维码已过期", "server.qrIncomplete": "扫码未完成", "server.accessDenied": "未授权：请管理员在设置 → 会话秘书 中批准你的访问。", "server.remarkTooLong": "账号备注不能超过 40 个字符", "server.remarkControl": "账号备注不能包含换行或控制字符",
         "status.disconnected": "已断开", "status.reconnectFailed": "重连失败", "status.connectingSocket": "连接中", "status.waitHandshake": "等待网关握手", "status.authenticating": "鉴权中", "status.reconnecting": "重连中", "status.connectionError": "连接错误", "status.connectionFailed": "连接失败", "status.streamConnected": "Stream 已连接", "status.stopped": "已停止", "status.longConnection": "长连接已建立", "status.polling": "轮询中", "status.notLoggedIn": "未登录", "status.waitQr": "等待扫码", "status.loggedIn": "已登录", "status.loggedInRecovered": "已登录（自动恢复）", "status.loggingIn": "登录中",
       },
       en: {
@@ -640,10 +655,25 @@ window.__ModuleLoader__.load({
         "connection.connected": "Connected", "connection.connecting": "Connecting", "connection.reconnecting": "Reconnecting", "connection.disconnected": "Disconnected", "connection.stopped": "Stopped", "connection.error": "Connection error", "connection.unknown": "Status unknown", "connection.paused": "Receiving paused",
         "connection.title": "Status check result", "connection.scope": "Checks local channel runtime only. Platform credentials and message delivery have not been verified.", "connection.checkedAt": "Checked at", "connection.receiveOn": "Receiving is enabled", "connection.receiveOff": "Receiving is disabled. Enable it in the account list before sending messages.", "connection.checking": "Checking…",
         "connection.next.connected": "Send a message in the original chat to verify delivery. Private chats still follow access settings.", "connection.next.connecting": "Check again shortly. Complete confirmation on your phone if a QR scan is pending.", "connection.next.reconnecting": "The channel is attempting to recover. Check again shortly.", "connection.next.disconnected": "Reconnect the account. QR channels may need to be added again.", "connection.next.stopped": "Select Reconnect to start the account.", "connection.next.error": "Try reconnecting. If the issue persists, check the local logs.", "connection.next.unknown": "The current state could not be confirmed. Check again later or inspect the local logs.",
-        "settings.label": "IM Assistant", "settings.title": "IM Assistant", "settings.description": "Manage accounts across channels. Each account has its own workspace, model, and permission settings, stored only on this machine.", "settings.viewProject": "GitHub", "settings.feedback": "Issues",
+        "settings.label": "Session Secretary", "settings.title": "Session Secretary", "settings.description": "Session interruption and completion notifications (system toasts + IM), plus an IM console. Manage channel accounts and secretary preferences below; settings stay on this machine.", "settings.viewProject": "GitHub", "settings.feedback": "Issues",
         "sidebar.entry.title": "Sidebar entry", "sidebar.entry.desc": "Show IM Connect in the sidebar. The Settings entry stays either way.", "sidebar.entry.toggle": "Toggle sidebar entry",
         "update.entry.title": "Online updates", "update.entry.desc": "Allow checking and installing new versions online. Hides the update entry when disabled.", "update.entry.toggle": "Toggle online updates", "error.update.disabled": "Online updates are disabled",
-        "settings.aria": "IM Assistant", "settings.publicChatNotice": "Unapproved users can start chats, but they cannot approve tool calls.", "pending.notice": "There are access requests. Approve a user before they can control the local assistant.", "action.approve": "Approve", "action.deny": "Deny", "loading": "Loading…",
+        "secretary.card.title": "Secretary preferences", "secretary.card.desc": "How session interruptions, completions, and errors reach you, plus IM interaction behavior. Changes apply immediately; no restart needed.",
+        "secretary.control.title": "Control chat", "secretary.control.desc": "Notifications and confirmation replies land here. Send the bot any direct message on a connected channel to learn it automatically.",
+        "secretary.control.fixed": "Pinned", "secretary.control.learned": "Learned automatically", "secretary.control.none": "Not learned yet: send the bot a direct message.",
+        "secretary.control.reset": "Forget",
+        "secretary.system.title": "System notifications", "secretary.system.desc": "Desktop toast notifications (Windows notification center).",
+        "secretary.notify.question.title": "Forward questions", "secretary.notify.question.desc": "Forward session questions to the control chat.",
+        "secretary.notify.approval.title": "Forward approvals", "secretary.notify.approval.desc": "Forward tool-call and plan approvals to the control chat.",
+        "secretary.notify.completion.title": "Completion notices", "secretary.notify.completion.desc": "Notify when a turn finishes normally and the session is not bound to an IM chat.",
+        "secretary.notify.error.title": "Error notices", "secretary.notify.error.desc": "Notify when a session task errors and the session is not bound to an IM chat.",
+        "secretary.behavior.prefix.title": "【Project · Session】prefix", "secretary.behavior.prefix.desc": "IM replies carry their project and session label so sources stay distinguishable.",
+        "secretary.behavior.intent.title": "AI intent parsing", "secretary.behavior.intent.desc": "Plain text in unbound chats is parsed and confirmed by AI before opening or creating a session.",
+        "secretary.field.ttl.title": "Reply window (minutes)", "secretary.field.ttl.desc": "Numbered confirmations and proxy replies expire after this window.",
+        "secretary.field.chars.title": "Forward truncation (characters)", "secretary.field.chars.desc": "Maximum length of a single forwarded message.",
+        "secretary.action.save": "Save", "secretary.action.reload": "Reload", "secretary.error.load": "Could not load secretary preferences", "secretary.error.range": "The window and truncation values must be integers within range.",
+        "secretary.bundle.entry.title": "Session Secretary settings", "secretary.bundle.entry.desc": "Open the Session Secretary page in Settings to manage notification preferences and the control chat.", "secretary.bundle.entry.open": "Open settings",
+        "settings.aria": "Session Secretary", "settings.publicChatNotice": "Unapproved users can start chats, but they cannot approve tool calls.", "pending.notice": "There are access requests. Approve a user before they can control the local assistant.", "action.approve": "Approve", "action.deny": "Deny", "loading": "Loading…",
         "account.presetUnavailable": "Preset unavailable", "account.presetNote": "Changes start a new session; previous sessions are kept.", "action.settings": "Settings", "command.dm": "DM commands", "command.group": "Group commands", "command.enabled": "Commands enabled", "command.disabled": "Conversation only",
         "account.workspace": "Workspace", "account.currentWorkspace": "Current workspace", "account.selectWorkspace": "Select a workspace", "account.selectModel": "Select a model", "account.selectPermission": "Select a permission", "account.privateAccess": "Private chat access", "account.privateApproved": "Approved users only", "account.privateAll": "Allow all DM users", "account.sendMode": "Send mode", "account.sendQueue": "Queue", "account.sendSteer": "Steer", "account.sendSteerNote": "Steer hands the message to the running task as additional instructions at its next step; when the task is idle it behaves like Queue.", "account.autoNameNote": "The account name is generated automatically after setup. Add a remark on the account row if you need to tell users apart.", "account.proxyMode": "Network proxy", "account.proxyInherit": "Follow Host", "account.proxyDirect": "Connect directly", "account.proxyCustom": "Configure manually",        "account.proxyUrl": "Proxy address", "account.proxyNote": "Affects only this account. The channel reconnects automatically after saving.", "account.proxySaved": "A proxy address is saved. Leave the field blank to keep it.", "account.defaultName": "{channel} account {count}",
         "account.remark": "Name remark", "account.remarkNote": "Shown only in settings to tell accounts apart. Leave blank to restore the automatic name.", "account.rename": "Edit name remark",
@@ -658,10 +688,10 @@ window.__ModuleLoader__.load({
         "error.loadAssistant": "Could not load account settings", "error.noModels": "No models are available in the Host. Configure a provider in the web app first.", "error.save": "Could not save", "error.chooseWorkspace": "Choose a workspace directory", "error.workspaceUnavailable": "This Host cannot create workspaces", "error.addWorkspace": "Could not add workspace", "error.load": "Could not load", "error.connection": "Could not connect to the local IM Assistant API", "error.request": "Request failed", "error.action": "Action failed", "error.qr": "Could not generate a QR code", "error.detailsInLog": "The operation failed. Check the server logs for details.",
         "composer.noWorkspaces": "No workspaces", "composer.addWorkspace": "Add workspace…", "composer.workspaceRequired": "Add a workspace before saving.", "composer.permission": "Permission", "composer.noModels": "No models", "action.cancel": "Cancel",
         "permission.readOnly": "Read Only", "permission.workspaceWrite": "Workspace Write", "permission.fullAccess": "Full access",
-        "rail.workspace": "Workspaces", "rail.sessions": "Sessions", "rail.search": "Search", "rail.searchPlaceholder": "Search sessions...", "rail.clearSearch": "Clear search", "rail.filter": "Filter", "rail.group": "Group by", "rail.byWorkspace": "By workspace", "rail.list": "Single list", "rail.byWorkspaceTree": "Workspace Tree", "rail.byChannel": "By channel", "rail.treeUnavailable": "The official tree is unavailable in this Host.", "rail.groupReadOnly": "Channel groups cannot be renamed or deleted here.", "rail.sort": "Sort by", "rail.recent": "Recently updated", "rail.showArchived": "Show archived", "rail.onlyArchived": "Archived only", "rail.running": "Running", "rail.idle": "Idle", "rail.waitingApproval": "Waiting for approval", "rail.planReview": "Plan to review", "rail.waitingAnswer": "Waiting for an answer", "rail.subagents": "{n} subagents running", "rail.completed": "Completed", "rail.archived": "Archived", "rail.compactApproval": "Approval", "rail.compactPlan": "Plan review", "rail.compactAnswer": "Answer", "rail.renameAria": "Rename session", "rail.rename": "Rename", "rail.fork": "Fork session", "rail.archive": "Archive session", "rail.unarchive": "Restore session", "rail.deleteSession": "Delete session", "rail.deleteSessionConfirm": "Delete session", "rail.deleteSessionDescription": "This permanently deletes session “{name}”, its child agents (including any that are still running), and all of its records (conversation, stats, cache). This cannot be undone.", "rail.deleteSessionPending": "Deleting session…", "rail.deleteSessionFailed": "Could not delete the session: {message}", "rail.deleteSessionClose": "Close", "rail.deleteSessionCancel": "Cancel", "rail.groupActions": "Actions for {name}", "rail.channelSettings": "Channel settings", "rail.addChannel": "Add channel", "rail.empty": "No channel sessions yet. Connect a channel in Settings → IM Assistant, then send the bot a message.", "rail.ungrouped": "Ungrouped", "rail.tabsAria": "Workspace categories", "rail.tasks": "Tasks", "rail.channels": "Channels",
+        "rail.workspace": "Workspaces", "rail.sessions": "Sessions", "rail.search": "Search", "rail.searchPlaceholder": "Search sessions...", "rail.clearSearch": "Clear search", "rail.filter": "Filter", "rail.group": "Group by", "rail.byWorkspace": "By workspace", "rail.list": "Single list", "rail.byWorkspaceTree": "Workspace Tree", "rail.byChannel": "By channel", "rail.treeUnavailable": "The official tree is unavailable in this Host.", "rail.groupReadOnly": "Channel groups cannot be renamed or deleted here.", "rail.sort": "Sort by", "rail.recent": "Recently updated", "rail.showArchived": "Show archived", "rail.onlyArchived": "Archived only", "rail.running": "Running", "rail.idle": "Idle", "rail.waitingApproval": "Waiting for approval", "rail.planReview": "Plan to review", "rail.waitingAnswer": "Waiting for an answer", "rail.subagents": "{n} subagents running", "rail.completed": "Completed", "rail.archived": "Archived", "rail.compactApproval": "Approval", "rail.compactPlan": "Plan review", "rail.compactAnswer": "Answer", "rail.renameAria": "Rename session", "rail.rename": "Rename", "rail.fork": "Fork session", "rail.archive": "Archive session", "rail.unarchive": "Restore session", "rail.deleteSession": "Delete session", "rail.deleteSessionConfirm": "Delete session", "rail.deleteSessionDescription": "This permanently deletes session “{name}”, its child agents (including any that are still running), and all of its records (conversation, stats, cache). This cannot be undone.", "rail.deleteSessionPending": "Deleting session…", "rail.deleteSessionFailed": "Could not delete the session: {message}", "rail.deleteSessionClose": "Close", "rail.deleteSessionCancel": "Cancel", "rail.groupActions": "Actions for {name}", "rail.channelSettings": "Channel settings", "rail.addChannel": "Add channel", "rail.empty": "No channel sessions yet. Connect a channel in Settings → Session Secretary, then send the bot a message.", "rail.ungrouped": "Ungrouped", "rail.tabsAria": "Workspace categories", "rail.tasks": "Tasks", "rail.channels": "Channels",
         "time.now": "now", "time.minutes": "{n}min", "time.hours": "{n}h", "time.days": "{n}d", "time.months": "{n}mo", "time.years": "{n}y", "time.ago": "{t} ago",
         "copy": "Copy", "hover.copied": "Copied",
-        "server.unknownChannel": "Unknown channel", "server.channelUnconfigured": "Channel is not configured", "server.sessionMissing": "Session does not exist", "server.accountMissing": "Account does not exist", "server.accountConnectFailed": "Could not connect the account. Check the local logs.", "server.accountReconnectFailed": "Could not reconnect the account. Check the local logs.", "server.selectAccountSettings": "Select a provider, model, workspace, or permission setting", "server.selectModel": "Select a provider and model", "server.selectWorkspace": "Select a workspace", "server.createWorkspace": "Add a workspace first.", "server.selectPermission": "Select a permission", "server.missingCredentials": "The channel cannot start because credentials are missing", "server.qrUnsupported": "This channel does not support QR setup", "server.qrExpired": "QR code has expired", "server.qrIncomplete": "QR setup was not completed", "server.accessDenied": "Access denied: ask an administrator to approve you in Settings → IM Assistant.", "server.remarkTooLong": "Account remark cannot exceed 40 characters", "server.remarkControl": "Account remark cannot contain line breaks or control characters",
+        "server.unknownChannel": "Unknown channel", "server.channelUnconfigured": "Channel is not configured", "server.sessionMissing": "Session does not exist", "server.accountMissing": "Account does not exist", "server.accountConnectFailed": "Could not connect the account. Check the local logs.", "server.accountReconnectFailed": "Could not reconnect the account. Check the local logs.", "server.selectAccountSettings": "Select a provider, model, workspace, or permission setting", "server.selectModel": "Select a provider and model", "server.selectWorkspace": "Select a workspace", "server.createWorkspace": "Add a workspace first.", "server.selectPermission": "Select a permission", "server.missingCredentials": "The channel cannot start because credentials are missing", "server.qrUnsupported": "This channel does not support QR setup", "server.qrExpired": "QR code has expired", "server.qrIncomplete": "QR setup was not completed", "server.accessDenied": "Access denied: ask an administrator to approve you in Settings → Session Secretary.", "server.remarkTooLong": "Account remark cannot exceed 40 characters", "server.remarkControl": "Account remark cannot contain line breaks or control characters",
         "status.disconnected": "Disconnected", "status.reconnectFailed": "Reconnect failed", "status.connectingSocket": "Connecting", "status.waitHandshake": "Waiting for gateway handshake", "status.authenticating": "Authenticating", "status.reconnecting": "Reconnecting", "status.connectionError": "Connection error", "status.connectionFailed": "Connection failed", "status.streamConnected": "Stream connected", "status.stopped": "Stopped", "status.longConnection": "Long connection established", "status.polling": "Polling", "status.notLoggedIn": "Not signed in", "status.waitQr": "Waiting for scan", "status.loggedIn": "Signed in", "status.loggedInRecovered": "Signed in (restored)", "status.loggingIn": "Signing in",
       },
     };
@@ -849,7 +879,20 @@ window.__ModuleLoader__.load({
 .ima-btn-danger:hover:not(:disabled){color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;background:rgba(239,68,68,.12)!important}
 .ima-btn-danger-primary,.ima-btn-danger.ima-btn-danger-primary{background:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;border-color:var(--dsw-alias-state-error-primary,var(--ima-danger))!important;color:#fff!important}
 @container (max-width:480px){.ima-account-row{grid-template-columns:minmax(0,1fr) auto auto;gap:8px;padding:10px}.ima-account-receive>span{display:none}.ima-platform-head{padding:10px 12px}.ima-account-list{padding:0 12px 12px}}
-.ima-main-panel{box-sizing:border-box;height:100%;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:28px clamp(24px,4vw,48px) 48px}.ima-main-panel>*{width:100%;max-width:960px}.ima-bundle-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:0.5px solid var(--dsw-alias-border-l2)}.ima-bundle-label-box{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;text-align:left}.ima-bundle-title{font-size:13px;font-weight:500;line-height:20px;color:var(--dsw-alias-label-primary)}.ima-bundle-desc{font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}
+.ima-main-panel{box-sizing:border-box;height:100%;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:28px clamp(24px,4vw,48px) 48px}.ima-main-panel>*{width:100%;max-width:960px}.ima-bundle-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:0.5px solid var(--dsw-alias-border-l2)}.ima-bundle-label-box{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;text-align:left}.ima-bundle-title{font-size:13px;font-weight:500;line-height:20px;color:var(--dsw-alias-label-primary)}.ima-bundle-desc{font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary,var(--ima-muted,#8b949e))}
+.ima-secretary-card{box-sizing:border-box;margin:0 0 16px;padding:14px 16px;border:0.5px solid var(--ima-line,rgba(255,255,255,.1));border-radius:var(--dsw-radius-sm,8px);background:var(--ima-card,rgba(255,255,255,.04))}
+.ima-secretary-head{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;margin-bottom:4px;flex-wrap:wrap}
+.ima-secretary-head-copy{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;text-align:left}
+.ima-secretary-title{font-size:14px;font-weight:600;line-height:22px;color:var(--ima-text,#e6edf3)}
+.ima-secretary-sub{font-size:12px;line-height:18px;color:var(--ima-muted,#8b949e)}
+.ima-secretary-actions{display:flex;align-items:center;gap:10px;flex:none}
+.ima-secretary-saved{font-size:12px;line-height:20px;color:var(--ima-ok,#3fb950)}
+.ima-secretary-notice{margin:8px 0 4px}
+.ima-secretary-state{display:block;margin-top:4px;font-size:12px;line-height:20px;color:var(--ima-muted,#8b949e)}
+.ima-secretary-state>*+*{margin-left:0}
+.ima-secretary-number{box-sizing:border-box;width:110px;flex:none;height:32px;padding:4px 8px;border:1px solid var(--ima-line,rgba(255,255,255,.1));border-radius:6px;background:transparent;color:var(--ima-text,#e6edf3);font:inherit;font-size:13px;text-align:right}
+.ima-secretary-number:focus-visible{outline:var(--dsw-focus-ring-width,1px) solid var(--dsw-focus-ring-color,var(--dsw-alias-brand-primary,#4b7cff));outline-offset:0}
+.ima-secretary-number:disabled{opacity:.4;cursor:not-allowed}
 `;
 
     const TITLE_LINK_CSS = "@media(max-width:720px){.ima-title-row{flex-wrap:wrap}}";
@@ -1135,7 +1178,7 @@ window.__ModuleLoader__.load({
       ["账号备注不能超过 40 个字符", "server.remarkTooLong"], ["账号备注不能包含换行或控制字符", "server.remarkControl"],
       ["请选择提供商、模型、工作区或权限", "server.selectAccountSettings"], ["请选择提供商和模型", "server.selectModel"], ["请选择工作区", "server.selectWorkspace"], ["请先添加工作区", "server.createWorkspace"], ["请选择权限", "server.selectPermission"], ["凭据不足，无法启动渠道", "server.missingCredentials"],
       ["该渠道不支持扫码绑定", "server.qrUnsupported"], ["二维码已过期", "server.qrExpired"], ["扫码未完成", "server.qrIncomplete"],
-      ["未授权：请管理员在设置 → IM助理 中批准你的访问。", "server.accessDenied"],
+      ["未授权：请管理员在设置 → 会话秘书 中批准你的访问。", "server.accessDenied"],
       ["未连接", "account.statusNotConnected"], ["已断开", "status.disconnected"], ["重连失败", "status.reconnectFailed"], ["连接中", "status.connectingSocket"], ["等待网关握手", "status.waitHandshake"],
       ["鉴权中", "status.authenticating"], ["已连接", "status.connected"], ["重连中", "status.reconnecting"], ["连接错误", "status.connectionError"], ["连接失败", "status.connectionFailed"],
       ["Stream 已连接", "status.streamConnected"], ["已停止", "status.stopped"], ["长连接已建立", "status.longConnection"], ["轮询中", "status.polling"],
@@ -1148,7 +1191,7 @@ window.__ModuleLoader__.load({
       // Server adapters return diagnostics, not locale keys. Do not leak a
       // Chinese diagnostic into an English UI; the detailed value remains in
       // the server log while the browser gets a usable localized fallback.
-      if (/[\u3400-\u9fff]/.test(text) && t("settings.label") === "IM Assistant") return t("error.detailsInLog");
+      if (/[\u3400-\u9fff]/.test(text) && t("settings.label") === "Session Secretary") return t("error.detailsInLog");
       return value;
     }
     function channelLabel(ch, t) {
@@ -2199,6 +2242,198 @@ window.__ModuleLoader__.load({
       return h(IconEditOutline, { size: 16 });
     }
 
+    // ---------------------------------------------------------------------
+    // [secretary] 秘书偏好卡：控制聊天状态 + 通知开关 + 行为参数。
+    // 读写走 /secretary（宿主 store 覆盖层 ⊕ Config 默认值），保存即改即生效，
+    // 无需插件重载；控制聊天「清除学习」供学错聊天后重学。
+    // ---------------------------------------------------------------------
+
+    const SECRETARY_TTL_RANGE = { min: 1, max: 10080 };
+    const SECRETARY_CHARS_RANGE = { min: 200, max: 8000 };
+
+    const SECRETARY_TOGGLE_ROWS = [
+      ["notifyQuestion", "secretary.notify.question.title", "secretary.notify.question.desc"],
+      ["notifyApproval", "secretary.notify.approval.title", "secretary.notify.approval.desc"],
+      ["notifyCompletion", "secretary.notify.completion.title", "secretary.notify.completion.desc"],
+      ["notifyError", "secretary.notify.error.title", "secretary.notify.error.desc"],
+    ];
+
+    function secretaryDraftOf(settings) {
+      return {
+        notifyQuestion: settings.notifyQuestion === true,
+        notifyApproval: settings.notifyApproval === true,
+        notifyCompletion: settings.notifyCompletion === true,
+        notifyError: settings.notifyError === true,
+        labelPrefix: settings.labelPrefix === true,
+        intentParse: settings.intentParse === true,
+        systemEnabled: settings.systemEnabled === true,
+        pendingTtlMinutes: String(Math.round(Number(settings.pendingTtlMinutes) || 0)),
+        maxForwardChars: String(Math.round(Number(settings.maxForwardChars) || 0)),
+      };
+    }
+
+    function secretaryPatchOf(draft) {
+      const number = (value, range) => {
+        const text = String(value ?? "").trim();
+        if (!/^\d+$/.test(text)) return null;
+        const parsed = Number(text);
+        return parsed >= range.min && parsed <= range.max ? parsed : null;
+      };
+      return {
+        notifyQuestion: draft.notifyQuestion,
+        notifyApproval: draft.notifyApproval,
+        notifyCompletion: draft.notifyCompletion,
+        notifyError: draft.notifyError,
+        labelPrefix: draft.labelPrefix,
+        intentParse: draft.intentParse,
+        systemEnabled: draft.systemEnabled,
+        pendingTtlMinutes: number(draft.pendingTtlMinutes, SECRETARY_TTL_RANGE),
+        maxForwardChars: number(draft.maxForwardChars, SECRETARY_CHARS_RANGE),
+      };
+    }
+
+    function SecretaryCard(props) {
+      const t = props.t || fallbackT;
+      const SwitchComponent = PrimitiveSwitch || Switch;
+      const [loaded, setLoaded] = useState(null);
+      const [draft, setDraft] = useState(null);
+      const [loadFailed, setLoadFailed] = useState(false);
+      const [saveError, setSaveError] = useState("");
+      const [busy, setBusy] = useState(false);
+      const [savedFlash, setSavedFlash] = useState(false);
+      const epochRef = useRef(0);
+
+      const absorb = useCallback((data) => {
+        setLoaded(data);
+        setDraft(secretaryDraftOf(data.settings));
+      }, []);
+
+      const load = useCallback(() => {
+        const epoch = ++epochRef.current;
+        setLoadFailed(false);
+        return api("/secretary").then((data) => {
+          if (epoch !== epochRef.current) return;
+          if (data && data.ok && data.settings) { absorb(data); setSaveError(""); }
+          else setLoadFailed(true);
+        }).catch(() => { if (epoch === epochRef.current) setLoadFailed(true); });
+      }, [absorb]);
+
+      useEffect(() => { load(); }, [load]);
+
+      const headCopy = h("div", { className: "ima-secretary-head-copy" },
+        h("span", { className: "ima-secretary-title" }, t("secretary.card.title")),
+        h("span", { className: "ima-secretary-sub" }, t("secretary.card.desc")),
+      );
+      const head = h("div", { className: "ima-secretary-head" }, headCopy);
+
+      if (loadFailed) {
+        return h("div", { className: "ima-secretary-card" }, head,
+          h(NoticeBar, { type: "error", className: "ima-secretary-notice" }, t("secretary.error.load")),
+          h(Button, { variant: "outline", size: "sm", onClick: load }, t("secretary.action.reload")),
+        );
+      }
+      if (draft === null || loaded === null) {
+        return h("div", { className: "ima-secretary-card" }, head,
+          h("div", { className: "ima-empty" }, t("loading")),
+        );
+      }
+
+      const patch = secretaryPatchOf(draft);
+      const valid = patch.pendingTtlMinutes !== null && patch.maxForwardChars !== null;
+      const dirty = Object.keys(patch).some((key) => patch[key] !== loaded.settings[key]);
+      const controlChat = loaded.controlChat || { configured: false, learned: null };
+      const learned = controlChat.learned;
+
+      const save = () => {
+        if (!valid) { setSaveError(t("secretary.error.range")); return; }
+        setBusy(true);
+        setSaveError("");
+        api("/secretary", { method: "POST", body: JSON.stringify(patch) }).then((data) => {
+          if (data && data.ok && data.settings) {
+            absorb(data);
+            setSavedFlash(true);
+            window.setTimeout(() => setSavedFlash(false), 2000);
+          } else setSaveError(serverText(data && data.error, t) || t("error.save"));
+        }).catch(() => setSaveError(t("error.request"))).finally(() => setBusy(false));
+      };
+
+      const forgetLearned = () => {
+        setBusy(true);
+        setSaveError("");
+        api("/secretary", { method: "POST", body: JSON.stringify({ reset: true }) }).then((data) => {
+          if (data && data.ok && data.settings) absorb(data);
+          else setSaveError(serverText(data && data.error, t) || t("error.action"));
+        }).catch(() => setSaveError(t("error.request"))).finally(() => setBusy(false));
+      };
+
+      const toggleRow = (key, titleKey, descKey) => h("div", { key, className: "ima-bundle-row" },
+        h("div", { className: "ima-bundle-label-box" },
+          h("span", { className: "ima-bundle-title" }, t(titleKey)),
+          h("span", { className: "ima-bundle-desc" }, t(descKey)),
+        ),
+        h(SwitchComponent, {
+          checked: draft[key],
+          "aria-label": t(titleKey),
+          disabled: busy,
+          onChange: (checked) => setDraft({ ...draft, [key]: checked }),
+        }),
+      );
+
+      const numberRow = (key, titleKey, descKey, range) => h("div", { key, className: "ima-bundle-row" },
+        h("div", { className: "ima-bundle-label-box" },
+          h("span", { className: "ima-bundle-title" }, t(titleKey)),
+          h("span", { className: "ima-bundle-desc" }, t(descKey)),
+        ),
+        h("input", {
+          type: "number",
+          className: "ima-secretary-number",
+          min: range.min,
+          max: range.max,
+          value: draft[key],
+          "aria-label": t(titleKey),
+          disabled: busy,
+          onChange: (event) => setDraft({ ...draft, [key]: event.target.value }),
+        }),
+      );
+
+      return h("div", { className: "ima-secretary-card" },
+        h("div", { className: "ima-secretary-head" },
+          headCopy,
+          h("div", { className: "ima-secretary-actions" },
+            saveError === "" && savedFlash && !dirty ? h("span", { className: "ima-secretary-saved" }, t("status.saved")) : null,
+            h(Button, {
+              variant: "primary", size: "sm",
+              disabled: busy || !dirty || !valid,
+              onClick: save,
+            }, busy ? t("status.saving") : t("secretary.action.save")),
+          ),
+        ),
+        saveError !== "" && h(NoticeBar, { type: "error", className: "ima-secretary-notice" }, saveError),
+        h("div", { className: "ima-bundle-row" },
+          h("div", { className: "ima-bundle-label-box" },
+            h("span", { className: "ima-bundle-title" }, t("secretary.control.title")),
+            h("span", { className: "ima-bundle-desc" }, t("secretary.control.desc")),
+            h("span", { className: "ima-secretary-state" },
+              controlChat.configured
+                ? h(Tag, { color: "success", bordered: false }, `${t("secretary.control.fixed")} · ${loaded.settings.controlChatId}`)
+                : learned
+                  ? h(Tag, { color: "processing", bordered: false }, `${t("secretary.control.learned")} · ${learned.channelId}:${learned.chatId}`)
+                  : t("secretary.control.none"),
+            ),
+          ),
+          !controlChat.configured && learned
+            ? h(Button, { variant: "outline", size: "sm", disabled: busy, onClick: forgetLearned }, t("secretary.control.reset"))
+            : null,
+        ),
+        toggleRow("systemEnabled", "secretary.system.title", "secretary.system.desc"),
+        ...SECRETARY_TOGGLE_ROWS.map(([key, titleKey, descKey]) => toggleRow(key, titleKey, descKey)),
+        toggleRow("labelPrefix", "secretary.behavior.prefix.title", "secretary.behavior.prefix.desc"),
+        toggleRow("intentParse", "secretary.behavior.intent.title", "secretary.behavior.intent.desc"),
+        numberRow("pendingTtlMinutes", "secretary.field.ttl.title", "secretary.field.ttl.desc", SECRETARY_TTL_RANGE),
+        numberRow("maxForwardChars", "secretary.field.chars.title", "secretary.field.chars.desc", SECRETARY_CHARS_RANGE),
+      );
+    }
+
     function SettingsPage(props) {
       const t = props.t || fallbackT;
       const [channels, setChannels] = useState(null);
@@ -2337,6 +2572,7 @@ window.__ModuleLoader__.load({
           ),
         ),
         error && h(NoticeBar, { type: "error", className: "ima-error" }, error),
+        h(SecretaryCard, { t }),
         pending.length > 0 && h("div", { className: "ima-feedback ima-feedback-warning ima-pending", role: "region" },
           h("div", { className: "ima-feedback-head" },
             h("span", { className: "ima-feedback-icon" }, alertIcon("warning")),
@@ -3506,6 +3742,7 @@ window.__ModuleLoader__.load({
         onToggleOnlineUpdate,
         onlineUpdateDisabled,
         onlineUpdateLocked = false,
+        onOpenSettings,
       } = props;
 
       const SwitchComponent = PrimitiveSwitch || Switch;
@@ -3540,6 +3777,18 @@ window.__ModuleLoader__.load({
               label: t("update.entry.toggle"),
               disabled: onlineUpdateDisabled || onlineUpdateLocked,
             })
+          )
+        );
+      }
+
+      if (typeof onOpenSettings === "function") {
+        rows.push(
+          h("div", { key: "open-settings", className: "ima-bundle-row" },
+            h("div", { className: "ima-bundle-label-box" },
+              h("span", { className: "ima-bundle-title" }, t("secretary.bundle.entry.title")),
+              h("span", { className: "ima-bundle-desc" }, t("secretary.bundle.entry.desc"))
+            ),
+            h(Button, { variant: "outline", size: "sm", onClick: onOpenSettings }, t("secretary.bundle.entry.open"))
           )
         );
       }
@@ -3605,6 +3854,7 @@ window.__ModuleLoader__.load({
         onlineUpdateDisabled: savingUpdate,
         onlineUpdateLocked,
         onToggleOnlineUpdate,
+        onOpenSettings: props.onOpenSettings,
       });
     }
 
@@ -3782,6 +4032,7 @@ window.__ModuleLoader__.load({
             getOnlineUpdateEnabled: () => onlineUpdateEnabled,
             getOnlineUpdateLocked: () => onlineUpdateLocked,
             setOnlineUpdate: setOnlineUpdate,
+            onOpenSettings: options.openSettings,
             subscribe: (fn) => {
               listeners.add(fn);
               return () => { listeners.delete(fn); };
@@ -3860,6 +4111,9 @@ window.__ModuleLoader__.load({
         onOnlineUpdateChange: () => {
           if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("ima-update-toggle"));
         },
+        openSettings: () => openSettingsSection(
+          [t("settings.label"), IM_LOCALES.en["settings.label"], IM_LOCALES.zh["settings.label"]],
+        ),
       });
       ctx.effect(() => () => sidebarController.destroy(), "im-connect: sidebar entry");
       ctx.effect(() => observePluginUpdate({

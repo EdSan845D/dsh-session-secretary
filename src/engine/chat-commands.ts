@@ -22,7 +22,7 @@ interface Preset { id: string; name?: string; description?: string; isDefault?: 
 interface Descriptor { name: string; description: string }
 export interface CommandHost { get(name: string): unknown }
 export const chatControlHelp = () => [
-  replyText('IM 助理已连接 DeepSeek Harness。直接发送文字即可开始任务。'), replyText('例如：帮我整理今天的待办。'), '',
+  replyText('会话秘书已连接 DeepSeek Harness。直接发送文字即可开始任务。'), replyText('例如：帮我整理今天的待办。'), '',
   replyText('**入口**'),
   replyText('/menu（或 /m）— 打开带按钮的操作菜单，和下面的列表命令等价'),
   replyText('/help — 显示本说明'), '',

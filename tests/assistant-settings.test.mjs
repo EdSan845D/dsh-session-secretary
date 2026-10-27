@@ -1022,3 +1022,18 @@ test('发送方式选择器有双语词条，保存请求带上所选值', () =>
   assert.match(client, /account\.privateAccess, account\.sendMode,/)
   assert.match(client, /sendMode: "queue",/)
 })
+
+test('分段回复选择器使用 Select，首选项为「完整发送」，映射布尔状态', () => {
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.match(client, /"account\.segmentReply": "分段回复"/)
+  assert.match(client, /"account\.segmentReply": "Segmented replies"/)
+  assert.match(client, /"account\.segmentFull": "完整发送"/)
+  assert.match(client, /"account\.segmentSplit": "分段发送"/)
+  assert.match(client, /"account\.segmentFull": "Send as whole"/)
+  assert.match(client, /"account\.segmentSplit": "Send in segments"/)
+  assert.match(client, /field\("segmentReply", t\("account\.segmentReply"\), h\(Select, \{/)
+  assert.match(client, /value: segmentReply \? "segmented" : "full"/)
+  assert.match(client, /\{ value: "full", label: t\("account\.segmentFull"\) \}/)
+  assert.match(client, /\{ value: "segmented", label: t\("account\.segmentSplit"\) \}/)
+  assert.match(client, /onChange: \(next\) => update\(\{ segmentReply: next === "segmented" \}\)/)
+})

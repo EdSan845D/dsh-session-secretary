@@ -288,7 +288,7 @@ Open **Settings → IM Assistant**, select **Add account** under the target chan
 | Sessions / workspaces | `/sessions`, `/session <number or ID>`; `/workspaces`, `/workspace <number or ID>` | Resume ordinary Chat sessions; workspace selection creates a session without changing account defaults |
 | Task controls | `/stop`, `/steer <text>`, `/queue` | Stop, provide instructions, or inspect the queue; stopping preserves Host queued messages |
 | Send mode | Open Settings on the account row and choose Queue or Steer under **Send mode** | Queue (the default) keeps today's behavior; Steer hands an ordinary message to the running task as additional instructions immediately (same as `/steer`), and behaves like Queue while the task is idle |
-| Segmented replies | Open Settings on the account row, turn on **Segmented replies**, and fill in the send-gap range | When on, the assistant splits one reply into several short messages at the separator, and the first message also waits a random gap. Off by default; see [Segmented replies](#segmented-replies) |
+| Segmented replies | Open Settings on the account row, choose Send in segments under **Segmented replies**, and fill in the send-gap range | Defaults to Send as whole; when set to Send in segments, the assistant splits one reply into several short messages at the separator, and the first message also waits a random gap. See [Segmented replies](#segmented-replies) |
 | Session with a preset | `/presets`, `/preset <number or ID>`, `/preset --default` | Starts and connects a new session in the current workspace without changing account defaults |
 | Model / reasoning | `/models`, `/model <number or provider/model>`, `/reasoning [effort or --default]` | Changes the current selection and updates the Host default for subsequent Chat sessions |
 | Result recovery | `/delivery`, `/delivery retry <record-ID>` | Check recent deliveries and resend text from the original task |
@@ -316,7 +316,7 @@ Telegram topics are automatically named once from the first non-fallback session
 
 ### Segmented replies
 
-When **Segmented replies** is on for an account, the assistant splits one reply at a separator and sends the pieces one by one, which reads like a few messages in a row. It is off by default and behavior is unchanged while off. It is currently enabled for QQ only (verified end to end); other channels do not show the toggle and never split.
+When **Segmented replies** is set to Send in segments for an account, the assistant splits one reply at a separator and sends the pieces one by one, which reads like a few messages in a row. It defaults to Send as whole and behavior is unchanged while off. It is currently enabled for QQ only (verified end to end); other channels do not show the option and never split.
 
 - **Send gap**: fill in the minimum and maximum gap (seconds, 0–60). Every message, including the first, waits a random gap drawn from that range; saving is rejected when the maximum is lower than the minimum, and changes apply immediately.
 - **Separator**: set by the plugin configuration `segmentMarker`, default `<<<MSG>>>`, and must occupy its own line. The same text inside a fenced code block never splits a reply, so code samples stay intact.

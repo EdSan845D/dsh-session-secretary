@@ -239,7 +239,7 @@ The configuration output should contain `im-connect`. Restart DSH Web and hard-r
 The plugin follows standard DSH bundle configuration conventions. Options are located at:
 > **Sidebar → Plugins → Click `@michengai/dsh-im-connect`** (the host's `plugins.bundle.config` slot).
 
-Two native switches are available. Their values are persisted in `channels.json` under the plugin's `stateDir` and survive restarts; they are not two equivalent Cordis YAML options. `sidebarEntry` is managed through this UI, while `onlineUpdate` is also subject to the host lock described below:
+Three native switches are available. Their values are persisted in `channels.json` under the plugin's `stateDir` and survive restarts; they are not equivalent Cordis YAML options. `sidebarEntry` and `taskTreeSessions` are managed through this UI, while `onlineUpdate` is also subject to the host lock described below:
 
 ### 1. Sidebar Entry (`sidebarEntry`)
 - **Default**: Disabled (`false`)
@@ -261,6 +261,14 @@ Two native switches are available. Their values are persisted in `channels.json`
     ```
     Once configured, the updater is disabled at startup, the update action stays hidden, and the online-update switch is disabled. The host lock takes precedence over the user's choice in `channels.json` and cannot be lifted through the UI. Removing the host lock restores the saved user preference.
   - **Update Modes**: When a newer release is available, **Update automatically** runs only when the DSH CLI or Desktop update service is available; otherwise, the dialog provides a profile-specific manual command to copy and run.
+
+### 3. Show IM Sessions in Task Tree (`taskTreeSessions`)
+- **Default**: Disabled (`false`, hides IM sessions in the workspace task tree by default to keep daily workspaces clean)
+- **Description**: Controls whether messaging channel sessions appear in the official workspace task tree.
+- **Effect**:
+  - **Workspace Decluttering**: When disabled, all messaging sessions (including `dsh-im-session-*`, legacy `im:*` prefixes, and active channel session bindings) are automatically filtered out from the official workspace task tree, preventing high-frequency chats from flooding your daily development workspaces;
+  - **Channels Tab Preserved**: Filtering applies only to the official workspace tree. All channel sessions remain fully available and accessible at any time under the sidebar's **Channels** tab;
+  - **Lightweight Pipeline Collaboration**: Implemented via the `NativeTabRegistry.sessionFilters` inter-plugin protocol without invasive host hijacking. Toggling takes effect immediately and interoperates smoothly with Automation and Archive Manager. Non-supporting host shells degrade gracefully with a one-time warning.
 
 ## Usage
 

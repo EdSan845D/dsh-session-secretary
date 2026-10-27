@@ -239,6 +239,7 @@ interface Persisted {
   permission?: PermissionPreset
   sidebarEntry?: boolean
   onlineUpdate?: boolean
+  taskTreeSessions?: boolean
 }
 
 export interface PermissionOptionView {
@@ -653,6 +654,24 @@ export class ChannelManager {
           send(405, { ok: false, error: 'method not allowed' })
           return
         }
+        if (parts[2] === 'task-tree-sessions' && parts.length === 3) {
+          if (method === 'GET' || method === 'HEAD') {
+            send(200, method === 'HEAD' ? undefined : { ok: true, enabled: this.getTaskTreeSessions() })
+            return
+          }
+          if (method === 'POST') {
+            const body = await readBody()
+            if (!body || typeof body.enabled !== 'boolean') {
+              send(400, { ok: false, error: 'enabled 必须是布尔值' })
+              return
+            }
+            const enabled = await this.setTaskTreeSessions(body.enabled)
+            send(200, { ok: true, enabled })
+            return
+          }
+          send(405, { ok: false, error: 'method not allowed' })
+          return
+        }
         if (parts[2] === 'assistant' && parts.length === 3) {
           if (method === 'GET') {
             send(200, {
@@ -886,6 +905,17 @@ export class ChannelManager {
   async setSidebarEntry(enabled: boolean): Promise<boolean> {
     if (typeof enabled !== 'boolean') throw new Error('enabled 必须是布尔值')
     this.store.sidebarEntry = enabled
+    this.flush()
+    return enabled
+  }
+
+  getTaskTreeSessions(): boolean {
+    return this.store.taskTreeSessions === true
+  }
+
+  async setTaskTreeSessions(enabled: boolean): Promise<boolean> {
+    if (typeof enabled !== 'boolean') throw new Error('enabled 必须是布尔值')
+    this.store.taskTreeSessions = enabled
     this.flush()
     return enabled
   }
@@ -1333,6 +1363,7 @@ export class ChannelManager {
         permission: normalizePermission(parsed.permission),
         sidebarEntry: typeof parsed.sidebarEntry === 'boolean' ? parsed.sidebarEntry : undefined,
         onlineUpdate: typeof parsed.onlineUpdate === 'boolean' ? parsed.onlineUpdate : undefined,
+        taskTreeSessions: typeof parsed.taskTreeSessions === 'boolean' ? parsed.taskTreeSessions : undefined,
       }
     } catch (error) {
       try {

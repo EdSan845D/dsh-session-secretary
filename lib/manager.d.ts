@@ -158,6 +158,8 @@ export declare class ChannelManager {
     disposeApi(): void;
     getSidebarEntry(): boolean;
     setSidebarEntry(enabled: boolean): Promise<boolean>;
+    getTaskTreeSessions(): boolean;
+    setTaskTreeSessions(enabled: boolean): Promise<boolean>;
     isHostUpdateDisabled(): boolean;
     isUpdateEnabled(): boolean;
     setOnlineUpdate(enabled: boolean): Promise<boolean>;

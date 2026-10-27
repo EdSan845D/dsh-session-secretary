@@ -450,7 +450,7 @@ test('同一聊天未归档时复用当前会话', async (t) => {
   const second = await router.getOrCreate('wecom', 'dm', 'user-1', '还在吗')
   assert.equal(first.sessionId, second.sessionId)
   assert.equal(created.length, 1)
-  assert.match(first.sessionId, /^im:wecom:dm:\d+:user-1$/)
+  assert.match(first.sessionId, /^dsh-im-session-/)
 })
 
 test('账号修改工作区后丢弃旧映射，后续消息在新目录创建会话', async (t) => {
@@ -556,7 +556,7 @@ test('入站恢复失败时轮换新会话，不按原 id 重建', async (t) => 
   })
   const next = await router.getOrCreate('wecom', 'dm', 'user-1', '又来了')
   assert.notEqual(next.sessionId, 'im:wecom:dm:woOoKtPAAAvBcwwV96r5UweRxau8h0zw')
-  assert.match(next.sessionId, /^im:wecom:dm:\d+:user-1$/)
+  assert.match(next.sessionId, /^dsh-im-session-/)
   assert.equal(store.get('wecom:dm:user-1')?.sessionId, next.sessionId)
   assert.deepEqual(created, [next.sessionId])
 })
@@ -721,7 +721,7 @@ for (const archived of [false, true]) {
     const next = archived
       ? await f.router.getOrCreate('wecom', 'dm', 'adopt-cwd', '继续')
       : await f.router.rotate('wecom', 'dm', 'adopt-cwd', '新')
-    assert.match(next.sessionId, /^im:/)
+    assert.match(next.sessionId, /^dsh-im-session-/)
     assert.equal(f.createdOptions[0].meta.cwd, 'D:/chosen')
     assert.equal(f.createdOptions[0].agentOptions.model, 'deepseek-chat')
     assert.equal(f.permissionSelections[0].permission, 'danger-full-access')

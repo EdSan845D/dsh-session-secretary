@@ -70,3 +70,31 @@ test('切换同 revision 的注册表时重新应用各自的过滤器', () => {
   assert.deepEqual(applySessionFilters(state, right).ids, ['b'])
   assert.deepEqual(applySessionFilters(state, left).ids, ['a'])
 })
+
+test('IM 会话过滤器通过 addSessionFilter 隐藏新旧格式 IM 会话及频道绑定会话并保留普通工作区会话', () => {
+  const registry = createNativeTabRegistry(null)
+  const channelSessionIds = new Set(['custom-adopted-session-999'])
+  const isImSession = (id) => id.startsWith('dsh-im-session-') || id.startsWith('im:') || channelSessionIds.has(id)
+  const dispose = registry.addSessionFilter(id => !isImSession(id))
+
+  const state = {
+    ids: ['normal-chat-1', 'dsh-im-session-uuid-1', 'im:legacy-1', 'custom-adopted-session-999', 'normal-chat-2'],
+    byId: {
+      'normal-chat-1': { id: 'normal-chat-1' },
+      'dsh-im-session-uuid-1': { id: 'dsh-im-session-uuid-1' },
+      'im:legacy-1': { id: 'im:legacy-1' },
+      'custom-adopted-session-999': { id: 'custom-adopted-session-999' },
+      'normal-chat-2': { id: 'normal-chat-2' },
+    },
+    current: 'normal-chat-1',
+  }
+
+  const filtered = applySessionFilters(state, registry)
+  assert.deepEqual(filtered.ids, ['normal-chat-1', 'normal-chat-2'])
+  assert.deepEqual(Object.keys(filtered.byId), ['normal-chat-1', 'normal-chat-2'])
+
+  // 释放过滤器后全部恢复
+  dispose()
+  const restored = applySessionFilters(state, registry)
+  assert.deepEqual(restored.ids, ['normal-chat-1', 'dsh-im-session-uuid-1', 'im:legacy-1', 'custom-adopted-session-999', 'normal-chat-2'])
+})

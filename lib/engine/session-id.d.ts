@@ -1,6 +1,9 @@
 /** IM 会话标识：与网页任务分列。DSH 会话头不能写 origin=im，只靠 id 前缀。 */
 export declare const IM_ORIGIN = "im";
-export declare const IM_SESSION_PREFIX = "im:";
+/** 新会话统一为 dsh-<来源>-session-<UUID>，与自动化任务同族且不含路径非法字符。 */
+export declare const IM_SESSION_PREFIX = "dsh-im-session-";
+/** 早期语义化 ID（含渠道、聊天类型与聊天目标），仅用于读取存量会话。 */
+export declare const IM_SESSION_PREFIX_LEGACY = "im:";
 export type ChannelId = 'dingtalk' | 'feishu' | 'lark' | 'weixin' | 'wecom' | 'qq' | 'telegram' | 'discord' | 'slack';
 /** 运行实例 ID。旧版首个账号仍可直接使用渠道 ID，新账号使用 `<channel>_<stable>`。 */
 export type ChannelInstanceId = string;
@@ -25,9 +28,14 @@ export interface SessionRecord {
     updatedAt: string;
 }
 export declare function sessionKeyOf(channel: ChannelInstanceId, kind: ChatKind, chatId: string): string;
-/** 新建会话用带时间戳的唯一 id；同一毫秒连续创建会递增，避免撞上已归档记录。 */
-export declare function createImSessionId(channel: ChannelInstanceId, kind: ChatKind, chatId: string, now?: number): string;
+/**
+ * 新建会话使用统一 UUID；渠道、聊天类型与聊天目标不再编入 id，
+ * 归属以会话映射为准，避免第三方标识带出路径非法字符。
+ */
+export declare function createImSessionId(): string;
+/** 新旧两代前缀都算 IM 会话，存量会话升级后仍能被正确分类。 */
 export declare function isImSessionId(sessionId: string): boolean;
+/** 只解析早期语义化 ID；统一 UUID 不含业务字段，无法反解归属。 */
 export declare function parseImSessionId(sessionId: string): {
     channel: ChannelInstanceId;
     kind: ChatKind;

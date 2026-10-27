@@ -39,6 +39,9 @@ test('插件在真实 cordis 插件机制下完成启动并注册路由', async 
   ctx.provide('agentDefaultModel', { provider: 'p', model: 'm' })
   ctx.provide('llm', {})
   ctx.provide('permissionPresets', { defaultPreset: 'standard' })
+  // 上游分段回复把 systemPrompt 加进了 inject（注册分段说明 section 用），
+  // 测试宿主必须提供最小实现，否则 fiber 永远等依赖、启动停在半路。
+  ctx.provide('systemPrompt', { getSectionOrder: () => 10200, section: () => () => undefined })
   // 未进 inject 的可选兼容服务：宿主是在自己的 fiber 里提供的，
   // 消费方用 ctx.userQuestions 直接读会被 cordis 判错（插件因此停在 FAILED）。
   ctx.plugin({
@@ -91,6 +94,7 @@ test('userQuestions 缺席时插件仍能完成启动', async (t) => {
   ctx.provide('agentDefaultModel', { provider: 'p', model: 'm' })
   ctx.provide('llm', {})
   ctx.provide('permissionPresets', { defaultPreset: 'standard' })
+  ctx.provide('systemPrompt', { getSectionOrder: () => 10200, section: () => () => undefined })
 
   const fiber = ctx.plugin({ name, inject, Config, apply }, Config({ stateDir: dir, cwd: dir }))
   await fiber

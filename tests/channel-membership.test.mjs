@@ -10,6 +10,7 @@ const create = new Function(membership + '; return { updateChannelMembership, ch
 test('普通 Host ID 按渠道索引分类，归属变更使同一快照的缓存失效', () => {
   const f = create()
   assert.equal(f.isChannelSession('im:old'), true)
+  assert.equal(f.isChannelSession('dsh-im-session-550e8400-e29b-41d4-a716-446655440000'), true)
   assert.equal(f.isChannelSession('session-adopted'), false)
   let changes = 0
   let hostRefreshes = 0
@@ -21,6 +22,8 @@ test('普通 Host ID 按渠道索引分类，归属变更使同一快照的缓�
   assert.equal(f.channelIdOfSession('im:weixin:dm:1:chat'), 'weixin')
   assert.equal(f.channelIdOfSession('im:wecom_bot:group:1:chat'), 'wecom')
   assert.equal(f.channelIdOfSession('task'), undefined)
+  // 统一 UUID 无法从字符串反解渠道，映射未覆盖时保持未知。
+  assert.equal(f.channelIdOfSession('dsh-im-session-550e8400-e29b-41d4-a716-446655440000'), undefined)
   f.updateChannelMembership([{ id: 'wecom', sessions: [{ sessionId: 'session-adopted' }] }])
   assert.equal(changes, 1)
   assert.equal(hostRefreshes, 1)

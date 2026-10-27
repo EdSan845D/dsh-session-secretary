@@ -554,4 +554,6 @@ export const commandEnglish = {
   "没有读到消息正文。请确认已打开 Message Content Intent，或发送文字后再 @机器人。": "No message text was received. Enable the Message Content Intent, or send text and mention the bot again.",
   "图片或文件接收失败，请检查格式和大小后重新发送完整消息。": "The image or file could not be received. Check its format and size, then send the full message again.",
   "请直接发送 /menu 使用命令。": "Send /menu as a normal message to use commands.",
+  "IM 分段回复已开启：请把这次回复拆成几条短消息，每条之间单独一行写 {0}。通常 2 到 4 条，一条讲一件事；代码块、表格和链接里不要写分隔行。":
+    "Segmented IM replies are on: split this reply into a few short messages and write {0} alone on its own line between them. Two to four messages is typical, one point each. Never put that separator line inside code blocks, tables, or links.",
 } as const;

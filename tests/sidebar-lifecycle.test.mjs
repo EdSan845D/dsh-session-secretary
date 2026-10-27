@@ -149,3 +149,56 @@ test('真实注册表移除过滤器时保留其他插件的过滤器并通知�
   assert.deepEqual(registry.sessionFilters, [second])
   assert.equal(changes, 3)
 })
+
+test('侧栏外壳装配时根据 taskTreeSessions 注册和注销会话过滤器', async () => {
+  const h = createHarness(body, 'im')
+  const entry = h.add()
+  const registry = h.registry(null)
+  const host = function ForeignHost() {}
+  host.__dshNativeTabHost = true
+  host.__dshNativeTabs = registry
+  entry.component = host
+  entry.__dshNativeTabs = registry
+
+  let taskTreeSessions = false
+  const mockSidebarController = {
+    isTaskTreeSessionsEnabled: () => taskTreeSessions,
+  }
+  const channelSessionIds = new Set(['custom-bound-session-999'])
+  const isChannelSession = (id) => id.startsWith('dsh-im-session-') || id.startsWith('im:') || channelSessionIds.has(id)
+
+  const stop = h.start(undefined, {
+    sidebarController: mockSidebarController,
+    isChannelSession,
+  })
+  try {
+    await h.settle()
+    // 1. 默认关闭 (taskTreeSessions=false) 时应注册会话过滤器
+    assert.equal(registry.sessionFilters.length, 1, '应成功向注册表注入 1 个会话过滤器')
+    const filter = registry.sessionFilters[0]
+    assert.ok(typeof filter === 'function')
+
+    // 2. 生产谓词校验：
+    assert.equal(filter('dsh-im-session-abc-123'), false, '以新前缀开头的 IM 会话被过滤')
+    assert.equal(filter('im:channel_123:session_456'), false, '以旧前缀开头的 IM 会话被过滤')
+    assert.equal(filter('custom-bound-session-999'), false, 'channelSessionIds 中的已绑定会话被过滤')
+    assert.equal(filter('chat-normal-session'), true, '普通工作区会话保留在任务树')
+
+    // 3. 模拟用户开启开关 (taskTreeSessions=true) 并通知更新
+    taskTreeSessions = true
+    h.window.dispatchEvent(new Event('dsh-native-sidebar-change'))
+    await h.settle()
+    assert.equal(registry.sessionFilters.length, 0, '开关开启后过滤器被反注册卸载')
+
+    // 4. 再次关闭开关，过滤器重新挂载
+    taskTreeSessions = false
+    h.window.dispatchEvent(new Event('dsh-native-sidebar-change'))
+    await h.settle()
+    assert.equal(registry.sessionFilters.length, 1, '重新关闭开关后过滤器再次生效')
+    assert.equal(registry.sessionFilters[0]('dsh-im-session-abc-123'), false)
+    assert.equal(registry.sessionFilters[0]('custom-bound-session-999'), false)
+    assert.equal(registry.sessionFilters[0]('chat-normal-session'), true)
+  } finally {
+    stop()
+  }
+})

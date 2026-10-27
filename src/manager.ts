@@ -9,7 +9,7 @@ import { connectionState, type ConnectionState } from './channels/connection-sta
 import { type DiagnosticCheck, DiagnosticError, probe } from './channels/diagnostics.js'
 import { fileOperation } from './engine/abort.js'
 import { parseAdditionalImageHosts } from './channels/image-host-policy.js'
-import { CHANNEL_META, CHANNEL_ORDER, supportsQr } from './channels/meta.js'
+import { CHANNEL_META, CHANNEL_ORDER, channelSupportsSegmentReply, supportsQr } from './channels/meta.js'
 import { PairingHub } from './channels/qr/hub.js'
 import type { ChannelId, SessionRecord } from './engine/session-id.js'
 import { SessionMapStore } from './engine/session-store.js'
@@ -49,6 +49,12 @@ function normalizeProxyUrl(input: unknown): string | undefined {
 /** 消息发送方式只有排队与插话两档；缺失或未知值一律回到排队，保持旧配置语义。 */
 function normalizeSendMode(input: unknown): SendMode {
   return input === 'steer' ? 'steer' : 'queue'
+}
+
+/** 分段间隔按整秒保存，限制在 0–60 秒；缺失或非法值返回 undefined 交给上一层回退。 */
+function normalizeSegmentSecs(input: unknown): number | undefined {
+  if (typeof input !== 'number' || !Number.isFinite(input)) return undefined
+  return Math.min(60, Math.max(0, Math.round(input)))
 }
 
 function channelAutoPrefix(platform: ChannelId): string {
@@ -171,6 +177,12 @@ export interface ChannelState {
   privateAccess?: 'approved' | 'all'
   /** 普通消息的默认发送方式；缺省为排队发送。 */
   sendMode?: SendMode
+  /** 分段回复：覆盖插件级默认值；缺省时跟随插件配置。 */
+  segmentReply?: boolean
+  /** 分段消息之间随机间隔的下界（秒）。 */
+  segmentDelayMinSecs?: number
+  /** 分段消息之间随机间隔的上界（秒）。 */
+  segmentDelayMaxSecs?: number
   lastCheckedAt?: string
 }
 
@@ -193,6 +205,11 @@ export interface AccountView {
   commandPermissions: CommandPermissions
   privateAccess: 'approved' | 'all'
   sendMode: SendMode
+  segmentReply: boolean
+  /** 该渠道是否已开放分段回复；未开放的渠道不展示开关。 */
+  segmentReplySupported: boolean
+  segmentDelayMinSecs: number
+  segmentDelayMaxSecs: number
   proxyMode: ChannelProxyMode
   proxyConfigured: boolean
   proxyUrl?: string
@@ -240,6 +257,7 @@ interface Persisted {
   permission?: PermissionPreset
   sidebarEntry?: boolean
   onlineUpdate?: boolean
+  taskTreeSessions?: boolean
   /** [secretary] 设置页保存的秘书偏好覆盖层（键与 SecretarySettings 对齐，缺省键走 Config 默认值）。 */
   secretary?: Record<string, unknown>
 }
@@ -392,6 +410,8 @@ export class ChannelManager {
     const canonicalName = autoAccountName(platform, nameOrdinal)
     const name = String(state.name || canonicalName).trim()
     const autoName = name === canonicalName || name === channelAutoPrefix(platform)
+    const segmentDelay = this.segmentDelayRange(state)
+    const segmentSupported = channelSupportsSegmentReply(platform)
     return {
       id: accountId,
       platform,
@@ -411,6 +431,10 @@ export class ChannelManager {
       commandPermissions: normalizeCommandPermissions(state.commandPermissions),
       privateAccess: state.privateAccess === 'all' ? 'all' : 'approved',
       sendMode: normalizeSendMode(state.sendMode),
+      segmentReply: segmentSupported && (state.segmentReply ?? this.engineConfig.segmentReply) === true,
+      segmentReplySupported: segmentSupported,
+      segmentDelayMinSecs: segmentDelay.min,
+      segmentDelayMaxSecs: segmentDelay.max,
       proxyMode: supportsProxy(platform) && (config.proxyMode === 'direct' || config.proxyMode === 'custom') ? config.proxyMode : 'inherit',
       proxyConfigured: supportsProxy(platform) && config.proxyMode === 'custom'
         ? this.proxyUrlCache.has(accountId)
@@ -477,6 +501,9 @@ export class ChannelManager {
       commandPermissions: normalized.settings.commandPermissions,
       privateAccess: normalized.settings.privateAccess,
       sendMode: normalized.settings.sendMode,
+      ...(normalized.settings.segmentReply !== undefined ? { segmentReply: normalized.settings.segmentReply } : {}),
+      ...(normalized.settings.segmentDelayMinSecs !== undefined ? { segmentDelayMinSecs: normalized.settings.segmentDelayMinSecs } : {}),
+      ...(normalized.settings.segmentDelayMaxSecs !== undefined ? { segmentDelayMaxSecs: normalized.settings.segmentDelayMaxSecs } : {}),
       enabled: true,
       receiveEnabled: true,
       config: nextConfig,
@@ -656,6 +683,24 @@ export class ChannelManager {
               return
             }
             const enabled = await this.setOnlineUpdate(body.enabled)
+            send(200, { ok: true, enabled })
+            return
+          }
+          send(405, { ok: false, error: 'method not allowed' })
+          return
+        }
+        if (parts[2] === 'task-tree-sessions' && parts.length === 3) {
+          if (method === 'GET' || method === 'HEAD') {
+            send(200, method === 'HEAD' ? undefined : { ok: true, enabled: this.getTaskTreeSessions() })
+            return
+          }
+          if (method === 'POST') {
+            const body = await readBody()
+            if (!body || typeof body.enabled !== 'boolean') {
+              send(400, { ok: false, error: 'enabled 必须是布尔值' })
+              return
+            }
+            const enabled = await this.setTaskTreeSessions(body.enabled)
             send(200, { ok: true, enabled })
             return
           }
@@ -931,6 +976,17 @@ export class ChannelManager {
     return enabled
   }
 
+  getTaskTreeSessions(): boolean {
+    return this.store.taskTreeSessions === true
+  }
+
+  async setTaskTreeSessions(enabled: boolean): Promise<boolean> {
+    if (typeof enabled !== 'boolean') throw new Error('enabled 必须是布尔值')
+    this.store.taskTreeSessions = enabled
+    this.flush()
+    return enabled
+  }
+
   isHostUpdateDisabled(): boolean {
     return this.hostUpdateDisabled
   }
@@ -1016,6 +1072,9 @@ export class ChannelManager {
       state.privateAccess = normalized.settings.privateAccess
       // 发送方式按注入时机读取，不需要重载会话。
       state.sendMode = normalized.settings.sendMode
+      if (normalized.settings.segmentReply !== undefined) state.segmentReply = normalized.settings.segmentReply
+      if (normalized.settings.segmentDelayMinSecs !== undefined) state.segmentDelayMinSecs = normalized.settings.segmentDelayMinSecs
+      if (normalized.settings.segmentDelayMaxSecs !== undefined) state.segmentDelayMaxSecs = normalized.settings.segmentDelayMaxSecs
       if (supportsProxy(platform) && !this.proxyUrlCache.has(accountId)) {
         await this.hydrateProxyUrl(accountId, state)
       }
@@ -1397,6 +1456,7 @@ export class ChannelManager {
         secretary: parsed.secretary !== null && typeof parsed.secretary === 'object' && !Array.isArray(parsed.secretary)
           ? parsed.secretary as Record<string, unknown>
           : undefined,
+        taskTreeSessions: typeof parsed.taskTreeSessions === 'boolean' ? parsed.taskTreeSessions : undefined,
       }
     } catch (error) {
       try {
@@ -1466,7 +1526,7 @@ export class ChannelManager {
     return ordinal
   }
 
-  private async normalizeAccountSettings(platform: ChannelId, input: Record<string, unknown>, previous: ChannelState): Promise<{ ok: true; settings: { name: string; nameOrdinal: number; assistant: AssistantModel; agentPreset: string; cwd: string; permission: PermissionPreset; commandPermissions: CommandPermissions; privateAccess: 'approved' | 'all'; sendMode: SendMode } } | { ok: false; error: string }> {
+  private async normalizeAccountSettings(platform: ChannelId, input: Record<string, unknown>, previous: ChannelState): Promise<{ ok: true; settings: { name: string; nameOrdinal: number; assistant: AssistantModel; agentPreset: string; cwd: string; permission: PermissionPreset; commandPermissions: CommandPermissions; privateAccess: 'approved' | 'all'; sendMode: SendMode; segmentReply?: boolean; segmentDelayMinSecs?: number; segmentDelayMaxSecs?: number } } | { ok: false; error: string }> {
     const agentPreset = input.agentPreset ?? previous.agentPreset ?? this.engineConfig.agentPreset ?? 'standard'
     if (typeof agentPreset !== 'string' || !agentPreset.trim()) return { ok: false, error: '请选择 Agent 预设' }
     if (input.agentPreset !== undefined) {
@@ -1489,6 +1549,13 @@ export class ChannelManager {
     if (!permission) return { ok: false, error: '请选择权限' }
     const privateAccess = input.privateAccess === 'all' || (input.privateAccess === undefined && previous.privateAccess === 'all') ? 'all' : 'approved'
     const sendMode = normalizeSendMode(input.sendMode === undefined ? previous.sendMode : input.sendMode)
+    // 未传就从状态里沿用；显式传布尔值才覆盖，避免旧客户端保存时把开关打回默认。
+    // 只有已开放分段回复的渠道才保存开关，未验证渠道一律记为关闭。
+    const segmentReply = channelSupportsSegmentReply(platform)
+      ? (typeof input.segmentReply === 'boolean' ? input.segmentReply : previous.segmentReply)
+      : false
+    const segmentDelayMinSecs = normalizeSegmentSecs(input.segmentDelayMinSecs) ?? previous.segmentDelayMinSecs
+    const segmentDelayMaxSecs = normalizeSegmentSecs(input.segmentDelayMaxSecs) ?? previous.segmentDelayMaxSecs
     let commandPermissions: CommandPermissions
     try { commandPermissions = normalizeCommandPermissions(input.commandPermissions === undefined ? previous.commandPermissions : input.commandPermissions) }
     catch { return { ok: false, error: '命令权限配置无效' } }
@@ -1498,7 +1565,7 @@ export class ChannelManager {
     if ([...trimmed].length > ACCOUNT_REMARK_LIMIT) return { ok: false, error: `账号备注不能超过 ${ACCOUNT_REMARK_LIMIT} 个字符` }
     if (/[\u0000-\u001F\u007F]/.test(trimmed)) return { ok: false, error: '账号备注不能包含换行或控制字符' }
     const name = trimmed || autoAccountName(platform, nameOrdinal)
-    return { ok: true, settings: { name, nameOrdinal, assistant, agentPreset, cwd, permission, privateAccess, sendMode, commandPermissions } }
+    return { ok: true, settings: { name, nameOrdinal, assistant, agentPreset, cwd, permission, privateAccess, sendMode, segmentReply, segmentDelayMinSecs, segmentDelayMaxSecs, commandPermissions } }
   }
 
   private accountIdFor(platform: ChannelId, config: Record<string, string>): string {
@@ -1553,7 +1620,28 @@ export class ChannelManager {
       reasoningEffort: assistant?.reasoningEffort,
       permissionPreset: normalizePermission(state.permission, this.permissionPresets().names) ?? this.engineConfig.permissionPreset,
       sendMode: normalizeSendMode(state.sendMode),
+      // 只有已验证逐条投递的渠道才真正生效，其他渠道即使旧配置里开了也不切分。
+      segmentReply: channelSupportsSegmentReply(this.platformOf(accountId, state))
+        && (state.segmentReply ?? this.engineConfig.segmentReply) === true,
+      segmentDelayMinSecs: this.segmentDelayRange(state).min,
+      segmentDelayMaxSecs: this.segmentDelayRange(state).max,
     }
+  }
+
+  /** 分段间隔区间：账号设置优先，其次插件配置，最后回落到 1–2 秒；上下界颠倒时自动对调。 */
+  private segmentDelayRange(state?: ChannelState): { min: number; max: number } {
+    const min = normalizeSegmentSecs(state?.segmentDelayMinSecs)
+      ?? normalizeSegmentSecs(this.engineConfig.segmentDelayMinSecs)
+      ?? 1
+    const max = normalizeSegmentSecs(state?.segmentDelayMaxSecs)
+      ?? normalizeSegmentSecs(this.engineConfig.segmentDelayMaxSecs)
+      ?? 2
+    return min <= max ? { min, max } : { min: max, max: min }
+  }
+
+  /** 分段回复的系统提示说明；未绑定或该账号没开启时返回空串，由引擎判断。 */
+  segmentInstructionForSession(sessionId: string): string {
+    return this.engine.segmentInstructionForSession(sessionId)
   }
 
 
@@ -1611,7 +1699,7 @@ function pairingSettings(input?: Record<string, unknown>): Record<string, string
   if (!input) return {}
   const out: Record<string, string> = {}
   if (input.commandPermissions !== undefined) out.__setting_commandPermissions = JSON.stringify(normalizeCommandPermissions(input.commandPermissions))
-  for (const key of ['name', 'provider', 'model', 'reasoningEffort', 'cwd', 'permission', 'privateAccess', 'sendMode', 'agentPreset']) {
+  for (const key of ['name', 'provider', 'model', 'reasoningEffort', 'cwd', 'permission', 'privateAccess', 'sendMode', 'segmentReply', 'segmentDelayMinSecs', 'segmentDelayMaxSecs', 'agentPreset']) {
     const value = input[key]
     if (value !== undefined && value !== null) out[`__setting_${key}`] = String(value)
   }

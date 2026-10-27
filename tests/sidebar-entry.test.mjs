@@ -43,19 +43,36 @@ test('侧边栏入口配置：管理器方法、持久化与 HTTP API', async ()
     assert.equal(typeof manager.setSidebarEntry, 'function', 'manager 提供 setSidebarEntry')
     assert.equal(manager.getSidebarEntry(), false, 'sidebarEntry 默认关闭（false）')
 
+    assert.equal(typeof manager.getTaskTreeSessions, 'function', 'manager 提供 getTaskTreeSessions')
+    assert.equal(typeof manager.setTaskTreeSessions, 'function', 'manager 提供 setTaskTreeSessions')
+    assert.equal(manager.getTaskTreeSessions(), false, 'taskTreeSessions 默认关闭（false）')
+
     const enabled = await manager.setSidebarEntry(true)
     assert.equal(enabled, true, 'setSidebarEntry(true) 返回 true')
     assert.equal(manager.getSidebarEntry(), true, 'getSidebarEntry() 返回已更新的 true')
 
+    const taskTreeEnabled = await manager.setTaskTreeSessions(true)
+    assert.equal(taskTreeEnabled, true, 'setTaskTreeSessions(true) 返回 true')
+    assert.equal(manager.getTaskTreeSessions(), true, 'getTaskTreeSessions() 返回已更新的 true')
+
     const disabled = await manager.setSidebarEntry(false)
     assert.equal(disabled, false, 'setSidebarEntry(false) 返回 false')
     assert.equal(manager.getSidebarEntry(), false, 'getSidebarEntry() 返回已更新的 false')
+
+    const taskTreeDisabled = await manager.setTaskTreeSessions(false)
+    assert.equal(taskTreeDisabled, false, 'setTaskTreeSessions(false) 返回 false')
+    assert.equal(manager.getTaskTreeSessions(), false, 'getTaskTreeSessions() 返回已更新的 false')
 
     // 非布尔值校验
     await assert.rejects(
       async () => manager.setSidebarEntry('true'),
       (err) => err instanceof Error,
       '非布尔值拒绝写入',
+    )
+    await assert.rejects(
+      async () => manager.setTaskTreeSessions('true'),
+      (err) => err instanceof Error,
+      'taskTreeSessions 非布尔值拒绝写入',
     )
 
     // 2. HTTP 路由测试
@@ -74,7 +91,9 @@ test('侧边栏入口配置：管理器方法、持久化与 HTTP API', async ()
 
     const server = createServer((req, res) => route.handler(req, res))
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
-    const baseUrl = `http://127.0.0.1:${server.address().port}/api/dsh-im-connect/sidebar-entry`
+    const port = server.address().port
+    const baseUrl = `http://127.0.0.1:${port}/api/dsh-im-connect/sidebar-entry`
+    const taskTreeUrl = `http://127.0.0.1:${port}/api/dsh-im-connect/task-tree-sessions`
     const headers = { 'content-type': 'application/json', 'x-dsh-im-connect-client': '1' }
 
     try {
@@ -84,6 +103,13 @@ test('侧边栏入口配置：管理器方法、持久化与 HTTP API', async ()
       const getData = await getRes.json()
       assert.equal(getData.ok, true)
       assert.equal(getData.enabled, false, 'HTTP GET 默认 enabled 为 false')
+
+      // taskTreeSessions: GET 初始状态（false）
+      const getTaskTreeRes = await fetch(taskTreeUrl)
+      assert.equal(getTaskTreeRes.status, 200)
+      const getTaskTreeData = await getTaskTreeRes.json()
+      assert.equal(getTaskTreeData.ok, true)
+      assert.equal(getTaskTreeData.enabled, false, 'HTTP GET task-tree-sessions 默认 enabled 为 false')
 
       // POST 更新开启
       const postRes = await fetch(baseUrl, {
@@ -96,11 +122,28 @@ test('侧边栏入口配置：管理器方法、持久化与 HTTP API', async ()
       assert.equal(postData.ok, true)
       assert.equal(postData.enabled, true)
 
+      // taskTreeSessions: POST 更新开启
+      const postTaskTreeRes = await fetch(taskTreeUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ enabled: true }),
+      })
+      assert.equal(postTaskTreeRes.status, 200)
+      const postTaskTreeData = await postTaskTreeRes.json()
+      assert.equal(postTaskTreeData.ok, true)
+      assert.equal(postTaskTreeData.enabled, true)
+
       // GET 验证更新已生效
       const getRes2 = await fetch(baseUrl)
       const getData2 = await getRes2.json()
       assert.equal(getData2.ok, true)
       assert.equal(getData2.enabled, true)
+
+      // taskTreeSessions: GET 验证更新已生效
+      const getTaskTreeRes2 = await fetch(taskTreeUrl)
+      const getTaskTreeData2 = await getTaskTreeRes2.json()
+      assert.equal(getTaskTreeData2.ok, true)
+      assert.equal(getTaskTreeData2.enabled, true)
 
       // POST 非法参数校验
       const postInvalid = await fetch(baseUrl, {
@@ -110,9 +153,19 @@ test('侧边栏入口配置：管理器方法、持久化与 HTTP API', async ()
       })
       assert.equal(postInvalid.status, 400)
 
+      const postTaskTreeInvalid = await fetch(taskTreeUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ enabled: 'yes' }),
+      })
+      assert.equal(postTaskTreeInvalid.status, 400)
+
       // HEAD 请求
       const headRes = await fetch(baseUrl, { method: 'HEAD' })
       assert.equal(headRes.status, 200)
+
+      const headTaskTreeRes = await fetch(taskTreeUrl, { method: 'HEAD' })
+      assert.equal(headTaskTreeRes.status, 200)
 
       // 缺少客户端标记返回 403
       const postForbidden = await fetch(baseUrl, {
@@ -122,9 +175,19 @@ test('侧边栏入口配置：管理器方法、持久化与 HTTP API', async ()
       })
       assert.equal(postForbidden.status, 403)
 
+      const postTaskTreeForbidden = await fetch(taskTreeUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: false }),
+      })
+      assert.equal(postTaskTreeForbidden.status, 403)
+
       // 不支持的 HTTP 方法返回 405
       const putRes = await fetch(baseUrl, { method: 'PUT', headers })
       assert.equal(putRes.status, 405)
+
+      const putTaskTreeRes = await fetch(taskTreeUrl, { method: 'PUT', headers })
+      assert.equal(putTaskTreeRes.status, 405)
     } finally {
       server.close()
     }
@@ -137,6 +200,7 @@ test('侧边栏入口配置：管理器方法、持久化与 HTTP API', async ()
       engineConfig,
     })
     assert.equal(manager2.getSidebarEntry(), true, '跨重启后正确读回已保存的 sidebarEntry=true')
+    assert.equal(manager2.getTaskTreeSessions(), true, '跨重启后正确读回已保存的 taskTreeSessions=true')
   } finally {
     await rm(temporary, { recursive: true, force: true }).catch(() => {})
   }
@@ -202,6 +266,8 @@ test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async
 
   let clientSidebar = false
   let clientUpdate = true
+  let clientTaskTree = false
+  let taskTreeChangeEvents = []
   const mockWorkspaces = { create: (input) => ({ id: 'ws-mock-id', ...input }) }
   const controller = setupSidebarEntry(mockCtx, {
     callApi: async (path, options) => {
@@ -221,7 +287,18 @@ test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async
         }
         return { enabled: clientUpdate, locked: false }
       }
+      if (path === '/task-tree-sessions') {
+        if (options?.method === 'POST') {
+          const body = JSON.parse(options.body)
+          clientTaskTree = body.enabled
+          return { enabled: clientTaskTree }
+        }
+        return { enabled: clientTaskTree }
+      }
       throw new Error('unexpected path: ' + path)
+    },
+    onTaskTreeSessionsChange: (enabled) => {
+      taskTreeChangeEvents.push(enabled)
     },
     renderPanel: () => 'panel-element',
     ns: 'im-connect',
@@ -292,6 +369,19 @@ test('客户端侧边栏入口与 bundle.config 开关槽位生命周期', async
   await controller.setOnlineUpdate(true)
   assert.equal(controller.isOnlineUpdateEnabled(), true)
   assert.equal(clientUpdate, true)
+
+  // 测试 taskTreeSessions 控制
+  await new Promise((r) => setTimeout(r, 10))
+  assert.equal(controller.isTaskTreeSessionsEnabled(), false, 'taskTreeSessions 默认关闭（false）')
+  taskTreeChangeEvents = []
+  await controller.setTaskTreeSessions(true)
+  assert.equal(controller.isTaskTreeSessionsEnabled(), true, '开启后 isTaskTreeSessionsEnabled 为 true')
+  assert.equal(clientTaskTree, true, '向服务端提交 enabled: true')
+  assert.deepEqual(taskTreeChangeEvents, [true], '触发 onTaskTreeSessionsChange 回调')
+  await controller.setTaskTreeSessions(false)
+  assert.equal(controller.isTaskTreeSessionsEnabled(), false, '关闭后 isTaskTreeSessionsEnabled 为 false')
+  assert.equal(clientTaskTree, false, '向服务端提交 enabled: false')
+  assert.deepEqual(taskTreeChangeEvents, [true, false], '再次触发 onTaskTreeSessionsChange 回调')
 
   controller.destroy()
 

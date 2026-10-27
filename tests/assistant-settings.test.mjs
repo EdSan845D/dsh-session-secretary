@@ -61,7 +61,7 @@ test('client.js 依赖的宿主模块必须在 dsh.client.inject 中声明', () 
   for (const name of new Set(required)) assert.ok(injected.has(name), `${name} 未在 dsh.client.inject 中声明`)
 })
 
-function makeManager(t, ctx = {}) {
+function makeManager(t, ctx = {}, engineOverrides = {}) {
   const stateDir = mkdtempSync(join(tmpdir(), 'im-connect-assistant-'))
   const permissionPresets = {
     names: ['review', 'workspace-write', 'danger-full-access'],
@@ -75,6 +75,7 @@ function makeManager(t, ctx = {}) {
     agentPreset: 'standard',
     mergeTimeoutSecs: 5,
     permissionPreset: 'review',
+    ...engineOverrides,
   }
   const manager = new ChannelManager({ ctx: { ...ctx, permissionPresets }, stateDir, log: () => undefined, engineConfig })
   t.after(() => {
@@ -883,6 +884,105 @@ test('账号发送方式默认排队，可切换插话并按账号持久化，�
   assert.equal(untouched.account.sendMode, 'steer')
 })
 
+test('账号分段回复默认关闭，可开关并按账号持久化，省略字段保留', async t => {
+  const manager = makeManager(t)
+  manager.startOne = async () => undefined
+  const created = await manager.connect('qq', { appId: 'segmented-app', appSecret: 'segmented-secret' }, {
+    provider: 'segmented-provider',
+    model: 'segmented-model',
+    cwd: 'D:\\repo\\segmented',
+    permission: 'review',
+  })
+  assert.equal(created.ok, true, created.error)
+  assert.equal(accountOf(manager, created.accountId).segmentReplySupported, true, 'QQ 已开放分段回复')
+  assert.equal(accountOf(manager, created.accountId).segmentReply, false, '插件级默认关闭')
+
+  const enabled = await manager.updateAccount(created.accountId, { segmentReply: true })
+  assert.equal(enabled.ok, true)
+  assert.equal(enabled.account.segmentReply, true)
+  const persisted = JSON.parse(readFileSync(manager.file, 'utf8'))
+  assert.equal(persisted.channels[created.accountId].segmentReply, true)
+
+  // 省略字段的后续保存保留当前开关状态。
+  const untouched = await manager.updateAccount(created.accountId, { name: 'segmented-renamed' })
+  assert.equal(untouched.account.segmentReply, true)
+
+  const disabled = await manager.updateAccount(created.accountId, { segmentReply: false })
+  assert.equal(disabled.account.segmentReply, false)
+})
+
+test('分段间隔区间可按账号保存，非法值与颠倒的上下界被纠正', async t => {
+  const manager = makeManager(t)
+  manager.startOne = async () => undefined
+  const created = await manager.connect('telegram', { token: 'segment-gap-token' }, {
+    provider: 'segment-gap-provider',
+    model: 'segment-gap-model',
+    cwd: 'D:\\repo\\segment-gap',
+    permission: 'review',
+  })
+  assert.equal(created.ok, true, created.error)
+  assert.equal(accountOf(manager, created.accountId).segmentDelayMinSecs, 1, '插件默认下界 1 秒')
+  assert.equal(accountOf(manager, created.accountId).segmentDelayMaxSecs, 2, '插件默认上界 2 秒')
+
+  const saved = await manager.updateAccount(created.accountId, { segmentDelayMinSecs: 2, segmentDelayMaxSecs: 4 })
+  assert.equal(saved.ok, true)
+  assert.equal(saved.account.segmentDelayMinSecs, 2)
+  assert.equal(saved.account.segmentDelayMaxSecs, 4)
+  const persisted = JSON.parse(readFileSync(manager.file, 'utf8'))
+  assert.equal(persisted.channels[created.accountId].segmentDelayMaxSecs, 4)
+
+  // 上下界颠倒时自动对调，保证下界不大于上界。
+  const swapped = await manager.updateAccount(created.accountId, { segmentDelayMinSecs: 5, segmentDelayMaxSecs: 3 })
+  assert.equal(swapped.account.segmentDelayMinSecs, 3)
+  assert.equal(swapped.account.segmentDelayMaxSecs, 5)
+
+  // 越界值夹到 0–60 秒并取整。
+  const clamped = await manager.updateAccount(created.accountId, { segmentDelayMinSecs: -2, segmentDelayMaxSecs: 99 })
+  assert.equal(clamped.account.segmentDelayMinSecs, 0)
+  assert.equal(clamped.account.segmentDelayMaxSecs, 60)
+
+  // 省略字段的后续保存保留区间。
+  const untouched = await manager.updateAccount(created.accountId, { name: 'segment-gap-renamed' })
+  assert.equal(untouched.account.segmentDelayMinSecs, 0)
+  assert.equal(untouched.account.segmentDelayMaxSecs, 60)
+})
+
+test('插件级分段回复作为账号默认值，账号可单独关闭', async t => {
+  const manager = makeManager(t, {}, { segmentReply: true })
+  manager.startOne = async () => undefined
+  const created = await manager.connect('qq', { appId: 'segmented-default-app', appSecret: 'segmented-default-secret' }, {
+    provider: 'segmented-default-provider',
+    model: 'segmented-default-model',
+    cwd: 'D:\\repo\\segmented-default',
+    permission: 'review',
+  })
+  assert.equal(created.ok, true, created.error)
+  assert.equal(accountOf(manager, created.accountId).segmentReply, true)
+  const disabled = await manager.updateAccount(created.accountId, { segmentReply: false })
+  assert.equal(disabled.account.segmentReply, false)
+})
+
+test('未开放分段回复的渠道不展示开关，也不保存为开启', async t => {
+  const manager = makeManager(t, {}, { segmentReply: true })
+  manager.startOne = async () => undefined
+  const created = await manager.connect('telegram', { token: 'segment-unsupported-token' }, {
+    provider: 'segment-unsupported-provider',
+    model: 'segment-unsupported-model',
+    cwd: 'D:\\repo\\segment-unsupported',
+    permission: 'review',
+  })
+  assert.equal(created.ok, true, created.error)
+  const account = accountOf(manager, created.accountId)
+  assert.equal(account.segmentReplySupported, false)
+  assert.equal(account.segmentReply, false, '插件级默认也不会落到未验证渠道上')
+
+  const saved = await manager.updateAccount(created.accountId, { segmentReply: true })
+  assert.equal(saved.ok, true)
+  assert.equal(saved.account.segmentReply, false)
+  const persisted = JSON.parse(readFileSync(manager.file, 'utf8'))
+  assert.equal(persisted.channels[created.accountId].segmentReply, false)
+})
+
 test('绑定时携带的发送方式随账号保存，只修改发送方式不重载会话', async t => {
   const manager = makeManager(t)
   manager.startOne = async () => undefined
@@ -921,4 +1021,24 @@ test('发送方式选择器有双语词条，保存请求带上所选值', () =>
   assert.match(client, /sendMode: next\.sendMode,/)
   assert.match(client, /account\.privateAccess, account\.sendMode,/)
   assert.match(client, /sendMode: "queue",/)
+})
+
+test('分段回复选择器使用 Select，首选项为「完整发送」，映射布尔状态', () => {
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.match(client, /"account\.segmentReply": "分段回复"/)
+  assert.match(client, /"account\.segmentReply": "Segmented replies"/)
+  assert.match(client, /"account\.segmentFull": "完整发送"/)
+  assert.match(client, /"account\.segmentSplit": "分段发送"/)
+  assert.match(client, /"account\.segmentFull": "Send as whole"/)
+  assert.match(client, /"account\.segmentSplit": "Send in segments"/)
+  assert.match(client, /field\("sendMode"[\s\S]*?\)\),\s*segmentSupported && field\("segmentReply"/)
+  assert.match(client, /field\("segmentReply", segmentReplyLabel, h\(Select, \{/)
+  assert.match(client, /h\(HostTooltip,\s*\{\s*label:\s*segmentReplyTip,\s*portal:\s*true/)
+  assert.match(client, /IconInfoOutline/)
+  assert.match(client, /t\("account\.segmentReplyNote"\)/)
+  assert.doesNotMatch(client, /className: "ima-picker-note" \}, t\("account\.segmentReplyNote"\)/)
+  assert.match(client, /value: segmentReply \? "segmented" : "full"/)
+  assert.match(client, /\{ value: "full", label: t\("account\.segmentFull"\) \}/)
+  assert.match(client, /\{ value: "segmented", label: t\("account\.segmentSplit"\) \}/)
+  assert.match(client, /onChange: \(next\) => update\(\{ segmentReply: next === "segmented" \}\)/)
 })

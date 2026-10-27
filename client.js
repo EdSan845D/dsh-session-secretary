@@ -14,6 +14,7 @@ window.__ModuleLoader__.load({
     const HostMenu = primitives.Menu;
     const HostModal = primitives.Modal;
     const HostSegmentedTabs = primitives.SegmentedTabs;
+    const HostTooltip = primitives.Tooltip;
     const PrimitiveSwitch = primitives.Switch;
     // 宿主 Button 由 forwardRef 包成对象，typeof 是 object，不是 function。
     function isHostComponent(component) {
@@ -418,6 +419,9 @@ window.__ModuleLoader__.load({
     }
 
     const IconSettingsOutline16 = pickHostIcon("IconSettingsOutlineRegular", "IconSettingsOutline16");
+    // 已通过逐条投递验证的渠道，与宿主端 channels/meta.ts 的 supportsSegmentReply 保持一致。
+    const SEGMENT_REPLY_PLATFORMS = ["qq"];
+    const supportsSegmentReply = (platform) => SEGMENT_REPLY_PLATFORMS.indexOf(platform) >= 0;
     const CHANNEL_SETTINGS_EVENT = "dsh-im-connect:open-channel-settings";
     const CHANNEL_SETTINGS_STORAGE_KEY = "dsh-im-connect:pending-channel-settings";
     const SETTINGS_CODEX_TRIGGER_SELECTOR = "[data-dcu-settings-trigger]";
@@ -628,8 +632,9 @@ window.__ModuleLoader__.load({
         "secretary.action.save": "保存", "secretary.action.reload": "重新加载", "secretary.error.load": "无法加载秘书偏好", "secretary.error.range": "有效期与截断长度需为范围内的整数。",
         "secretary.bundle.entry.title": "会话秘书设置", "secretary.bundle.entry.desc": "在设置里打开会话秘书页，管理通知偏好与控制聊天。", "secretary.bundle.entry.open": "打开设置",
         "settings.aria": "会话秘书", "settings.publicChatNotice": "未批准用户可以发起聊天，但不能批准工具调用。", "pending.notice": "有访问请求。批准后该用户才能驱动本机助手。", "action.approve": "批准", "action.deny": "拒绝", "loading": "加载中…",
-        "account.presetUnavailable": "预设不可用", "account.presetNote": "更改后使用新会话，旧会话保留。", "action.settings": "设置", "command.dm": "私聊命令", "command.group": "群聊命令", "command.enabled": "可以执行命令", "command.disabled": "仅正常对话",
+        "account.presetUnavailable": "预设不可用", "action.settings": "设置", "command.dm": "私聊命令", "command.group": "群聊命令", "command.enabled": "可以执行命令", "command.disabled": "仅正常对话",
         "account.workspace": "工作区", "account.currentWorkspace": "当前工作区", "account.selectWorkspace": "请选择工作区", "account.selectModel": "请选择模型", "account.selectPermission": "请选择权限", "account.privateAccess": "私聊准入", "account.privateApproved": "仅已批准用户", "account.privateAll": "允许所有私聊用户", "account.sendMode": "发送方式", "account.sendQueue": "排队发送", "account.sendSteer": "插话发送", "account.sendSteerNote": "插话发送会把消息作为补充指令立即交给运行中的任务；任务空闲时与排队发送相同。", "account.autoNameNote": "绑定成功后会自动生成账号名，无需手动填写。需要区分使用者时，可在账号行填写备注。", "account.proxyMode": "网络代理", "account.proxyInherit": "跟随宿主", "account.proxyDirect": "直接连接", "account.proxyCustom": "手动配置",        "account.proxyUrl": "代理地址", "account.proxyNote": "仅影响当前账号；保存后自动重连生效。", "account.proxySaved": "代理地址已保存；留空保存可保留当前地址。", "account.defaultName": "{channel}账号 {count}",
+        "taskTreeSessions.entry.title": "在任务树显示 IM 会话", "taskTreeSessions.entry.desc": "在官方工作区任务树中显示各渠道会话。关闭后仅在侧栏「频道」页签中显示", "taskTreeSessions.entry.toggle": "切换在任务树显示 IM 会话", "account.segmentReply": "分段回复", "account.segmentFull": "完整发送", "account.segmentSplit": "分段发送", "account.segmentReplyNote": "选择分段发送时助手会把一次回复拆成多条短消息，在分隔标记处切开逐条发送；完整发送时仍是一条完整回复。", "account.segmentGap": "发送间隔", "account.segmentGapMin": "最小间隔", "account.segmentGapMax": "最大间隔", "account.segmentGapNote": "每条分段消息之间会从这个区间里随机取一个间隔，单位秒，可直接填写。", "account.segmentGapInvalid": "请填写 0 到 60 之间的秒数", "account.segmentGapOrder": "上限不能低于下限", "account.seconds": "秒",
         "account.remark": "名称备注", "account.remarkNote": "只在本机设置页区分账号，留空恢复自动名称。", "account.rename": "修改名称备注",
         "account.count": "{count} 个账号", "account.statusProcessing": "处理中…", "account.statusNotConnected": "未连接", "account.receive": "接收消息", "account.receiveDescription": "关闭后保留账号配置，但不接收新消息", "account.removeConfirm": "确定移除这个账号？本机保存的配置和凭据将一并删除。",
         "action.addAccount": "添加账号", "action.generateQr": "生成二维码", "action.checkConnection": "诊断连接", "action.reconnectAccount": "重新连接", "action.removeAccount": "移除接入", "status.saving": "保存中…", "status.saved": "已保存",
@@ -674,8 +679,9 @@ window.__ModuleLoader__.load({
         "secretary.action.save": "Save", "secretary.action.reload": "Reload", "secretary.error.load": "Could not load secretary preferences", "secretary.error.range": "The window and truncation values must be integers within range.",
         "secretary.bundle.entry.title": "Session Secretary settings", "secretary.bundle.entry.desc": "Open the Session Secretary page in Settings to manage notification preferences and the control chat.", "secretary.bundle.entry.open": "Open settings",
         "settings.aria": "Session Secretary", "settings.publicChatNotice": "Unapproved users can start chats, but they cannot approve tool calls.", "pending.notice": "There are access requests. Approve a user before they can control the local assistant.", "action.approve": "Approve", "action.deny": "Deny", "loading": "Loading…",
-        "account.presetUnavailable": "Preset unavailable", "account.presetNote": "Changes start a new session; previous sessions are kept.", "action.settings": "Settings", "command.dm": "DM commands", "command.group": "Group commands", "command.enabled": "Commands enabled", "command.disabled": "Conversation only",
+        "account.presetUnavailable": "Preset unavailable", "action.settings": "Settings", "command.dm": "DM commands", "command.group": "Group commands", "command.enabled": "Commands enabled", "command.disabled": "Conversation only",
         "account.workspace": "Workspace", "account.currentWorkspace": "Current workspace", "account.selectWorkspace": "Select a workspace", "account.selectModel": "Select a model", "account.selectPermission": "Select a permission", "account.privateAccess": "Private chat access", "account.privateApproved": "Approved users only", "account.privateAll": "Allow all DM users", "account.sendMode": "Send mode", "account.sendQueue": "Queue", "account.sendSteer": "Steer", "account.sendSteerNote": "Steer hands the message to the running task as additional instructions at its next step; when the task is idle it behaves like Queue.", "account.autoNameNote": "The account name is generated automatically after setup. Add a remark on the account row if you need to tell users apart.", "account.proxyMode": "Network proxy", "account.proxyInherit": "Follow Host", "account.proxyDirect": "Connect directly", "account.proxyCustom": "Configure manually",        "account.proxyUrl": "Proxy address", "account.proxyNote": "Affects only this account. The channel reconnects automatically after saving.", "account.proxySaved": "A proxy address is saved. Leave the field blank to keep it.", "account.defaultName": "{channel} account {count}",
+        "taskTreeSessions.entry.title": "Show IM sessions in task tree", "taskTreeSessions.entry.desc": "Show messaging channel sessions in the official workspace task tree. When disabled, sessions are shown only under the 'Channels' tab.", "taskTreeSessions.entry.toggle": "Toggle show IM sessions in task tree", "account.segmentReply": "Segmented replies", "account.segmentFull": "Send as whole", "account.segmentSplit": "Send in segments", "account.segmentReplyNote": "When set to Send in segments, the assistant splits one reply into several short messages at the separator and sends them one by one; Send as whole keeps the entire reply in a single message.", "account.segmentGap": "Send gap", "account.segmentGapMin": "Minimum gap", "account.segmentGapMax": "Maximum gap", "account.segmentGapNote": "Each segmented message waits a random gap inside this range, in seconds. Type the values directly.", "account.segmentGapInvalid": "Enter a number of seconds between 0 and 60.", "account.segmentGapOrder": "The maximum gap cannot be lower than the minimum.", "account.seconds": "s",
         "account.remark": "Name remark", "account.remarkNote": "Shown only in settings to tell accounts apart. Leave blank to restore the automatic name.", "account.rename": "Edit name remark",
         "account.count": "{count} accounts", "account.statusProcessing": "Processing…", "account.statusNotConnected": "Not connected", "account.receive": "Receive messages", "account.receiveDescription": "Turn this off to keep the account settings without receiving new messages", "account.removeConfirm": "Remove this account? Its saved settings and credentials will also be deleted.",
         "action.addAccount": "Add account", "action.generateQr": "Generate QR code", "action.checkConnection": "Diagnose connection", "action.reconnectAccount": "Reconnect", "action.removeAccount": "Remove", "status.saving": "Saving…", "status.saved": "Saved",
@@ -844,6 +850,9 @@ window.__ModuleLoader__.load({
    把宿主的 content 区设为滚动容器，footer 保持在容器外可见。 */
 .ima-bind-modal>.ima-modal-content,.ima-account-modal>.ima-modal-content{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .ima-account-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;width:100%;box-sizing:border-box}
+.ima-segment-gap{display:flex;align-items:center;gap:8px;width:100%}
+.ima-segment-gap-input{flex:1 1 0;min-width:0}
+.ima-segment-gap-sep,.ima-segment-gap-unit{color:var(--ima-muted, #8a8a8a);white-space:nowrap}
 .ima-account-settings.compact{grid-template-columns:1fr}
 .ima-proxy-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;width:100%;box-sizing:border-box}
 .ima-proxy-settings>.ima-picker-note{grid-column:1/-1}
@@ -942,6 +951,7 @@ window.__ModuleLoader__.load({
       const value = String(sessionId || "");
       const mapped = channelSessionChannels.get(value);
       if (mapped) return mapped;
+      // 统一 UUID 不含渠道信息，映射未到达前只能返回空；旧语义 ID 仍可从字符串反解。
       if (!value.startsWith("im:")) return undefined;
       const rest = value.slice(3);
       const split = rest.indexOf(":");
@@ -949,7 +959,11 @@ window.__ModuleLoader__.load({
       const platform = instance.split("_", 1)[0];
       return platform || undefined;
     }
-    const isChannelSession = (id) => String(id).startsWith("im:") || channelSessionIds.has(String(id));
+    // 新旧两代 IM 前缀都要认，否则存量会话升级后会掉出渠道页签。
+    const isChannelSession = (id) => {
+      const value = String(id);
+      return value.startsWith("dsh-im-session-") || value.startsWith("im:") || channelSessionIds.has(value);
+    };
     const subscribeChannelMembership = (listener) => {
       channelMembershipListeners.add(listener);
       return () => channelMembershipListeners.delete(listener);
@@ -1454,6 +1468,9 @@ window.__ModuleLoader__.load({
           permission: defaults && defaults.permission || "",
           privateAccess: "approved",
           sendMode: "queue",
+          segmentReply: false,
+          segmentDelayMinSecs: 1,
+          segmentDelayMaxSecs: 2,
           agentPreset: defaults && defaults.agentPreset || "standard",
         };
       });
@@ -1630,6 +1647,7 @@ window.__ModuleLoader__.load({
             permissionT,
             presetT,
             showAutoNameNote: true,
+            segmentReplySupported: supportsSegmentReply(ch.id),
             t,
           }),
           h(CommandPermissionSettings, { value: settings.commandPermissions, onSave: commandPermissions => setSettings(current => ({ ...current, commandPermissions })), t }),
@@ -1728,10 +1746,17 @@ window.__ModuleLoader__.load({
       const permissionT = props.permissionT || ((key) => key);
       const presetT = props.presetT || ((key) => key);
       const value = props.value || {};
+      const segmentDelayMinSecs = Number.isInteger(value.segmentDelayMinSecs) ? value.segmentDelayMinSecs : 1;
+      const segmentDelayMaxSecs = Number.isInteger(value.segmentDelayMaxSecs) ? value.segmentDelayMaxSecs : 2;
       const [addBusy, setAddBusy] = useState(false);
       const [hint, setHint] = useState("");
       const [confirmingFullAccess, setConfirmingFullAccess] = useState(false);
       const [fullAccessAcknowledged, setFullAccessAcknowledged] = useState(false);
+      const [segmentGapMinDraft, setSegmentGapMinDraft] = useState(String(segmentDelayMinSecs));
+      const [segmentGapMaxDraft, setSegmentGapMaxDraft] = useState(String(segmentDelayMaxSecs));
+      const [segmentGapError, setSegmentGapError] = useState("");
+      useEffect(() => { setSegmentGapMinDraft(String(segmentDelayMinSecs)); }, [segmentDelayMinSecs]);
+      useEffect(() => { setSegmentGapMaxDraft(String(segmentDelayMaxSecs)); }, [segmentDelayMaxSecs]);
       const items = props.workspaces || [];
       const providers = props.catalog || [];
       const permissions = props.permissions || [];
@@ -1742,6 +1767,10 @@ window.__ModuleLoader__.load({
       const permission = value.permission || "";
       const privateAccess = value.privateAccess === "all" ? "all" : "approved";
       const sendMode = value.sendMode === "steer" ? "steer" : "queue";
+      const segmentSupported = typeof props.segmentReplySupported === "boolean"
+        ? props.segmentReplySupported
+        : supportsSegmentReply(value.platform);
+      const segmentReply = value.segmentReply === true;
       const workspace = items.find((item) => item.path === cwd);
       const modelGroups = providers.map((item) => {
         const providerName = formatProviderLabel(item.id, item.name || item.id, modelT);
@@ -1777,6 +1806,27 @@ window.__ModuleLoader__.load({
       const update = (patch) => {
         setHint("");
         if (typeof props.onChange === "function") props.onChange(patch);
+      };
+
+      // 分段间隔手填秒数：失焦时统一校验，不合法就保留草稿并提示，不提交脏值。
+      const parseSegmentSecs = (raw) => {
+        const text = String(raw == null ? "" : raw).trim();
+        if (text === "") return undefined;
+        const parsed = Number(text);
+        if (!Number.isFinite(parsed)) return undefined;
+        return Math.min(60, Math.max(0, Math.round(parsed)));
+      };
+      const commitSegmentGap = () => {
+        const min = parseSegmentSecs(segmentGapMinDraft);
+        const max = parseSegmentSecs(segmentGapMaxDraft);
+        if (min === undefined || max === undefined) { setSegmentGapError(t("account.segmentGapInvalid")); return; }
+        if (max < min) { setSegmentGapError(t("account.segmentGapOrder")); return; }
+        setSegmentGapError("");
+        const patch = {};
+        if (min !== segmentDelayMinSecs) patch.segmentDelayMinSecs = min;
+        if (max !== segmentDelayMaxSecs) patch.segmentDelayMaxSecs = max;
+        if (patch.segmentDelayMinSecs === undefined && patch.segmentDelayMaxSecs === undefined) return;
+        update(patch);
       };
 
       const addWorkspace = (path) => {
@@ -1829,6 +1879,29 @@ window.__ModuleLoader__.load({
       const field = (key, label, picker, wide) => h("div", { key, className: "ima-picker-field" + (wide ? " wide" : "") },
         h("span", { className: "ima-picker-label" }, label),
         picker,
+      );
+
+      const segmentReplyTip = t("account.segmentReplyNote");
+      const tipAnchor = h("span", {
+        className: "ima-label-tip",
+        title: HostTooltip ? undefined : segmentReplyTip,
+        "aria-label": segmentReplyTip,
+        role: "button",
+        tabIndex: 0,
+        style: {
+          display: "inline-flex",
+          alignItems: "center",
+          cursor: "help",
+          color: "var(--dsw-alias-label-tertiary, var(--ima-muted))",
+          marginLeft: 2,
+        },
+      }, h(IconInfoOutline, { size: 12 }));
+
+      const segmentReplyLabel = h("span", { style: { display: "inline-flex", alignItems: "center", gap: 4 } },
+        h("span", null, t("account.segmentReply")),
+        HostTooltip
+          ? h(HostTooltip, { label: segmentReplyTip, portal: true, side: "top" }, tipAnchor)
+          : tipAnchor,
       );
 
       return h("div", { className: "ima-account-settings" + (props.compact ? " compact" : "") },
@@ -1919,8 +1992,51 @@ window.__ModuleLoader__.load({
           ],
           onChange: (next) => update({ sendMode: next }),
         })),
-        h("div", { className: "ima-picker-note" }, t("account.presetNote")),
+        segmentSupported && field("segmentReply", segmentReplyLabel, h(Select, {
+          className: "ima-account-picker",
+          value: segmentReply ? "segmented" : "full",
+          "aria-label": t("account.segmentReply"),
+          options: [
+            { value: "full", label: t("account.segmentFull") },
+            { value: "segmented", label: t("account.segmentSplit") },
+          ],
+          onChange: (next) => update({ segmentReply: next === "segmented" }),
+        })),
         sendMode === "steer" && h("div", { className: "ima-picker-note" }, t("account.sendSteerNote")),
+        segmentSupported && segmentReply && field("segmentGap", t("account.segmentGap"), h("div", { className: "ima-segment-gap" },
+          h(Input, {
+            type: "number",
+            min: 0,
+            max: 60,
+            step: 1,
+            inputMode: "numeric",
+            className: "ima-segment-gap-input",
+            value: segmentGapMinDraft,
+            placeholder: "1",
+            "aria-label": t("account.segmentGapMin"),
+            onChange: (event) => { setSegmentGapMinDraft(event.target.value); setSegmentGapError(""); },
+            onBlur: commitSegmentGap,
+            onKeyDown: (event) => { if (event.key === "Enter") event.currentTarget.blur(); },
+          }),
+          h("span", { className: "ima-segment-gap-sep" }, "~"),
+          h(Input, {
+            type: "number",
+            min: 0,
+            max: 60,
+            step: 1,
+            inputMode: "numeric",
+            className: "ima-segment-gap-input",
+            value: segmentGapMaxDraft,
+            placeholder: "2",
+            "aria-label": t("account.segmentGapMax"),
+            onChange: (event) => { setSegmentGapMaxDraft(event.target.value); setSegmentGapError(""); },
+            onBlur: commitSegmentGap,
+            onKeyDown: (event) => { if (event.key === "Enter") event.currentTarget.blur(); },
+          }),
+          h("span", { className: "ima-segment-gap-unit" }, t("account.seconds")),
+        )),
+        segmentSupported && segmentReply && segmentGapError && h("div", { className: "ima-picker-note warning" }, segmentGapError),
+        segmentSupported && segmentReply && h("div", { className: "ima-picker-note" }, t("account.segmentGapNote")),
         privateAccess === "all" && h("div", { className: "ima-picker-note warning" }, t("settings.publicChatNotice")),
         hint && h("div", { className: "ima-picker-note" }, hint),
         props.showAutoNameNote && h("div", { className: "ima-picker-note" }, t("account.autoNameNote")),
@@ -2028,7 +2144,7 @@ window.__ModuleLoader__.load({
         setDraft(account);
         setProxyModeDraft(account.proxyMode || "inherit");
         setNote("");
-      }, [account.id, account.cwd, account.permission, account.agentPreset, account.privateAccess, account.sendMode, account.proxyMode, account.proxyConfigured, JSON.stringify(account.commandPermissions), account.receiveEnabled, account.assistant && account.assistant.provider, account.assistant && account.assistant.model, account.assistant && account.assistant.reasoningEffort]);
+      }, [account.id, account.cwd, account.permission, account.agentPreset, account.privateAccess, account.sendMode, account.segmentReply, account.segmentDelayMinSecs, account.segmentDelayMaxSecs, account.proxyMode, account.proxyConfigured, JSON.stringify(account.commandPermissions), account.receiveEnabled, account.assistant && account.assistant.provider, account.assistant && account.assistant.model, account.assistant && account.assistant.reasoningEffort]);
       useEffect(() => {
         setProxyUrlDraft(account.proxyUrl || "");
       }, [account.id, account.proxyUrl]);
@@ -2047,6 +2163,9 @@ window.__ModuleLoader__.load({
           permission: next.permission,
           privateAccess: next.privateAccess,
           sendMode: next.sendMode,
+          segmentReply: next.segmentReply === true,
+          segmentDelayMinSecs: next.segmentDelayMinSecs,
+          segmentDelayMaxSecs: next.segmentDelayMaxSecs,
           agentPreset: next.agentPreset,
           commandPermissions: next.commandPermissions,
         };
@@ -2097,6 +2216,7 @@ window.__ModuleLoader__.load({
           h(AccountSettingsPicker, {
             value: draft,
             onChange: applySettings,
+            segmentReplySupported: account.segmentReplySupported !== false,
             catalog,
             permissions,
             agentPresets,
@@ -3743,6 +3863,9 @@ window.__ModuleLoader__.load({
         onlineUpdateDisabled,
         onlineUpdateLocked = false,
         onOpenSettings,
+        taskTreeSessionsEnabled = false,
+        onToggleTaskTreeSessions,
+        taskTreeSessionsDisabled = false,
       } = props;
 
       const SwitchComponent = PrimitiveSwitch || Switch;
@@ -3781,6 +3904,23 @@ window.__ModuleLoader__.load({
         );
       }
 
+      if (typeof onToggleTaskTreeSessions === "function") {
+        rows.push(
+          h("div", { key: "task-tree-sessions", className: "ima-bundle-row" },
+            h("div", { className: "ima-bundle-label-box" },
+              h("span", { className: "ima-bundle-title" }, t("taskTreeSessions.entry.title")),
+              h("span", { className: "ima-bundle-desc" }, t("taskTreeSessions.entry.desc"))
+            ),
+            h(SwitchComponent, {
+              checked: taskTreeSessionsEnabled,
+              onChange: onToggleTaskTreeSessions,
+              label: t("taskTreeSessions.entry.toggle"),
+              disabled: taskTreeSessionsDisabled,
+            })
+          )
+        );
+      }
+
       if (typeof onOpenSettings === "function") {
         rows.push(
           h("div", { key: "open-settings", className: "ima-bundle-row" },
@@ -3800,8 +3940,10 @@ window.__ModuleLoader__.load({
       const [enabled, setEnabled] = useState(props.getEnabled);
       const [onlineUpdateEnabled, setOnlineUpdateEnabled] = useState(props.getOnlineUpdateEnabled ? props.getOnlineUpdateEnabled : () => true);
       const [onlineUpdateLocked, setOnlineUpdateLocked] = useState(props.getOnlineUpdateLocked ? props.getOnlineUpdateLocked : () => false);
+      const [taskTreeSessionsEnabled, setTaskTreeSessionsEnabled] = useState(props.getTaskTreeSessionsEnabled ? props.getTaskTreeSessionsEnabled : () => false);
       const [savingSidebar, setSavingSidebar] = useState(false);
       const [savingUpdate, setSavingUpdate] = useState(false);
+      const [savingTaskTreeSessions, setSavingTaskTreeSessions] = useState(false);
 
       useEffect(() => {
         setEnabled(props.getEnabled());
@@ -3811,6 +3953,9 @@ window.__ModuleLoader__.load({
         if (props.getOnlineUpdateLocked) {
           setOnlineUpdateLocked(props.getOnlineUpdateLocked());
         }
+        if (props.getTaskTreeSessionsEnabled) {
+          setTaskTreeSessionsEnabled(props.getTaskTreeSessionsEnabled());
+        }
         return props.subscribe(() => {
           setEnabled(props.getEnabled());
           if (props.getOnlineUpdateEnabled) {
@@ -3818,6 +3963,9 @@ window.__ModuleLoader__.load({
           }
           if (props.getOnlineUpdateLocked) {
             setOnlineUpdateLocked(props.getOnlineUpdateLocked());
+          }
+          if (props.getTaskTreeSessionsEnabled) {
+            setTaskTreeSessionsEnabled(props.getTaskTreeSessionsEnabled());
           }
         });
       }, [props]);
@@ -3845,6 +3993,18 @@ window.__ModuleLoader__.load({
         });
       } : undefined;
 
+      const onToggleTaskTreeSessions = props.setTaskTreeSessions ? (next) => {
+        setSavingTaskTreeSessions(true);
+        setTaskTreeSessionsEnabled(next);
+        props.setTaskTreeSessions(next).catch(() => {
+          if (props.getTaskTreeSessionsEnabled) {
+            setTaskTreeSessionsEnabled(props.getTaskTreeSessionsEnabled());
+          }
+        }).finally(() => {
+          setSavingTaskTreeSessions(false);
+        });
+      } : undefined;
+
       return h(ImBundleConfigCard, {
         t: props.t,
         enabled,
@@ -3855,8 +4015,13 @@ window.__ModuleLoader__.load({
         onlineUpdateLocked,
         onToggleOnlineUpdate,
         onOpenSettings: props.onOpenSettings,
+        taskTreeSessionsEnabled,
+        taskTreeSessionsDisabled: savingTaskTreeSessions,
+        onToggleTaskTreeSessions,
       });
     }
+
+    const STORAGE_KEY_TASK_TREE_SESSIONS = "dsh-im-connect.task-tree-sessions";
 
     function setupSidebarEntry(ctx, options) {
       if (!ctx.locale) {
@@ -3865,7 +4030,10 @@ window.__ModuleLoader__.load({
           isSupported: () => false,
           setEnabled: async () => false,
           isOnlineUpdateEnabled: () => true,
+          isOnlineUpdateLocked: () => false,
           setOnlineUpdate: async () => false,
+          isTaskTreeSessionsEnabled: () => false,
+          setTaskTreeSessions: async () => false,
           destroy: () => {},
         };
       }
@@ -4007,6 +4175,62 @@ window.__ModuleLoader__.load({
         })
         .catch(() => {});
 
+      let taskTreeSessionsEnabled = (() => {
+        try {
+          return localStorage.getItem(STORAGE_KEY_TASK_TREE_SESSIONS) === "true";
+        } catch {
+          return false;
+        }
+      })();
+      let taskTreeEpoch = 0;
+
+      const setTaskTreeSessions = async (next) => {
+        const currentEpoch = ++taskTreeEpoch;
+        taskTreeSessionsEnabled = next;
+        try {
+          localStorage.setItem(STORAGE_KEY_TASK_TREE_SESSIONS, next ? "true" : "false");
+        } catch {}
+        notify();
+        if (typeof options.onTaskTreeSessionsChange === "function") {
+          try { options.onTaskTreeSessionsChange(next); } catch {}
+        }
+        try {
+          await callApi("/task-tree-sessions", {
+            method: "POST",
+            body: JSON.stringify({ enabled: next }),
+          });
+          return next;
+        } catch (err) {
+          if (currentEpoch === taskTreeEpoch) {
+            taskTreeSessionsEnabled = !next;
+            try {
+              localStorage.setItem(STORAGE_KEY_TASK_TREE_SESSIONS, (!next) ? "true" : "false");
+            } catch {}
+            notify();
+            if (typeof options.onTaskTreeSessionsChange === "function") {
+              try { options.onTaskTreeSessionsChange(!next); } catch {}
+            }
+          }
+          throw err;
+        }
+      };
+
+      const loadTaskTreeEpoch = taskTreeEpoch;
+      callApi("/task-tree-sessions")
+        .then((res) => {
+          if (taskTreeEpoch === loadTaskTreeEpoch && res && typeof res.enabled === "boolean") {
+            taskTreeSessionsEnabled = res.enabled;
+            try {
+              localStorage.setItem(STORAGE_KEY_TASK_TREE_SESSIONS, res.enabled ? "true" : "false");
+            } catch {}
+            notify();
+            if (typeof options.onTaskTreeSessionsChange === "function") {
+              try { options.onTaskTreeSessionsChange(taskTreeSessionsEnabled); } catch {}
+            }
+          }
+        })
+        .catch(() => {});
+
       if (typeof ctx.inject === "function") {
         ctx.inject(["layout"], (scoped) => {
           layoutService = scoped.layout;
@@ -4033,6 +4257,8 @@ window.__ModuleLoader__.load({
             getOnlineUpdateLocked: () => onlineUpdateLocked,
             setOnlineUpdate: setOnlineUpdate,
             onOpenSettings: options.openSettings,
+            getTaskTreeSessionsEnabled: () => taskTreeSessionsEnabled,
+            setTaskTreeSessions: setTaskTreeSessions,
             subscribe: (fn) => {
               listeners.add(fn);
               return () => { listeners.delete(fn); };
@@ -4048,6 +4274,8 @@ window.__ModuleLoader__.load({
         isOnlineUpdateEnabled: () => onlineUpdateEnabled,
         isOnlineUpdateLocked: () => onlineUpdateLocked,
         setOnlineUpdate,
+        isTaskTreeSessionsEnabled: () => taskTreeSessionsEnabled,
+        setTaskTreeSessions,
         destroy: () => {
           listeners.clear();
           if (offRow) {
@@ -4097,6 +4325,7 @@ window.__ModuleLoader__.load({
       const permissionT = ctx.locale.bind("permission.access");
       const modelT = ctx.locale.bind("model");
       const presetT = ctx.locale.bind("settings.agentPreset");
+      let syncActiveTaskTreeFilter = () => {};
       const sidebarController = setupSidebarEntry(ctx, {
         callApi: api,
         renderPanel: (ownerProps) => h(LocalizedSettingsPage, ownerProps),
@@ -4114,6 +4343,9 @@ window.__ModuleLoader__.load({
         openSettings: () => openSettingsSection(
           [t("settings.label"), IM_LOCALES.en["settings.label"], IM_LOCALES.zh["settings.label"]],
         ),
+        onTaskTreeSessionsChange: () => {
+          syncActiveTaskTreeFilter();
+        },
       });
       ctx.effect(() => () => sidebarController.destroy(), "im-connect: sidebar entry");
       ctx.effect(() => observePluginUpdate({
@@ -4286,11 +4518,59 @@ window.__ModuleLoader__.load({
         let ownedRegistry = null;
         let removeInsertedTab = () => {};
         let removeInsertedOpener = () => {};
+        let removeInsertedFilter = () => {};
+        let activeFilterRegistry = null;
+        let filterInstalled = false;
+        let warnedUnsupportedFilter = false;
         let stopInsertedTabLocale = () => {};
         let insertedTabRegistry = null;
         let syncing = false;
         // 与定时插件共享通知，补足直接替换 component 不触发宿主插槽通知的情况。
         const notifyPeers = () => { queueMicrotask(() => window.dispatchEvent(new Event("dsh-native-sidebar-change"))); };
+        const clearFilter = () => {
+          if (filterInstalled) {
+            removeInsertedFilter();
+            removeInsertedFilter = () => {};
+            filterInstalled = false;
+          }
+          warnedUnsupportedFilter = false;
+        };
+        const ensureFilter = (registry) => {
+          if (registry !== activeFilterRegistry) {
+            clearFilter();
+            activeFilterRegistry = registry;
+          }
+          if (!registry) {
+            clearFilter();
+            return;
+          }
+          const showSessions = typeof sidebarController !== "undefined"
+            && sidebarController
+            && typeof sidebarController.isTaskTreeSessionsEnabled === "function"
+            ? sidebarController.isTaskTreeSessionsEnabled()
+            : false;
+          if (showSessions) {
+            clearFilter();
+            return;
+          }
+          if (!filterInstalled) {
+            if (typeof registry.addSessionFilter === "function") {
+              const dispose = registry.addSessionFilter((sessionId) => {
+                return !isChannelSession(sessionId);
+              });
+              removeInsertedFilter = () => {
+                dispose();
+              };
+              filterInstalled = true;
+            } else if (!warnedUnsupportedFilter) {
+              warnedUnsupportedFilter = true;
+              console.warn("[dsh-im-connect] 外壳注册表未支持 addSessionFilter 协议，无法在任务树过滤会话");
+            }
+          }
+        };
+        syncActiveTaskTreeFilter = () => {
+          ensureFilter(insertedTabRegistry || ownedRegistry);
+        };
         const installSessionOpener = (registry) => {
           if (!registry || typeof registry.addSessionOpener !== "function") return () => {};
           if (registry.sessionOpeners && registry.sessionOpeners.some((item) => item.id === "im-connect")) return () => {};
@@ -4313,10 +4593,13 @@ window.__ModuleLoader__.load({
           removeInsertedTab = () => {};
           removeInsertedOpener();
           removeInsertedOpener = () => {};
+          clearFilter();
           insertedTabRegistry = null;
         };
         const unwrap = () => {
           clearInsertedTab();
+          clearFilter();
+          activeFilterRegistry = null;
           if (wrappedEntry) {
             if (originalComp && wrappedEntry.component === ownedWrapper) wrappedEntry.component = originalComp;
             if (wrappedEntry.__dshNativeTabs === ownedRegistry) delete wrappedEntry.__dshNativeTabs;
@@ -4335,6 +4618,7 @@ window.__ModuleLoader__.load({
             insertedTabRegistry = registry;
             removeInsertedOpener = installSessionOpener(registry);
           }
+          ensureFilter(registry);
           if (registry.getTabs().some((item) => item.id === "channels")) return true;
           const refreshInsertedTab = () => {
             removeInsertedTab = registry.insert({
@@ -4388,6 +4672,7 @@ window.__ModuleLoader__.load({
             const registry = createNativeTabRegistry(originalComp);
             ownedRegistry = registry;
             removeInsertedOpener = installSessionOpener(registry);
+            ensureFilter(registry);
             const tree = originalComp;
             attachNativeTabRegistry(official, registry);
             function DshNativeTabWorkspaceShell(innerProps) {
@@ -4422,7 +4707,14 @@ window.__ModuleLoader__.load({
           sync();
           if (insertedTabRegistry || ++retries >= 20) window.clearInterval(retryTimer);
         }, 250);
-        return () => { window.clearInterval(retryTimer); unsub(); unsubSidebar(); window.removeEventListener("dsh-native-sidebar-change", sync); unwrap(); };
+        return () => {
+          syncActiveTaskTreeFilter = () => {};
+          window.clearInterval(retryTimer);
+          unsub();
+          unsubSidebar();
+          window.removeEventListener("dsh-native-sidebar-change", sync);
+          unwrap();
+        };
       });
     }
 

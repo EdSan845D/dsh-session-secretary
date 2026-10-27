@@ -51,6 +51,7 @@ export function createHarness(body, kind) {
     findNativeTabRegistry: find,
     subscribeLocale: () => () => {}, subscribeChannelMembership: () => () => {},
     isChannelSession: () => false,
+    sidebarController: { isTaskTreeSessionsEnabled: () => false },
   }
   const emit = name => { for (const f of [...(subscriptions.get(name) ?? [])]) f() }
   return {
@@ -61,7 +62,10 @@ export function createHarness(body, kind) {
     },
     remove(entry) { entries = entries.filter(e => e !== entry); emit('sidebar.workspaces') },
     setCodex(value) { codex = value; emit('sidebar') },
-    start() { return new Function(...Object.keys(env), body)(...Object.values(env)) },
+    start(otherBody = body, overrides = {}) {
+      const scope = { ...env, ...overrides }
+      return new Function(...Object.keys(scope), otherBody)(...Object.values(scope))
+    },
     async settle() { for (let i = 0; i < 8; i++) await Promise.resolve() },
     tick() { const callbacks = [...timers.values()]; for (const f of callbacks) f(); return callbacks.length },
     assertAttached(entry) {

@@ -164,7 +164,8 @@ test('侧栏外壳装配时根据 taskTreeSessions 注册和注销会话过滤�
   const mockSidebarController = {
     isTaskTreeSessionsEnabled: () => taskTreeSessions,
   }
-  const isChannelSession = (id) => id.startsWith('dsh-im-session-') || id.startsWith('im:')
+  const channelSessionIds = new Set(['custom-bound-session-999'])
+  const isChannelSession = (id) => id.startsWith('dsh-im-session-') || id.startsWith('im:') || channelSessionIds.has(id)
 
   const stop = h.start(undefined, {
     sidebarController: mockSidebarController,
@@ -180,6 +181,7 @@ test('侧栏外壳装配时根据 taskTreeSessions 注册和注销会话过滤�
     // 2. 生产谓词校验：
     assert.equal(filter('dsh-im-session-abc-123'), false, '以新前缀开头的 IM 会话被过滤')
     assert.equal(filter('im:channel_123:session_456'), false, '以旧前缀开头的 IM 会话被过滤')
+    assert.equal(filter('custom-bound-session-999'), false, 'channelSessionIds 中的已绑定会话被过滤')
     assert.equal(filter('chat-normal-session'), true, '普通工作区会话保留在任务树')
 
     // 3. 模拟用户开启开关 (taskTreeSessions=true) 并通知更新
@@ -194,6 +196,7 @@ test('侧栏外壳装配时根据 taskTreeSessions 注册和注销会话过滤�
     await h.settle()
     assert.equal(registry.sessionFilters.length, 1, '重新关闭开关后过滤器再次生效')
     assert.equal(registry.sessionFilters[0]('dsh-im-session-abc-123'), false)
+    assert.equal(registry.sessionFilters[0]('custom-bound-session-999'), false)
     assert.equal(registry.sessionFilters[0]('chat-normal-session'), true)
   } finally {
     stop()

@@ -20,6 +20,6 @@ export interface PluginConfig {
 export declare const Config: Schema<PluginConfig>;
 export declare function apply(ctx: Context, config: PluginConfig): void;
 export { CHANNEL_META, CHANNEL_ORDER, listChannelMeta } from './channels/meta.js';
-export { IM_ORIGIN, IM_SESSION_PREFIX, createImSessionId, isImOrigin, isImSessionId, isTaskSession, sessionKeyOf, } from './engine/session-id.js';
+export { IM_ORIGIN, IM_SESSION_PREFIX, IM_SESSION_PREFIX_LEGACY, createImSessionId, isImOrigin, isImSessionId, isTaskSession, sessionKeyOf, } from './engine/session-id.js';
 export { splitText } from './engine/split.js';
 //# sourceMappingURL=index.d.ts.map

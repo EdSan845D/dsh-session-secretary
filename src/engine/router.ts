@@ -469,7 +469,7 @@ export class SessionRouter {
 
   private async create(channelId: ChannelInstanceId, kind: ChatKind, chatId: string, title: string, cwd?: string, signal?: AbortSignal): Promise<ChatBinding> {
     const key = sessionKeyOf(channelId, kind, chatId)
-    const sessionId = createImSessionId(channelId, kind, chatId)
+    const sessionId = createImSessionId()
     const config = { ...this.resolveConfig(channelId), ...(cwd ? { cwd } : {}) }
     const handle = await this.createHandle(sessionId, channelId, config)
     try {

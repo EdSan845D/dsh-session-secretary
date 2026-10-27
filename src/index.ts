@@ -96,6 +96,7 @@ export { CHANNEL_META, CHANNEL_ORDER, listChannelMeta } from './channels/meta.js
 export {
   IM_ORIGIN,
   IM_SESSION_PREFIX,
+  IM_SESSION_PREFIX_LEGACY,
   createImSessionId,
   isImOrigin,
   isImSessionId,

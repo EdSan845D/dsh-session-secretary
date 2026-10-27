@@ -899,6 +899,7 @@ window.__ModuleLoader__.load({
       const value = String(sessionId || "");
       const mapped = channelSessionChannels.get(value);
       if (mapped) return mapped;
+      // 统一 UUID 不含渠道信息，映射未到达前只能返回空；旧语义 ID 仍可从字符串反解。
       if (!value.startsWith("im:")) return undefined;
       const rest = value.slice(3);
       const split = rest.indexOf(":");
@@ -906,7 +907,11 @@ window.__ModuleLoader__.load({
       const platform = instance.split("_", 1)[0];
       return platform || undefined;
     }
-    const isChannelSession = (id) => String(id).startsWith("im:") || channelSessionIds.has(String(id));
+    // 新旧两代 IM 前缀都要认，否则存量会话升级后会掉出渠道页签。
+    const isChannelSession = (id) => {
+      const value = String(id);
+      return value.startsWith("dsh-im-session-") || value.startsWith("im:") || channelSessionIds.has(value);
+    };
     const subscribeChannelMembership = (listener) => {
       channelMembershipListeners.add(listener);
       return () => channelMembershipListeners.delete(listener);

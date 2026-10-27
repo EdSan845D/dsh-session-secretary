@@ -1839,22 +1839,26 @@ window.__ModuleLoader__.load({
       );
 
       const segmentReplyTip = t("account.segmentReplyNote");
+      const tipAnchor = h("span", {
+        className: "ima-label-tip",
+        title: segmentReplyTip,
+        "aria-label": segmentReplyTip,
+        role: "button",
+        tabIndex: 0,
+        style: {
+          display: "inline-flex",
+          alignItems: "center",
+          cursor: "help",
+          color: "var(--dsw-alias-label-tertiary, var(--ima-muted))",
+          marginLeft: 2,
+        },
+      }, h(IconInfoOutline, { size: 12 }));
+
       const segmentReplyLabel = h("span", { style: { display: "inline-flex", alignItems: "center", gap: 4 } },
         h("span", null, t("account.segmentReply")),
         HostTooltip
-          ? h(HostTooltip, { title: segmentReplyTip },
-              h("span", {
-                className: "ima-label-tip",
-                "aria-label": segmentReplyTip,
-                style: { display: "inline-flex", alignItems: "center", cursor: "help", color: "var(--dsw-alias-label-tertiary, var(--ima-muted))" },
-              }, h(IconInfoOutline, { size: 12 }))
-            )
-          : h("span", {
-              className: "ima-label-tip",
-              title: segmentReplyTip,
-              "aria-label": segmentReplyTip,
-              style: { display: "inline-flex", alignItems: "center", cursor: "help", color: "var(--dsw-alias-label-tertiary, var(--ima-muted))" },
-            }, h(IconInfoOutline, { size: 12 })),
+          ? h(HostTooltip, { label: segmentReplyTip, portal: true, side: "top" }, tipAnchor)
+          : tipAnchor,
       );
 
       return h("div", { className: "ima-account-settings" + (props.compact ? " compact" : "") },

@@ -1033,6 +1033,7 @@ test('分段回复选择器使用 Select，首选项为「完整发送」，映�
   assert.match(client, /"account\.segmentSplit": "Send in segments"/)
   assert.match(client, /field\("sendMode"[\s\S]*?\)\),\s*segmentSupported && field\("segmentReply"/)
   assert.match(client, /field\("segmentReply", segmentReplyLabel, h\(Select, \{/)
+  assert.match(client, /h\(HostTooltip,\s*\{\s*label:\s*segmentReplyTip,\s*portal:\s*true/)
   assert.match(client, /IconInfoOutline/)
   assert.match(client, /t\("account\.segmentReplyNote"\)/)
   assert.doesNotMatch(client, /className: "ima-picker-note" \}, t\("account\.segmentReplyNote"\)/)

@@ -14,6 +14,7 @@ window.__ModuleLoader__.load({
     const HostMenu = primitives.Menu;
     const HostModal = primitives.Modal;
     const HostSegmentedTabs = primitives.SegmentedTabs;
+    const HostTooltip = primitives.Tooltip;
     const PrimitiveSwitch = primitives.Switch;
     // 宿主 Button 由 forwardRef 包成对象，typeof 是 object，不是 function。
     function isHostComponent(component) {
@@ -1837,6 +1838,25 @@ window.__ModuleLoader__.load({
         picker,
       );
 
+      const segmentReplyTip = t("account.segmentReplyNote");
+      const segmentReplyLabel = h("span", { style: { display: "inline-flex", alignItems: "center", gap: 4 } },
+        h("span", null, t("account.segmentReply")),
+        HostTooltip
+          ? h(HostTooltip, { title: segmentReplyTip },
+              h("span", {
+                className: "ima-label-tip",
+                "aria-label": segmentReplyTip,
+                style: { display: "inline-flex", alignItems: "center", cursor: "help", color: "var(--dsw-alias-label-tertiary, var(--ima-muted))" },
+              }, h(IconInfoOutline, { size: 12 }))
+            )
+          : h("span", {
+              className: "ima-label-tip",
+              title: segmentReplyTip,
+              "aria-label": segmentReplyTip,
+              style: { display: "inline-flex", alignItems: "center", cursor: "help", color: "var(--dsw-alias-label-tertiary, var(--ima-muted))" },
+            }, h(IconInfoOutline, { size: 12 })),
+      );
+
       return h("div", { className: "ima-account-settings" + (props.compact ? " compact" : "") },
         field("workspace", props.workspaceLabel || t("account.workspace"), items.length === 0
           ? h("div", null,
@@ -1925,7 +1945,7 @@ window.__ModuleLoader__.load({
           ],
           onChange: (next) => update({ sendMode: next }),
         })),
-        segmentSupported && field("segmentReply", t("account.segmentReply"), h(Select, {
+        segmentSupported && field("segmentReply", segmentReplyLabel, h(Select, {
           className: "ima-account-picker",
           value: segmentReply ? "segmented" : "full",
           "aria-label": t("account.segmentReply"),
@@ -1936,7 +1956,6 @@ window.__ModuleLoader__.load({
           onChange: (next) => update({ segmentReply: next === "segmented" }),
         })),
         sendMode === "steer" && h("div", { className: "ima-picker-note" }, t("account.sendSteerNote")),
-        segmentSupported && h("div", { className: "ima-picker-note" }, t("account.segmentReplyNote")),
         segmentSupported && segmentReply && field("segmentGap", t("account.segmentGap"), h("div", { className: "ima-segment-gap" },
           h(Input, {
             type: "number",

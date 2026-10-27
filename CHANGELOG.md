@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.0.19 - 2026-10-27
 
-- Add segmented replies: when enabled in an account's settings, the assistant splits one reply into several short messages at a separator and sends them one by one; when disabled, replies are still sent as one whole message.
-- Each message, including the first, waits a random gap drawn from the minimum/maximum range configured for that account. Gaps are in seconds, limited to 0–60, and saving is rejected when the maximum is lower than the minimum. Changes take effect immediately.
-- The separator comes from the plugin configuration `segmentMarker` (default `<<<MSG>>>`) and must occupy its own line; the same text inside a fenced code block never splits a reply, so code samples stay intact.
-- Only QQ is enabled for now (verified end to end): other channels show no toggle, receive no prompt instruction, and never split, so unverified channels cannot produce duplicated or lost messages.
-- The toggle and range are stored per account in `channels.json`; the plugin configuration `segmentReply` acts as the default for every account, with the account setting taking precedence. A failed segment stops the rest instead of resending the whole reply. Existing configs and accounts with the feature off behave exactly as before.
+- Add segmented replies: when set to "Send in segments" in an account's settings, the assistant splits one reply into several short messages at a line-exclusive separator (default `<<<MSG>>>`) and sends them sequentially; defaults to "Send as whole", preserving original behavior (#49).
+- Send-gap interval control: each message, including the first, waits a random gap drawn from the minimum/maximum range configured for that account (0–60 seconds), rejecting saves where the maximum is lower than the minimum; the first segment uses stream finish, subsequent segments are sent sequentially, and any failure halts further delivery without resending the entire reply.
+- Code block isolation and channel gating: separators inside fenced code blocks never split a reply, keeping code examples intact; currently enabled for QQ only (with support for account ID resolution), while unverified channels display no option, inject no system prompt, and never split.
+- Segmented reply UI polish: refactor the control into a standard Select dropdown aligned side-by-side with Send mode; move long description copy into a native Tooltip hover icon (`ⓘ`) beside the label, eliminating awkward full-width notes and obsolete preset helper text.
+- Add task tree session filter switch: introduce a `taskTreeSessions` switch in the plugin bundle configuration page (`plugins.bundle.config`), defaulting to off, which dynamically filters and hides messaging sessions from the official workspace task tree via `NativeTabRegistry.sessionFilters` while preserving them in the sidebar Channels tab.
+- Unify IM session ID format: normalize newly created channel sessions to `dsh-im-session-<uuid>`, aligning with cross-plugin namespaces while preserving seamless backward compatibility for existing `im:` prefixed session records.
 
 ## 1.0.18 - 2026-10-26
 

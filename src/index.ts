@@ -21,6 +21,7 @@ import { createSecretaryBridge } from './secretary/bridge.js'
 import { buildIntentPrompt, candidateLines, parseIntentReply } from './secretary/intent.js'
 import { createSystemChannel } from './notify-channels/system.js'
 import type { SecretarySettings } from './secretary/runtime-settings.js'
+import type { UserQuestionsService } from './secretary/types.js'
 
 export const name = 'dsh-session-secretary'
 export const inject = [
@@ -167,6 +168,18 @@ export function apply(ctx: Context, config: PluginConfig): void {
 // 会话秘书装配：控制聊天学习、label 前缀、系统通道、两阶段代答桥、
 // 完成/出错通知。全部依赖经 use-time 闭包读取，配置改后重载即生效。
 
+/**
+ * 读 `userQuestions` 服务：它故意不进 `inject`（可选兼容服务，缺失不应阻止插件激活），
+ * 而 cordis 4 会把未 inject 的属性读取直接判错
+ * （`cannot get property "userQuestions" without inject`，整个插件随之 FAILED），
+ * 因此统一走 `get` 的非严格读——服务在场就注入，缺席就交给代答桥的降级路径。
+ */
+function readUserQuestionsService(ctx: Context): UserQuestionsService | undefined {
+  const get = (ctx as Context & { get?(name: string, strict?: boolean): unknown }).get
+  if (typeof get !== 'function') return undefined
+  return get.call(ctx, 'userQuestions', false) as UserQuestionsService | undefined
+}
+
 /** 取助手消息的纯文本（事件 data.message.content 的 text 块拼接）。 */
 function extractAssistantText(eventData: unknown): string {
   const content = (eventData as { message?: { content?: unknown } } | undefined)?.message?.content
@@ -255,7 +268,8 @@ function wireSecretary(
     titleOf: () => undefined,
     logger: { warn: warnLog },
   })
-  bridge.setUserQuestions(ctx.userQuestions)
+  // [secretary] 阶段二作答入口；未 inject 的服务只能这样读（见 readUserQuestionsService）。
+  bridge.setUserQuestions(readUserQuestionsService(ctx))
 
   // tag 截断：先于原生流程消费秘书代笔回复；顺带学习控制聊天 + 意图解析
   const pendingIntents = new Map<string, Array<() => Promise<string>>>()

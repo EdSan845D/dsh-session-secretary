@@ -34,6 +34,12 @@ export interface ChannelState {
     privateAccess?: 'approved' | 'all';
     /** 普通消息的默认发送方式；缺省为排队发送。 */
     sendMode?: SendMode;
+    /** 分段回复：覆盖插件级默认值；缺省时跟随插件配置。 */
+    segmentReply?: boolean;
+    /** 分段消息之间随机间隔的下界（秒）。 */
+    segmentDelayMinSecs?: number;
+    /** 分段消息之间随机间隔的上界（秒）。 */
+    segmentDelayMaxSecs?: number;
     lastCheckedAt?: string;
 }
 export interface AccountView {
@@ -55,6 +61,11 @@ export interface AccountView {
     commandPermissions: CommandPermissions;
     privateAccess: 'approved' | 'all';
     sendMode: SendMode;
+    segmentReply: boolean;
+    /** 该渠道是否已开放分段回复；未开放的渠道不展示开关。 */
+    segmentReplySupported: boolean;
+    segmentDelayMinSecs: number;
+    segmentDelayMaxSecs: number;
     proxyMode: ChannelProxyMode;
     proxyConfigured: boolean;
     proxyUrl?: string;
@@ -215,6 +226,10 @@ export declare class ChannelManager {
     /** 与 Chat 使用同一预设名册，不向客户端暴露预设文件路径。 */
     private agentPresetOptions;
     private accountEngineConfig;
+    /** 分段间隔区间：账号设置优先，其次插件配置，最后回落到 1–2 秒；上下界颠倒时自动对调。 */
+    private segmentDelayRange;
+    /** 分段回复的系统提示说明；未绑定或该账号没开启时返回空串，由引擎判断。 */
+    segmentInstructionForSession(sessionId: string): string;
     pendingRequests(): Array<PendingRequest & {
         channelId: string;
     }>;

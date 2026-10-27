@@ -14,6 +14,14 @@ export interface PluginConfig {
     agentPreset: string;
     mergeTimeoutSecs: number;
     topicNaming: TopicMode;
+    /** 打开后助手按标记把一次回复拆成多条消息。 */
+    segmentReply?: boolean;
+    /** 分段回复的标记，必须独占一行。 */
+    segmentMarker?: string;
+    /** 相邻两条分段消息之间随机间隔的下界（秒）。 */
+    segmentDelayMinSecs?: number;
+    /** 相邻两条分段消息之间随机间隔的上界（秒）。 */
+    segmentDelayMaxSecs?: number;
     updater?: boolean;
     onlineUpdate?: boolean;
 }

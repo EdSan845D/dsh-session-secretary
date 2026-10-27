@@ -288,6 +288,7 @@ Open **Settings → IM Assistant**, select **Add account** under the target chan
 | Sessions / workspaces | `/sessions`, `/session <number or ID>`; `/workspaces`, `/workspace <number or ID>` | Resume ordinary Chat sessions; workspace selection creates a session without changing account defaults |
 | Task controls | `/stop`, `/steer <text>`, `/queue` | Stop, provide instructions, or inspect the queue; stopping preserves Host queued messages |
 | Send mode | Open Settings on the account row and choose Queue or Steer under **Send mode** | Queue (the default) keeps today's behavior; Steer hands an ordinary message to the running task as additional instructions immediately (same as `/steer`), and behaves like Queue while the task is idle |
+| Segmented replies | Open Settings on the account row, turn on **Segmented replies**, and fill in the send-gap range | When on, the assistant splits one reply into several short messages at the separator, and the first message also waits a random gap. Off by default; see [Segmented replies](#segmented-replies) |
 | Session with a preset | `/presets`, `/preset <number or ID>`, `/preset --default` | Starts and connects a new session in the current workspace without changing account defaults |
 | Model / reasoning | `/models`, `/model <number or provider/model>`, `/reasoning [effort or --default]` | Changes the current selection and updates the Host default for subsequent Chat sessions |
 | Result recovery | `/delivery`, `/delivery retry <record-ID>` | Check recent deliveries and resend text from the original task |
@@ -312,6 +313,14 @@ Telegram topics are automatically named once from the first non-fallback session
 - `/topicname` shows this topic's policy and lock state. `/topicname off` locks automatic naming; `/topicname on` unlocks it. With the default policy, unlocking allows the next valid title to name the topic again.
 - The plugin configuration `topicNaming` accepts `once` (default), `follow` (follow valid titles), or `off` (disable automatic naming). `/topicname on` does not override global `off`. Explicit `/rename` remains available regardless of automatic naming settings.
 - A manual rename event in a group forum locks automatic naming. Private topics cannot rely on that event for manual rename detection; use `/topicname off`. Naming and lock state persist across restarts in `topic-titles.json` under the state directory.
+
+### Segmented replies
+
+When **Segmented replies** is on for an account, the assistant splits one reply at a separator and sends the pieces one by one, which reads like a few messages in a row. It is off by default and behavior is unchanged while off. It is currently enabled for QQ only (verified end to end); other channels do not show the toggle and never split.
+
+- **Send gap**: fill in the minimum and maximum gap (seconds, 0–60). Every message, including the first, waits a random gap drawn from that range; saving is rejected when the maximum is lower than the minimum, and changes apply immediately.
+- **Separator**: set by the plugin configuration `segmentMarker`, default `<<<MSG>>>`, and must occupy its own line. The same text inside a fenced code block never splits a reply, so code samples stay intact.
+- **Where it is stored**: the toggle and range live per account in `channels.json`; the plugin configuration `segmentReply` acts as the default for every account, with the account setting taking precedence. If one segment fails to send, the rest stop instead of resending the whole reply, so no duplicate messages.
 
 ### Connecting Slack
 
@@ -351,7 +360,7 @@ Command permission does not grant DM admission or replace tool approval. Enabled
 | Access | Groups need no binding, only a mention. Each account can allow only approved users or all DM users; approved-only is the default, and WeChat / Feishu / Lark / QQ QR scanners are added to that account's allowlist automatically |
 | Management API | Uses `/api/dsh-im-connect`, following the REST prefix used by other DSH plugins. It delegates Host, Origin, and Cookie checks to Host `connection.requestRejection`, including local requests. Unavailable authentication returns 503; mutations retain JSON, client-header, and 1 MiB limits |
 | Secrets | WeChat tokens and other secrets prefer DSH `ctx.credentials`; otherwise they use plaintext `%DSH_HOME%\dsh-im-connect\secrets.json`, restricted to the current user and never safe to sync or share |
-| Account state | `channels.json` stores per-account workspace, model, permission, private access, send mode, enablement, and credential refs, not raw secrets |
+| Account state | `channels.json` stores per-account workspace, model, permission, private access, send mode, segmented-reply toggle and gaps, enablement, and credential refs, not raw secrets |
 | Browser payloads | Never include tokens, secrets, App Secrets, or internal error details |
 | WeChat protocol | Official iLink only; no reverse-engineered personal WeChat protocol |
 | Tool approval | The task initiator replies in the chat bound to that session. DM admission decides who can chat and no longer gates approvals, and approvals never go back to the web. No reply within 5 minutes cancels the action instead of queueing later text |

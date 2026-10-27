@@ -1841,7 +1841,7 @@ window.__ModuleLoader__.load({
       const segmentReplyTip = t("account.segmentReplyNote");
       const tipAnchor = h("span", {
         className: "ima-label-tip",
-        title: segmentReplyTip,
+        title: HostTooltip ? undefined : segmentReplyTip,
         "aria-label": segmentReplyTip,
         role: "button",
         tabIndex: 0,

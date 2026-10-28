@@ -3,6 +3,8 @@ export declare function withReplyLocale<T>(host: {
     get(name: string): unknown;
 }, run: () => T): T;
 export declare function replyText(key: keyof typeof commandEnglish, ...values: unknown[]): string;
+/** 命令文案键类型：命令目录等结构化数据引用时获得编译期漂移校验。 */
+export type CommandLocaleKey = keyof typeof commandEnglish;
 /** 按宿主已保存的全局语言取一条用户可见提示。 */
 export declare function notice(host: {
     get(name: string): unknown;

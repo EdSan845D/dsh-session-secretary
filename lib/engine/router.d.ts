@@ -61,6 +61,11 @@ type AgentHost = Context & {
     } | undefined;
     agentPresets?: {
         mount(agentCtx: unknown, presetId: string): Promise<void>;
+        /** 探测预设可用性；旧版宿主可能没有该方法。 */
+        resolve?(id?: string): Promise<{
+            id: string;
+            broken?: string;
+        }>;
     };
     agentDefaultModel?: {
         currentSelection(): {
@@ -70,6 +75,12 @@ type AgentHost = Context & {
     };
     permissionPresets?: PermissionPresetHost;
 };
+/**
+ * 建会话前探测预设可用性：预设不存在（如插件禁用后残留的登记）或已损坏时回退
+ * standard，保证会话头记录的预设与实际挂载一致。宿主没有 resolve 时原样返回，
+ * 交给 setup 里的 mount 回退兜底；无预设记录（旧数据）保持 undefined 沿用账号默认。
+ */
+export declare function usablePresetId(ctx: AgentHost, preset: string | undefined): Promise<string | undefined>;
 export declare class SessionRouter {
     private readonly ctx;
     private readonly store;

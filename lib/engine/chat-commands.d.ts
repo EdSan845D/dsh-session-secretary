@@ -1,9 +1,19 @@
 import type { Choice } from './choices.js';
+import { type CommandLocaleKey } from './command-locale.js';
 import type { ChannelAdapter, ImMessage } from './types.js';
 import type { SessionRouter } from './router.js';
 export interface CommandHost {
     get(name: string): unknown;
 }
+/**
+ * IM 控制台命令目录：/help 文案与秘书人设（secretary/preset.ts）共用的唯一事实来源。
+ * 每条命令字符串本身是 command-messages.ts 的文案键（编译期校验），改动会同时影响两个出口。
+ */
+export interface ChatCommandSection {
+    heading: CommandLocaleKey;
+    commands: readonly CommandLocaleKey[];
+}
+export declare const chatCommandSections: readonly ChatCommandSection[];
 export declare const chatControlHelp: () => string;
 export declare class ChatCommands {
     private readonly host;

@@ -1,6 +1,6 @@
 import type { Choice } from './choices.js'
 import { exportSession } from './session-export.js'
-import { replyText, withReplyLocale, localizeStatus } from './command-locale.js'
+import { replyText, withReplyLocale, localizeStatus, type CommandLocaleKey } from './command-locale.js'
 /** IM 对 Chat 的薄适配：控制操作走 Host Controller，斜杠命令走同一注册表。 */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
@@ -21,36 +21,63 @@ interface Snapshot { projections?: { values?: { agentPreset?: string | null; per
 interface Preset { id: string; name?: string; description?: string; isDefault?: boolean; broken?: string }
 interface Descriptor { name: string; description: string }
 export interface CommandHost { get(name: string): unknown }
+
+/**
+ * IM 控制台命令目录：/help 文案与秘书人设（secretary/preset.ts）共用的唯一事实来源。
+ * 每条命令字符串本身是 command-messages.ts 的文案键（编译期校验），改动会同时影响两个出口。
+ */
+export interface ChatCommandSection { heading: CommandLocaleKey; commands: readonly CommandLocaleKey[] }
+
+export const chatCommandSections: readonly ChatCommandSection[] = [
+  {
+    heading: '**入口**',
+    commands: [
+      '/menu（或 /m）— 打开带按钮的操作菜单，和下面的列表命令等价',
+      '/help — 显示本说明',
+    ],
+  },
+  {
+    heading: '**会话与工作区**',
+    commands: [
+      '/new（或 /clear）— 新开会话；旧会话保留在频道列表',
+      '/sessions — 列出会话，点按钮或回序号接续',
+      '/session 序号或ID — 直接接续指定会话',
+      '/workspaces — 列出工作区，点按钮或回序号在其中新建',
+      '/workspace 序号或路径 — 直接在该工作区新建会话',
+      '/history — 当前会话最近的文字记录',
+      '/rename 新名称 — 给当前会话改名',
+      '/topicname [on|off] — 查询或开关当前话题的自动命名',
+      '/fork — 分叉当前会话',
+    ],
+  },
+  {
+    heading: '**模型与推理**',
+    commands: [
+      '/models — 列出可选模型并选择',
+      '/model — 只看当前模型',
+      '/reasoning — 列出推理等级并选择',
+      '/presets — 列出 Agent 预设并选择',
+      '/preset 序号或ID — 直接用该预设新建会话',
+    ],
+  },
+  {
+    heading: '**任务与交付**',
+    commands: [
+      '/status（或 /current）— 当前状态',
+      '/stop — 请求停止，保留队列',
+      '/steer 补充要求 — 提交补充指令',
+      '/queue — 查看队列和操作方法',
+      '/delivery — 查看交付记录和补发方法',
+      '/unbind [序号|ID|all] — 解除本聊天对旧会话的登记，不再推送其输出',
+      '/mute 序号或ID — 静音指定会话的推送；/unmute 恢复',
+      '/export — 导出当前会话 ZIP 并发送',
+    ],
+  },
+]
+
 export const chatControlHelp = () => [
   replyText('会话秘书已连接 DeepSeek Harness。直接发送文字即可开始任务。'), replyText('例如：帮我整理今天的待办。'), '',
-  replyText('**入口**'),
-  replyText('/menu（或 /m）— 打开带按钮的操作菜单，和下面的列表命令等价'),
-  replyText('/help — 显示本说明'), '',
-  replyText('**会话与工作区**'),
-  replyText('/new（或 /clear）— 新开会话；旧会话保留在频道列表'),
-  replyText('/sessions — 列出会话，点按钮或回序号接续'),
-  replyText('/session 序号或ID — 直接接续指定会话'),
-  replyText('/workspaces — 列出工作区，点按钮或回序号在其中新建'),
-  replyText('/workspace 序号或路径 — 直接在该工作区新建会话'),
-  replyText('/history — 当前会话最近的文字记录'),
-  replyText('/rename 新名称 — 给当前会话改名'),
-  replyText('/topicname [on|off] — 查询或开关当前话题的自动命名'),
-  replyText('/fork — 分叉当前会话'), '',
-  replyText('**模型与推理**'),
-  replyText('/models — 列出可选模型并选择'),
-  replyText('/model — 只看当前模型'),
-  replyText('/reasoning — 列出推理等级并选择'),
-  replyText('/presets — 列出 Agent 预设并选择'),
-  replyText('/preset 序号或ID — 直接用该预设新建会话'), '',
-  replyText('**任务与交付**'),
-  replyText('/status（或 /current）— 当前状态'),
-  replyText('/stop — 请求停止，保留队列'),
-  replyText('/steer 补充要求 — 提交补充指令'),
-  replyText('/queue — 查看队列和操作方法'),
-  replyText('/delivery — 查看交付记录和补发方法'),
-  replyText('/unbind [序号|ID|all] — 解除本聊天对旧会话的登记，不再推送其输出'),
-  replyText('/mute 序号或ID — 静音指定会话的推送；/unmute 恢复'),
-  replyText('/export — 导出当前会话 ZIP 并发送'), '',
+  ...chatCommandSections.flatMap(section => [replyText(section.heading), ...section.commands.map(command => replyText(command)), '']),
   replyText('命令单独发送为文字；图片说明按普通消息处理。'),
 ].join('\n')
 

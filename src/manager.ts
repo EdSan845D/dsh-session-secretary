@@ -23,6 +23,7 @@ import { KeyedSerialQueue } from './engine/keyed-queue.js'
 import { backupCorruptFileSync, writeFileAtomicSync } from './engine/atomic-file.js'
 import { sameWorkspacePath } from './engine/workspace-path.js'
 import { mergeSecretarySettings, normalizeSecretaryPatch, SECRETARY_DEFAULTS, type SecretarySettings } from './secretary/runtime-settings.js'
+import { SECRETARY_PRESET_ID } from './secretary/preset.js'
 
 export const API_CLIENT_HEADER = 'x-dsh-im-connect-client'
 const MAX_API_BODY_BYTES = 1024 * 1024
@@ -260,6 +261,8 @@ interface Persisted {
   taskTreeSessions?: boolean
   /** [secretary] 设置页保存的秘书偏好覆盖层（键与 SecretarySettings 对齐，缺省键走 Config 默认值）。 */
   secretary?: Record<string, unknown>
+  /** v2.0 默认预设迁移标记：旧账号固化的 'standard' 已释放为跟随默认（仅执行一次）。 */
+  presetMigrated?: boolean
 }
 
 export interface PermissionOptionView {
@@ -308,6 +311,7 @@ export class ChannelManager {
     this.applyWorkspace(this.store.cwd)
     this.applyPermission(this.store.permission)
     this.migrateAccountSettings()
+    this.migrateDefaultPreset()
     const seen = new SeenStore(join(options.stateDir, 'seen.json'))
     const credentials = (options.ctx as Context & { credentials?: CredentialService }).credentials
     this.vault = credentials
@@ -1457,6 +1461,7 @@ export class ChannelManager {
           ? parsed.secretary as Record<string, unknown>
           : undefined,
         taskTreeSessions: typeof parsed.taskTreeSessions === 'boolean' ? parsed.taskTreeSessions : undefined,
+        presetMigrated: parsed.presetMigrated === true,
       }
     } catch (error) {
       try {
@@ -1486,6 +1491,25 @@ export class ChannelManager {
       state.sendMode = normalizeSendMode(state.sendMode)
     }
     this.store.version = 2
+  }
+
+  /**
+   * v2.0 默认预设切到会话秘书：把旧账号固化的 'standard' 登记释放为跟随默认，
+   * 让既有绑定账号的新会话也默认使用秘书预设。仅执行一次（presetMigrated 标记）；
+   * 用户此后在设置页显式选回 standard 的账号不再被触碰。默认预设不是秘书预设
+   * （显式固定或宿主降级回退）时不迁移、也不落标记，保留宿主升级后的迁移机会。
+   */
+  private migrateDefaultPreset(): void {
+    if (this.store.presetMigrated === true) return
+    if (this.engineConfig.agentPreset !== SECRETARY_PRESET_ID) return
+    let migrated = 0
+    for (const state of Object.values(this.store.channels)) {
+      if (state.agentPreset !== 'standard') continue
+      delete state.agentPreset
+      migrated += 1
+    }
+    this.store.presetMigrated = true
+    if (migrated > 0) this.log(`[manager] 默认预设已切换为会话秘书：${migrated} 个账号的 standard 登记已释放为跟随默认`)
   }
 
   private async clearUnsupportedReasoningEfforts(): Promise<void> {

@@ -23,6 +23,7 @@ import { buildIntentPrompt, candidateLines, parseIntentReply } from './secretary
 import { createSystemChannel } from './notify-channels/system.js'
 import type { SecretarySettings } from './secretary/runtime-settings.js'
 import type { UserQuestionsService } from './secretary/types.js'
+import { SECRETARY_PRESET_ID, secretaryPresetDefinition } from './secretary/preset.js'
 
 export const name = 'dsh-session-secretary'
 export const inject = [
@@ -93,7 +94,7 @@ export const Config: Schema<PluginConfig> = Schema.object({
   cwd: Schema.string().default(process.cwd()),
   provider: Schema.string().default(''),
   model: Schema.string().default(''),
-  agentPreset: Schema.string().default('standard'),
+  agentPreset: Schema.string().default('session-secretary').description('IM 新会话默认使用的 Agent 预设；默认为插件注册的「会话秘书」，注册不可用时自动回退 standard。'),
   mergeTimeoutSecs: Schema.number().default(5),
   topicNaming: Schema.union(['once', 'follow', 'off']).default('once'),
   segmentReply: Schema.boolean().default(false).description('分段回复：助手按标记把一次回复拆成多条消息。'),
@@ -158,6 +159,10 @@ export function apply(ctx: Context, config: PluginConfig): void {
     segmentDelayMaxSecs: config.segmentDelayMaxSecs,
   }
 
+  // ── 会话秘书 Agent 预设：随插件注册/注销，宿主不支持时降级回 standard ──
+  // 先于 ChannelManager 构造：默认预设的降级决定 manager 读到的 engineConfig（含一次性迁移）。
+  wireSecretaryPreset(ctx, engineConfig, log)
+
   const applyStarted = Date.now()
   const manager = new ChannelManager({ ctx, stateDir, log, engineConfig, hostUpdateDisabled })
   log(`[boot] ChannelManager 构造 ${Date.now() - applyStarted}ms`)
@@ -221,6 +226,47 @@ export function apply(ctx: Context, config: PluginConfig): void {
 // [secretary] ─────────────────────────────────────────────────────────────
 // 会话秘书装配：控制聊天学习、label 前缀、系统通道、两阶段代答桥、
 // 完成/出错通知。全部依赖经 use-time 闭包读取，配置改后重载即生效。
+
+/** 宿主 agentPresets 服务中与注册相关的可选方法（0.2.x 起 register 由声明行插件与宿主插件共用）。 */
+type AgentPresetsRegistrar = {
+  register?(definition: unknown): Promise<() => Promise<void> | void>
+}
+
+/**
+ * 注册「会话秘书」Agent 预设，与插件共存亡：注册返回的注销函数挂在本 effect 上，
+ * 禁用/卸载时由 cordis 调用，预设从名册移除（已存在会话保留其原组成）。
+ * 宿主服务缺失或注册失败时探测降级：不注册，IM 新会话沿用 standard，插件照常激活。
+ * 注册异步完成；完成前新建的会话若请求秘书预设，由 router 的 mount 回退兜底。
+ */
+function wireSecretaryPreset(ctx: Context, engineConfig: EngineConfig, log: (line: string) => void): void {
+  const degradeToStandard = (reason: string) => {
+    if (engineConfig.agentPreset === SECRETARY_PRESET_ID) engineConfig.agentPreset = 'standard'
+    log(`[secretary-preset] ${reason}；秘书预设未注册，IM 新会话沿用 ${engineConfig.agentPreset}`)
+  }
+  ctx.effect(() => {
+    const agentPresets = (ctx as Context & { agentPresets?: AgentPresetsRegistrar }).agentPresets
+    if (typeof agentPresets?.register !== 'function') {
+      degradeToStandard('当前宿主的 agentPresets 服务不支持 register')
+      return () => {}
+    }
+    let disposed = false
+    let unregister: (() => Promise<void> | void) | undefined
+    void Promise.resolve()
+      .then(() => agentPresets.register!(secretaryPresetDefinition()))
+      .then(disposer => {
+        // 注销先于注册完成（宿主热重载）：拿到句柄后立刻补一次注销。
+        if (disposed) void disposer?.()
+        else unregister = disposer ?? undefined
+      })
+      .catch(error => degradeToStandard(`注册失败: ${error instanceof Error ? error.message : String(error)}`))
+    return () => {
+      disposed = true
+      const off = unregister
+      unregister = undefined
+      return Promise.resolve(off?.()).then(() => {})
+    }
+  }, 'im-connect.secretary-preset')
+}
 
 /**
  * 读 `userQuestions` 服务：它故意不进 `inject`（可选兼容服务，缺失不应阻止插件激活），

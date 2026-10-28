@@ -240,6 +240,13 @@ export declare class ChannelManager {
     private migrateLegacyWeixinToken;
     private load;
     private migrateAccountSettings;
+    /**
+     * v2.0 默认预设切到会话秘书：把旧账号固化的 'standard' 登记释放为跟随默认，
+     * 让既有绑定账号的新会话也默认使用秘书预设。仅执行一次（presetMigrated 标记）；
+     * 用户此后在设置页显式选回 standard 的账号不再被触碰。默认预设不是秘书预设
+     * （显式固定或宿主降级回退）时不迁移、也不落标记，保留宿主升级后的迁移机会。
+     */
+    private migrateDefaultPreset;
     private clearUnsupportedReasoningEfforts;
     private stableNameOrdinal;
     private normalizeAccountSettings;
